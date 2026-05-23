@@ -29,8 +29,10 @@ recommendation = frontmatter_recommendation.empty? ? body_recommendation : front
 allowed = Array(schema["allowed_recommendations"]).map(&:to_s)
 BossIdea.fail_with("memo recommendation is invalid: #{recommendation}") unless allowed.include?(recommendation)
 
-time_staffing = sections["time_and_staffing"].to_s
-if %w[poc mvp].include?(recommendation)
+poc_mvp_recommendations = Array(schema["poc_mvp_recommendations"]).map(&:to_s)
+time_staffing_key = BossIdea.normalize_heading(schema.fetch("time_and_staffing_section"))
+time_staffing = sections[time_staffing_key].to_s
+if poc_mvp_recommendations.include?(recommendation)
   timebox = time_staffing[/^\s*timebox\s*:\s*(.+)$/i, 1].to_s.strip
   staffing = time_staffing[/^\s*staffing\s*:\s*(.+)$/i, 1].to_s.strip
   BossIdea.fail_with("POC/MVP memo requires Timebox") unless timebox =~ /\A\d+\s+(business\s+)?(day|days|week|weeks)\z/i

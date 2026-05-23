@@ -11,6 +11,9 @@ IMPLEMENTATION_RUN="${RUN_PREFIX}-implementation"
 BAD_SCHEMA_RUN="${RUN_PREFIX}-bad-schema"
 BOSS_IDEA_RUN="${RUN_PREFIX}-boss-idea"
 BOSS_DECISION_RUN="${RUN_PREFIX}-boss-decision"
+BOSS_MEMO_BAD_ID_RUN="${RUN_PREFIX}-boss-memo-bad-id"
+BOSS_MEMO_BAD_PROFILE_RUN="${RUN_PREFIX}-boss-memo-bad-profile"
+BOSS_MEMO_BAD_ARTIFACTS_RUN="${RUN_PREFIX}-boss-memo-bad-artifacts"
 REQUESTED_ARTIFACT="docs/architecture/example-requested-artifact.md"
 
 cleanup() {
@@ -21,6 +24,9 @@ cleanup() {
     "agentic/runs/$BAD_SCHEMA_RUN" \
     "agentic/runs/$BOSS_IDEA_RUN" \
     "agentic/runs/$BOSS_DECISION_RUN" \
+    "agentic/runs/$BOSS_MEMO_BAD_ID_RUN" \
+    "agentic/runs/$BOSS_MEMO_BAD_PROFILE_RUN" \
+    "agentic/runs/$BOSS_MEMO_BAD_ARTIFACTS_RUN" \
     "agentic/reviews/auto-doc-to-implementation/h16/$IMPLEMENTATION_RUN" \
     "agentic/reviews/auto-doc-to-implementation/h18/$IMPLEMENTATION_RUN" \
     "agentic/reviews/auto-doc-to-implementation/$PLANNING_RUN"
@@ -306,6 +312,47 @@ if scripts/generate-boss-decision-memo.sh --output "agentic/runs/$BOSS_IDEA_RUN/
   exit 1
 fi
 grep -q "blocked_missing_source" /tmp/h20-boss-memo-missing-run.log
+mkdir -p "agentic/runs/$BOSS_MEMO_BAD_ID_RUN"
+cat >"agentic/runs/$BOSS_MEMO_BAD_ID_RUN/manifest.yaml" <<YAML
+schema_version: 1
+run:
+  id: wrong-run
+  profile: boss-idea-response
+artifacts:
+  - path: docs/architecture/boss-idea-response-system.md
+YAML
+if scripts/generate-boss-decision-memo.sh --output "agentic/runs/$BOSS_MEMO_BAD_ID_RUN/memo.md" "$BOSS_MEMO_BAD_ID_RUN" >/tmp/h20-boss-memo-bad-id.log 2>&1; then
+  echo "expected decision memo generation with bad manifest id to fail" >&2
+  exit 1
+fi
+grep -q "blocked_schema_invalid" /tmp/h20-boss-memo-bad-id.log
+mkdir -p "agentic/runs/$BOSS_MEMO_BAD_PROFILE_RUN"
+cat >"agentic/runs/$BOSS_MEMO_BAD_PROFILE_RUN/manifest.yaml" <<YAML
+schema_version: 1
+run:
+  id: $BOSS_MEMO_BAD_PROFILE_RUN
+  profile: default-delivery
+artifacts:
+  - path: docs/architecture/boss-idea-response-system.md
+YAML
+if scripts/generate-boss-decision-memo.sh --output "agentic/runs/$BOSS_MEMO_BAD_PROFILE_RUN/memo.md" "$BOSS_MEMO_BAD_PROFILE_RUN" >/tmp/h20-boss-memo-bad-profile.log 2>&1; then
+  echo "expected decision memo generation with bad profile to fail" >&2
+  exit 1
+fi
+grep -q "blocked_schema_invalid" /tmp/h20-boss-memo-bad-profile.log
+mkdir -p "agentic/runs/$BOSS_MEMO_BAD_ARTIFACTS_RUN"
+cat >"agentic/runs/$BOSS_MEMO_BAD_ARTIFACTS_RUN/manifest.yaml" <<YAML
+schema_version: 1
+run:
+  id: $BOSS_MEMO_BAD_ARTIFACTS_RUN
+  profile: boss-idea-response
+artifacts: {}
+YAML
+if scripts/generate-boss-decision-memo.sh --output "agentic/runs/$BOSS_MEMO_BAD_ARTIFACTS_RUN/memo.md" "$BOSS_MEMO_BAD_ARTIFACTS_RUN" >/tmp/h20-boss-memo-bad-artifacts.log 2>&1; then
+  echo "expected decision memo generation with non-array artifacts to fail" >&2
+  exit 1
+fi
+grep -q "artifacts must be a non-empty array" /tmp/h20-boss-memo-bad-artifacts.log
 if scripts/generate-boss-decision-memo.sh --output ../bad-memo.md "$BOSS_IDEA_RUN" >/tmp/h20-boss-memo-output-path.log 2>&1; then
   echo "expected bad decision memo output path to fail" >&2
   exit 1
@@ -320,6 +367,7 @@ grep -q "invalid recommendation" /tmp/h20-boss-memo-bad-band.log
 scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/valid-memo.md >/dev/null
 scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/valid-mvp-memo.md >/dev/null
 scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/valid-memo-negated-approval.md >/dev/null
+scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/valid-memo-approved-implementation.md >/dev/null
 if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-missing-options.md >/tmp/h20-boss-memo.log 2>&1; then
   echo "expected memo missing options to fail" >&2
   exit 1

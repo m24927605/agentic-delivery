@@ -22,4 +22,8 @@ schema:
     - reviewed
     - approved
     - rejected
+  poc_mvp_recommendations:
+    - poc
+    - mvp
+  time_and_staffing_section: Time And Staffing
   implementation_approval_assertion_pattern: '^Implementation Approval:\s*approved for implementation\s*$'

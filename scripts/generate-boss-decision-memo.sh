@@ -60,6 +60,7 @@ BossIdea.fail_with("invalid recommendation: #{recommendation}", 2) unless allowe
 
 manifest_path = "agentic/runs/#{run_id}/manifest.yaml"
 BossIdea.fail_with("blocked_missing_source: #{manifest_path}") unless File.file?(manifest_path)
+# Planning manifests may contain YAML anchors from profile data emitted by init-agentic-run.
 manifest = YAML.safe_load(File.read(manifest_path), permitted_classes: [Date], aliases: true) || {}
 BossIdea.required_mapping!(manifest, "planning manifest")
 run = BossIdea.required_mapping!(manifest["run"], "planning manifest.run")
@@ -76,8 +77,6 @@ recommended_path = case recommendation
                      "Defer implementation until material unknowns are resolved."
                    when "no_go"
                      "Do not proceed; record the reason and stop implementation planning."
-                   when "research_more"
-                     "Run additional cited research before choosing POC or MVP."
                    when "mvp"
                      "Run a tightly scoped MVP only after artifacts are approved."
                    else
