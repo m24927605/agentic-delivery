@@ -406,14 +406,17 @@ research_schema = BossIdea.load_yaml("agentic/schemas/boss-idea-research.schema.
 allowed_signals = Array(market_schema["allowed_signals"]).map(&:to_s)
 allowed_source_types = Array(research_schema["allowed_source_types"]).map(&:to_s)
 candidates = load_candidates(seeds_path)
-begin
-  allow_hosts = candidates.map { |candidate| parse_http_url!(candidate["url"], "candidate.url").host.downcase }.uniq
-rescue ArgumentError => e
-  fail_with(e.message)
-end
+allow_hosts = candidates.each_with_object([]) do |candidate, hosts|
+  hosts << parse_http_url!(candidate["url"], "candidate.url").host.downcase
+rescue ArgumentError
+  nil
+end.uniq
 
 fail_with("candidate URL count exceeds policy") if candidates.length > POLICY.fetch("max_crawled_pages_per_run")
-unless force
+if force
+  [output_path, CANDIDATE_URLS_PATH, CRAWL_LOG_PATH].each { |path| FileUtils.rm_f(path) }
+  FileUtils.rm_rf(RAW_DIR)
+else
   [output_path, CANDIDATE_URLS_PATH, CRAWL_LOG_PATH].each do |path|
     fail_with("crawl artifact already exists: #{path}; use --force to overwrite") if File.exist?(path)
   end
@@ -538,12 +541,14 @@ end
 if total_failures.positive?
   FileUtils.mkdir_p(File.dirname(CRAWL_LOG_PATH))
   File.write(CRAWL_LOG_PATH, crawl_log.to_yaml)
-  fail_with("crawl failed for #{total_failures} candidate(s): #{failure_messages.uniq.join("; ")}")
+  fail_with("crawl failed for #{total_failures} candidate(s): #{failure_messages.join("; ")}")
 end
 
 FileUtils.mkdir_p(File.dirname(output_path))
 FileUtils.mkdir_p(File.dirname(CANDIDATE_URLS_PATH))
-File.write(QUERY_PACK_PATH, query_pack.to_yaml) unless query_pack_preexisting && !force
+if results_only && (!query_pack_preexisting || force)
+  File.write(QUERY_PACK_PATH, query_pack.to_yaml)
+end
 File.write(CANDIDATE_URLS_PATH, {
   "schema_version" => 1,
   "run_id" => run_id,

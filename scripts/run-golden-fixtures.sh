@@ -319,6 +319,97 @@ if scripts/crawl-boss-idea-market.sh --force --results-only "$BOSS_IDEA_RUN" --s
 fi
 grep -q "blocked IP" /tmp/h20-boss-market-crawl-redirect.log
 
+cat >"agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-circuit.yaml" <<'YAML'
+candidates:
+  - id: blocked-one
+    query_id: competitor_landscape
+    url: https://example.com/blocked-one
+    title: Blocked one
+    snippet: Should fail through robots policy.
+    provider: fixture
+    source_type: vendor_docs
+    signal: competitor
+    claim: Robots policy should stop this source.
+    robots_allowed: false
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/competitor-workflow.html
+  - id: blocked-two
+    query_id: competitor_landscape
+    url: https://example.com/blocked-two
+    title: Blocked two
+    snippet: Should fail through robots policy.
+    provider: fixture
+    source_type: vendor_docs
+    signal: competitor
+    claim: Robots policy should stop this source.
+    robots_allowed: false
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/competitor-workflow.html
+  - id: blocked-three
+    query_id: competitor_landscape
+    url: https://example.com/blocked-three
+    title: Blocked three
+    snippet: Should fail through robots policy.
+    provider: fixture
+    source_type: vendor_docs
+    signal: competitor
+    claim: Robots policy should stop this source.
+    robots_allowed: false
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/competitor-workflow.html
+  - id: blocked-four
+    query_id: competitor_landscape
+    url: https://example.com/blocked-four
+    title: Blocked four
+    snippet: Should fail through robots policy.
+    provider: fixture
+    source_type: vendor_docs
+    signal: competitor
+    claim: Robots policy should stop this source.
+    robots_allowed: false
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/competitor-workflow.html
+  - id: blocked-five
+    query_id: competitor_landscape
+    url: https://example.com/blocked-five
+    title: Blocked five
+    snippet: Should fail through robots policy.
+    provider: fixture
+    source_type: vendor_docs
+    signal: competitor
+    claim: Robots policy should stop this source.
+    robots_allowed: false
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/competitor-workflow.html
+YAML
+if scripts/crawl-boss-idea-market.sh --force --results-only "$BOSS_IDEA_RUN" --seeds "agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-circuit.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/bad-circuit-results.yaml" >/tmp/h20-boss-market-crawl-circuit.log 2>&1; then
+  echo "expected crawl circuit breaker to fail" >&2
+  exit 1
+fi
+grep -q "circuit breaker" /tmp/h20-boss-market-crawl-circuit.log
+ruby -ryaml -e 'log=YAML.load_file(ARGV.fetch(0)); abort("expected five failed entries") unless log.fetch("entries").count { |entry| entry["status"] == "failed" } == 5' "agentic/runs/$BOSS_IDEA_RUN/crawl4ai/crawl-log.yaml"
+
+cat >"agentic/runs/$BOSS_IDEA_RUN/valid-market-crawl-duplicate-ids.yaml" <<'YAML'
+candidates:
+  - id: duplicate-source
+    query_id: competitor_landscape
+    url: https://example.com/duplicate-one
+    title: Duplicate one
+    snippet: Should produce the base source id.
+    provider: fixture
+    source_type: vendor_docs
+    signal: competitor
+    claim: Comparable tooling already covers executive intake with evidence handoff.
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/competitor-workflow.html
+  - id: duplicate-source
+    query_id: mainstream_practices
+    url: https://example.com/duplicate-two
+    title: Duplicate two
+    snippet: Should produce a suffixed source id.
+    provider: fixture
+    source_type: public_report
+    signal: mainstream_practice
+    claim: Common practice favors cited analysis prior to reserving engineering effort.
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/mainstream-practices.html
+YAML
+scripts/crawl-boss-idea-market.sh --force --results-only "$BOSS_IDEA_RUN" --seeds "agentic/runs/$BOSS_IDEA_RUN/valid-market-crawl-duplicate-ids.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/duplicate-id-results.yaml" >/dev/null
+ruby -ryaml -e 'ids=YAML.load_file(ARGV.fetch(0)).fetch("results").map { |r| r["id"] }; abort("expected unique ids") unless ids == ids.uniq && ids.any? { |id| id.start_with?("duplicate-source-") }' "agentic/runs/$BOSS_IDEA_RUN/duplicate-id-results.yaml"
+
 ruby -e 'File.write(ARGV.fetch(0), "<!doctype html><html><body>" + ("lorem ipsum unique " * 8000) + "</body></html>")' "agentic/runs/$BOSS_IDEA_RUN/large-crawl-page.html"
 cat >"agentic/runs/$BOSS_IDEA_RUN/valid-market-crawl-large.yaml" <<YAML
 candidates:
