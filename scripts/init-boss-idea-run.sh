@@ -71,7 +71,8 @@ required = %w[
 ]
 BossIdea.require_fields!(frontmatter, required, "idea_intake")
 
-allowed_response_classes = %w[research recommendation poc mvp decision]
+schema = BossIdea.load_yaml("agentic/schemas/boss-idea-intake.schema.yaml")
+allowed_response_classes = Array(schema.dig("schema", "allowed_response_classes")).map(&:to_s)
 unless allowed_response_classes.include?(frontmatter["response_class"].to_s)
   BossIdea.fail_with("idea_intake.response_class is invalid: #{frontmatter["response_class"]}", 2)
 end

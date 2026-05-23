@@ -163,6 +163,7 @@ actions:
     reads:
       - agentic/pipeline.yaml
       - agentic/profiles/boss-idea-response.yaml
+      - agentic/schemas/boss-idea-intake.schema.yaml
       - "{{goal_file}}"
     writes:
       - agentic/runs/{{run_id}}/manifest.yaml

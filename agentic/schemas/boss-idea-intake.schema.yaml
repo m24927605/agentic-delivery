@@ -1,0 +1,15 @@
+schema:
+  id: boss-idea-intake
+  required_fields:
+    - raw_idea
+    - decision_owner
+    - requested_by_role
+    - requested_response_time
+    - response_class
+    - business_question
+  allowed_response_classes:
+    - research
+    - recommendation
+    - poc
+    - mvp
+    - decision

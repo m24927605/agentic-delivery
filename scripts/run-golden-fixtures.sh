@@ -122,10 +122,21 @@ if scripts/init-boss-idea-run.sh --dry-run agentic/fixtures/boss-idea-response/i
   exit 1
 fi
 grep -q "response_class" /tmp/h20-boss-idea-response-class.log
+if scripts/init-boss-idea-run.sh --dry-run agentic/fixtures/boss-idea-response/invalid-idea-bad-response-class.md >/tmp/h20-boss-idea-bad-response-class.log 2>&1; then
+  echo "expected bad boss idea response class to fail" >&2
+  exit 1
+fi
+grep -q "response_class is invalid" /tmp/h20-boss-idea-bad-response-class.log
+if scripts/init-boss-idea-run.sh --dry-run ../outside.md >/tmp/h20-boss-idea-path.log 2>&1; then
+  echo "expected non repo-local boss idea path to fail" >&2
+  exit 1
+fi
+grep -q "invalid file path" /tmp/h20-boss-idea-path.log
 
 RUN_ID="$BOSS_IDEA_RUN" scripts/init-boss-idea-run.sh agentic/fixtures/boss-idea-response/valid-idea.md >/dev/null
 scripts/validate-manifest-schema.sh "$BOSS_IDEA_RUN" >/dev/null
 grep -q "boss_idea_intake" "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); abort("expected all artifacts planned") unless m.fetch("artifacts").all? { |a| a["status"] == "planned" }' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
 
 scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/valid-research.md >/dev/null
 if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-missing-citation.md >/tmp/h20-boss-research.log 2>&1; then

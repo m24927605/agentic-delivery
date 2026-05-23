@@ -34,6 +34,7 @@ core_files=(
   agentic/schemas/artifact-template.schema.yaml
   agentic/schemas/identity-policy.schema.yaml
   agentic/schemas/manifest.schema.yaml
+  agentic/schemas/boss-idea-intake.schema.yaml
   docs/architecture/hermes-orchestration-adapter.md
   docs/adr/004-hermes-orchestration-adapter.md
   docs/backlog/hermes-adapter-implementation-slices.md
@@ -82,6 +83,7 @@ core_files=(
   scripts/record-boss-idea-decision.sh
   scripts/validate-boss-idea-decision.sh
   scripts/lib/boss_idea.rb
+  agentic/schemas/boss-idea-intake.schema.yaml
   agentic/schemas/boss-idea-research.schema.yaml
   agentic/schemas/boss-idea-scorecard.schema.yaml
   agentic/schemas/boss-decision-memo.schema.yaml

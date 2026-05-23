@@ -46,6 +46,8 @@ planning_manifest:
     - artifact_revision_tasks
     - review_attempts
     - validation
+    - boss_idea_intake
+    - boss_idea_decisions
     - artifacts.kind
     - artifacts.purpose
     - artifacts.decision

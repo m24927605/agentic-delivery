@@ -1,5 +1,6 @@
 require "date"
 require "fileutils"
+require "pathname"
 require "yaml"
 
 module BossIdea
@@ -15,8 +16,9 @@ module BossIdea
   end
 
   def load_markdown(path)
-    fail_with("file not found: #{path}") unless File.file?(path)
     fail_with("invalid file path: #{path}") unless repo_local_path?(path)
+    fail_with("file not found: #{path}") unless File.file?(path)
+    fail_with("file escapes repo root: #{path}") unless within_repo_root?(path)
 
     content = File.read(path)
     frontmatter, body = parse_frontmatter(content, path)
@@ -24,8 +26,9 @@ module BossIdea
   end
 
   def load_yaml(path)
-    fail_with("file not found: #{path}") unless File.file?(path)
     fail_with("invalid file path: #{path}") unless repo_local_path?(path)
+    fail_with("file not found: #{path}") unless File.file?(path)
+    fail_with("file escapes repo root: #{path}") unless within_repo_root?(path)
 
     YAML.safe_load(File.read(path), permitted_classes: [Date], aliases: false) || {}
   rescue Psych::SyntaxError => e
@@ -113,6 +116,14 @@ module BossIdea
     value.start_with?("agentic/reviews/") ||
       value.start_with?("agentic/runs/") ||
       value.start_with?("docs/")
+  end
+
+  def within_repo_root?(path)
+    root = Pathname.new(Dir.pwd).realpath.to_s
+    target = Pathname.new(path).realpath.to_s
+    target == root || target.start_with?("#{root}/")
+  rescue Errno::ENOENT
+    false
   end
 
   def stringify_keys(value)
