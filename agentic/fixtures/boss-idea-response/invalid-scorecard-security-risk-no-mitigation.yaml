@@ -1,0 +1,14 @@
+value_score: 4
+urgency_score: 4
+effort_score: 3
+technical_risk_score: 2
+security_risk_score: 4
+market_confidence_score: 3
+implementation_confidence_score: 3
+reversibility_score: 3
+dependency_score: 2
+unknowns:
+  - Security review path is undefined.
+score_rationale: High security risk without mitigation should fail.
+recommendation_band: defer
+implementation_approval: false

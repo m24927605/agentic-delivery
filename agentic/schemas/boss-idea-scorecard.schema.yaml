@@ -1,5 +1,17 @@
 schema:
   id: boss-idea-scorecard
+  required_fields:
+    - value_score
+    - urgency_score
+    - effort_score
+    - technical_risk_score
+    - security_risk_score
+    - market_confidence_score
+    - implementation_confidence_score
+    - reversibility_score
+    - dependency_score
+    - score_rationale
+    - recommendation_band
   score_range:
     min: 1
     max: 5
@@ -14,3 +26,20 @@ schema:
     - technical_risk_score
     - security_risk_score
     - dependency_score
+  recommendation_bands:
+    - no_go
+    - defer
+    - research_more
+    - poc
+    - mvp
+  high_risk_fields:
+    - technical_risk_score
+    - security_risk_score
+  high_risk_threshold: 4
+  low_confidence_fields:
+    - market_confidence_score
+    - implementation_confidence_score
+  low_confidence_threshold: 2
+  low_confidence_support_fields:
+    - unknowns
+    - follow_up_questions
