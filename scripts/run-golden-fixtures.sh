@@ -568,6 +568,11 @@ if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-resp
   exit 1
 fi
 grep -q "decision_mapping" /tmp/h20-boss-metrics-mapping.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-missing-decision-mapping.yaml >/tmp/h20-boss-metrics-missing-mapping.log 2>&1; then
+  echo "expected missing metric decision mapping to fail" >&2
+  exit 1
+fi
+grep -q "decision_mapping" /tmp/h20-boss-metrics-missing-mapping.log
 if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-incomplete-decision-mapping.yaml >/tmp/h20-boss-metrics-incomplete-mapping.log 2>&1; then
   echo "expected incomplete metric decision mapping to fail" >&2
   exit 1

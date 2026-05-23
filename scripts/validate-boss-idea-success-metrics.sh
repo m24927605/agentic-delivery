@@ -38,7 +38,8 @@ metrics.each_with_index do |metric, index|
     BossIdea.fail_with("metric timebox_days exceeds selected plan timebox")
   end
   auto_decision = metric["auto_decision"]
-  unless auto_decision.nil? || auto_decision == false
+  allowed_auto_decisions = Array(schema["auto_decision_allowed_values"])
+  unless auto_decision.nil? || allowed_auto_decisions.include?(auto_decision)
     BossIdea.fail_with("metric output cannot automatically record go/no-go")
   end
 end

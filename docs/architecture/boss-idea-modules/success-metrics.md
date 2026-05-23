@@ -51,7 +51,7 @@ Metric fields:
 - `owner_role`
 - `decision_mapping`
 - `timebox_days`
-- `auto_decision`
+- `auto_decision` (optional, must be `false` when present)
 
 ## CLI / Manifest / Pipeline Contract
 
