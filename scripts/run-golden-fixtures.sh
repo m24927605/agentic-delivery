@@ -292,6 +292,12 @@ if scripts/crawl-boss-idea-market.sh --force --results-only "$BOSS_IDEA_RUN" --s
 fi
 grep -q "requires both" /tmp/h20-boss-market-crawl-live-seed-no-flags.log
 
+if BOSS_IDEA_LIVE_CRAWL=1 scripts/crawl-boss-idea-market.sh --force --results-only "$BOSS_IDEA_RUN" --search-provider live_seed --seeds "agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-live-seed.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/bad-live-seed-env-only-results.yaml" >/tmp/h20-boss-market-crawl-live-seed-env-only.log 2>&1; then
+  echo "expected live_seed with env only to fail" >&2
+  exit 1
+fi
+grep -q "requires both" /tmp/h20-boss-market-crawl-live-seed-env-only.log
+
 if BOSS_IDEA_LIVE_CRAWL=1 scripts/crawl-boss-idea-market.sh --live --force --results-only "$BOSS_IDEA_RUN" --search-provider live_seed --output "agentic/runs/$BOSS_IDEA_RUN/bad-live-seed-no-seeds-results.yaml" >/tmp/h20-boss-market-crawl-live-seed-no-seeds.log 2>&1; then
   echo "expected live_seed without seeds to fail" >&2
   exit 1
