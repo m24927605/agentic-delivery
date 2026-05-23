@@ -579,7 +579,7 @@ Implementation sub-slices:
   and golden fixture coverage without live internet. Operator note: `--force`
   removes prior ignored files under `agentic/runs/<run-id>/crawl4ai/raw/`; do
   not place manual evidence in that raw directory.
-- BIR-10B live Crawl4AI execution: in progress. Adds approved live Crawl4AI
+- BIR-10B live Crawl4AI execution: completed. Adds approved live Crawl4AI
   runtime execution behind `--live` and `BOSS_IDEA_LIVE_CRAWL=1`, with version
   pinning, live smoke evidence, and no default golden internet dependency.
   Until BIR-10C ships, live execution accepts only explicit `live_seed`
@@ -589,7 +589,7 @@ Implementation sub-slices:
   connect-time IP observation remains a BIR-10C hardening item. The live helper
   enforces byte caps on returned markdown because Crawl4AI does not expose raw
   response bytes through this helper boundary.
-- BIR-10C approved query-to-URL provider: in progress. Adds Brave Search as the
+- BIR-10C approved query-to-URL provider: completed. Adds Brave Search as the
   first Staff Security Engineer and Staff Software Architect approved live
   search provider using `BOSS_IDEA_SEARCH_BRAVE_API_KEY` and the
   `BOSS_IDEA_SEARCH_<PROVIDER>_*` credential contract. Default golden coverage
