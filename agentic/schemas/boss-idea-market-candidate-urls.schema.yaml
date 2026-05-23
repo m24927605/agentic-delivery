@@ -12,4 +12,5 @@ schema:
   allowed_providers:
     - fixture
     - seed_replay
+    - live_seed
   authority_note: Candidate URLs are evidence inputs only. They cannot approve artifacts, budget, roadmap, or implementation.

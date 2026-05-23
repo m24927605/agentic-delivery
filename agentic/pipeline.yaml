@@ -223,6 +223,7 @@ validation:
     - scripts/validate-boss-idea-success-metrics.sh
     - scripts/record-boss-idea-decision.sh
     - scripts/validate-boss-idea-decision.sh
+    - scripts/lib/boss_idea_crawl4ai.py
   syntax:
     yaml:
       - agentic/pipeline.yaml

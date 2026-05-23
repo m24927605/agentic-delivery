@@ -268,6 +268,24 @@ if BOSS_IDEA_LIVE_CRAWL=1 scripts/crawl-boss-idea-market.sh --live --force "$BOS
 fi
 grep -q "approved live provider" /tmp/h20-boss-market-crawl-live-fixture.log
 
+cat >"agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-live-seed.yaml" <<'YAML'
+candidates:
+  - id: live-seed-without-approval
+    query_id: competitor_landscape
+    url: https://example.com/live-seed
+    title: Live seed without approval
+    snippet: Should fail before Crawl4AI runtime is invoked.
+    provider: live_seed
+    source_type: vendor_docs
+    signal: competitor
+    claim: Live seed crawling requires explicit approval.
+YAML
+if BOSS_IDEA_LIVE_CRAWL=1 scripts/crawl-boss-idea-market.sh --live --force --results-only "$BOSS_IDEA_RUN" --seeds "agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-live-seed.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/bad-live-seed-results.yaml" >/tmp/h20-boss-market-crawl-live-seed.log 2>&1; then
+  echo "expected unapproved live seed to fail" >&2
+  exit 1
+fi
+grep -q "live_approved" /tmp/h20-boss-market-crawl-live-seed.log
+
 if scripts/crawl-boss-idea-market.sh --force --results-only "$BOSS_IDEA_RUN" --search-provider exotic --seeds agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-provider-results.yaml" >/tmp/h20-boss-market-crawl-provider.log 2>&1; then
   echo "expected exotic seed provider to fail" >&2
   exit 1

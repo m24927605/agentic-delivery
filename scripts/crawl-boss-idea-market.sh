@@ -110,6 +110,8 @@ require "cgi"
 require "date"
 require "fileutils"
 require "ipaddr"
+require "json"
+require "open3"
 require "resolv"
 require "set"
 require "time"
@@ -135,7 +137,7 @@ RAW_DIR = File.join(RUN_DIR, "crawl4ai/raw")
 CRAWL_LOG_PATH = File.join(RUN_DIR, "crawl4ai/crawl-log.yaml")
 DEFAULT_FIXTURE_SEEDS = "agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml"
 DEFAULT_USER_AGENT = "agentic-delivery-boss-idea-crawler/0.1.0 (+mailto:agentic-delivery@example.invalid)"
-ALLOWED_PROVIDERS = %w[fixture seed_replay].freeze
+ALLOWED_PROVIDERS = %w[fixture seed_replay live_seed].freeze
 STOP_WORDS = %w[
   a an and are as at be by for from has have in into is it its of on or that
   the this to with without
@@ -258,6 +260,17 @@ def validate_ip_list!(values, label)
   end
 end
 
+def resolve_public_host!(host, label)
+  literal = host_ip_literal(host)
+  addresses = literal ? [literal.to_s] : Resolv.getaddresses(host.to_s)
+  raise ArgumentError, "#{label} has no DNS addresses" if addresses.empty?
+
+  validate_ip_list!(addresses, label)
+  addresses
+rescue Resolv::ResolvError => e
+  raise ArgumentError, "#{label} DNS resolution failed: #{e.message}"
+end
+
 def parse_http_url!(value, label)
   uri = URI.parse(value.to_s)
   raise ArgumentError, "#{label} must be http or https" unless %w[http https].include?(uri.scheme)
@@ -354,6 +367,41 @@ def read_fixture_content(candidate)
   File.read(content_path)
 end
 
+def crawl4ai_markdown(candidate, user_agent)
+  python = ENV["BOSS_IDEA_CRAWL4AI_PYTHON"].to_s.empty? ? "python3.11" : ENV.fetch("BOSS_IDEA_CRAWL4AI_PYTHON")
+  helper = ENV["BOSS_IDEA_CRAWL4AI_HELPER"].to_s.empty? ? "scripts/lib/boss_idea_crawl4ai.py" : ENV.fetch("BOSS_IDEA_CRAWL4AI_HELPER")
+  raise ArgumentError, "invalid Crawl4AI helper path: #{helper}" unless BossIdea.repo_local_path?(helper)
+  raise ArgumentError, "Crawl4AI helper not found: #{helper}" unless File.file?(helper)
+
+  stdout, stderr, status = Open3.capture3(
+    python,
+    helper,
+    "--url", candidate["url"].to_s,
+    "--user-agent", user_agent,
+    "--timeout-ms", (POLICY.fetch("page_timeout_seconds") * 1000).to_s,
+    "--max-markdown-chars", POLICY.fetch("max_markdown_chars").to_s
+  )
+  unless status.success?
+    begin
+      error_payload = JSON.parse(stderr.lines.last.to_s)
+      raise ArgumentError, error_payload["error"].to_s
+    rescue JSON::ParserError
+      raise ArgumentError, stderr.to_s.strip.empty? ? "Crawl4AI helper failed" : stderr.to_s.strip
+    end
+  end
+
+  payload = JSON.parse(stdout)
+  raise ArgumentError, "Crawl4AI helper returned unsuccessful payload" unless payload["ok"] == true
+  markdown = payload["markdown"].to_s
+  raise ArgumentError, "Crawl4AI returned no usable markdown" if markdown.strip.empty?
+
+  [markdown, payload["truncated"] == true, payload["crawl4ai_version"].to_s]
+rescue Errno::ENOENT
+  raise ArgumentError, "Crawl4AI python runtime not found: #{python}"
+rescue JSON::ParserError => e
+  raise ArgumentError, "Crawl4AI helper returned invalid JSON: #{e.message}"
+end
+
 manifest = load_manifest(MANIFEST_PATH)
 run = manifest["run"].is_a?(Hash) ? manifest["run"] : {}
 fail_with("run.id must equal #{run_id}") unless run["id"].to_s == run_id
@@ -384,8 +432,14 @@ fail_with("crawl results already exist: #{output_path}; use --force to overwrite
 if live || live_env
   fail_with("live crawl requires both --live and BOSS_IDEA_LIVE_CRAWL=1", 2) unless live && live_env
 end
-if live_env && (!seeds_path.empty? || search_provider == "fixture")
-  fail_with("live crawl must use an approved live provider, not fixture or --seeds", 2)
+live_seed_mode = live && live_env && !seeds_path.empty?
+if live_seed_mode
+  if !search_provider.empty? && search_provider != "live_seed"
+    fail_with("live seed crawl must use search provider live_seed", 2)
+  end
+  search_provider = "live_seed"
+elsif live_env && search_provider == "fixture"
+  fail_with("live crawl must use an approved live provider, not fixture", 2)
 end
 if from_query_pack
   fail_with("missing --search-provider", 2) if search_provider.empty?
@@ -464,14 +518,25 @@ candidates.each_with_index do |candidate, index|
     extraction_type = candidate["extraction_type"].to_s.empty? ? "markdown" : candidate["extraction_type"].to_s
     raise ArgumentError, "Crawl4AI output must be markdown-only" unless extraction_type == "markdown"
 
-    html = read_fixture_content(candidate)
-    raise ArgumentError, "candidate content exceeds max response bytes" if html.bytesize > POLICY.fetch("max_response_bytes")
-    markdown = html_to_markdown(html)
-    raise ArgumentError, "Crawl4AI returned no usable markdown" if markdown.empty?
-    truncated = false
-    if markdown.length > POLICY.fetch("max_markdown_chars")
-      markdown = markdown[0, POLICY.fetch("max_markdown_chars")]
-      truncated = true
+    crawl4ai_version = "not-used-fixture"
+    if search_provider == "live_seed"
+      raise ArgumentError, "live seed candidate requires live_approved: true" unless candidate["live_approved"] == true
+      before_ips = resolve_public_host!(uri.host, "candidate.url")
+      markdown, truncated, crawl4ai_version = crawl4ai_markdown(candidate, ua)
+      after_ips = resolve_public_host!(uri.host, "candidate.url post-crawl")
+      if before_ips.none? { |ip| after_ips.include?(ip) }
+        raise ArgumentError, "candidate.url DNS addresses changed during Crawl4AI crawl"
+      end
+    else
+      html = read_fixture_content(candidate)
+      raise ArgumentError, "candidate content exceeds max response bytes" if html.bytesize > POLICY.fetch("max_response_bytes")
+      markdown = html_to_markdown(html)
+      raise ArgumentError, "Crawl4AI returned no usable markdown" if markdown.empty?
+      truncated = false
+      if markdown.length > POLICY.fetch("max_markdown_chars")
+        markdown = markdown[0, POLICY.fetch("max_markdown_chars")]
+        truncated = true
+      end
     end
 
     claim = candidate["claim"].to_s.gsub(/\s+/, " ").strip
@@ -515,7 +580,8 @@ candidates.each_with_index do |candidate, index|
       "url" => candidate["url"].to_s,
       "status" => "success",
       "raw_path" => raw_path,
-      "truncated" => truncated
+      "truncated" => truncated,
+      "crawl4ai_version" => crawl4ai_version
     }
     consecutive_failures = 0
   rescue SystemExit
@@ -569,7 +635,7 @@ manifest = load_manifest(MANIFEST_PATH)
 manifest["boss_idea_market_crawl"] = {
   "provider" => search_provider,
   "mode" => search_provider == "fixture" ? "fixture" : "seed_replay",
-  "crawl4ai_version" => "not-used-fixture",
+  "crawl4ai_version" => crawl_log.fetch("entries").map { |entry| entry["crawl4ai_version"] }.compact.first || "not-used-fixture",
   "candidate_urls_path" => CANDIDATE_URLS_PATH,
   "results_path" => output_path,
   "raw_evidence_path" => RAW_DIR,

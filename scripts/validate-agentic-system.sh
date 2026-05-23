@@ -85,6 +85,7 @@ core_files=(
   scripts/record-boss-idea-decision.sh
   scripts/validate-boss-idea-decision.sh
   scripts/lib/boss_idea.rb
+  scripts/lib/boss_idea_crawl4ai.py
   agentic/schemas/boss-idea-intake.schema.yaml
   agentic/schemas/boss-idea-market-candidate-urls.schema.yaml
   agentic/schemas/boss-idea-market-search.schema.yaml
@@ -211,6 +212,7 @@ scripts/privacy-scan-tracked.sh >/dev/null
 scripts/validate-identity-policy.sh >/dev/null
 scripts/validate-manifest-schema.sh --all >/dev/null
 ruby -c scripts/lib/boss_idea.rb >/dev/null
+python3 -m py_compile scripts/lib/boss_idea_crawl4ai.py
 
 for cmd in ait "$SHELL"; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
