@@ -40,11 +40,17 @@ Baseline validation:
 scripts/validate-agentic-system.sh
 scripts/validate-hermes-actions.sh
 scripts/privacy-scan-tracked.sh
+scripts/validate-manifest-schema.sh --all
 PROFILE=boss-idea-response scripts/validate-agentic-system.sh
 ```
 
 Future implementation slices must add narrow validation for the changed
 behavior and at least one negative-path check.
+
+Until a structural linter exists, doc review evidence must explicitly state
+that every module doc contains the required purpose, scope, workflow, artifact
+schema, contracts, failure behavior, validation, tests, acceptance, doc review,
+and code review sections.
 
 ## Doc Review Standard
 
@@ -98,6 +104,10 @@ Write ignored evidence to:
 agentic/reviews/boss-idea-response/<slice-id>/round-<n>.json
 agentic/reviews/boss-idea-response/<slice-id>/decision-log.md
 ```
+
+The `agentic/reviews/` tree is gitignored and must remain untracked. Any
+review result summarized into tracked docs must be public-safe and omit raw
+review metadata.
 
 ## Review Loop Rules
 

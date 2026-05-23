@@ -28,6 +28,21 @@ deadlock decisions after five failed review rounds.
 | Staff Technical Writer | Owns executive-readable memo format, public-safe language, and doc review completeness. |
 | Engineering Manager | Owns capacity, timebox, staffing, delivery sequence, and escalation path. |
 
+AIT review uses `engineering-code-reviewer` as the external reviewer role. The
+profile maps board roles to agent slugs as follows:
+
+| Board role | Profile reviewer slug |
+| --- | --- |
+| Product Strategy Lead | `product-manager` |
+| Market Research Lead | `market-research-analyst` |
+| Staff Software Architect | `engineering-software-architect` |
+| Staff Platform Engineer | `engineering-platform-engineer` |
+| Staff Security Engineer | `engineering-security-engineer` |
+| Staff QA Architect | `engineering-qa-architect` |
+| Staff Technical Writer | `engineering-technical-writer` |
+| Engineering Manager | `engineering-manager` |
+| AIT Claude Code reviewer | `engineering-code-reviewer` |
+
 The board does not replace artifact approval. It records recommendations,
 residual risks, and deadlock decisions. Implementation still requires approved
 artifacts in the planning manifest.
@@ -86,6 +101,9 @@ public-safe tracked artifact.
 | POC/MVP Timebox | `docs/architecture/boss-idea-modules/poc-mvp-timebox.md` | POC or MVP plan |
 | Success Metrics | `docs/architecture/boss-idea-modules/success-metrics.md` | Measurement plan |
 | Go/No-Go Decision | `docs/architecture/boss-idea-modules/go-no-go-decision.md` | Decision record |
+
+Solution options are captured inside the Boss Decision Memo artifact under the
+options considered and recommendation fields; they are not a separate module.
 
 ## Artifact Set
 

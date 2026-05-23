@@ -63,6 +63,8 @@ Acceptance criteria:
 - all seven module design docs exist;
 - quality standard defines doc review and code review rules;
 - implementation slices are small and independently reviewable;
+- each module doc is manually audited against the required section contract
+  until a structural linter exists;
 - profile validation passes;
 - AIT plus Claude Code doc review passes.
 
@@ -72,6 +74,7 @@ Validation command:
 scripts/validate-agentic-system.sh
 scripts/validate-hermes-actions.sh
 scripts/privacy-scan-tracked.sh
+scripts/validate-manifest-schema.sh --all
 PROFILE=boss-idea-response scripts/validate-agentic-system.sh
 ```
 
@@ -265,7 +268,6 @@ Files touched:
 - `scripts/validate-boss-idea-poc-mvp.sh`
 - `agentic/hermes-actions.yaml`
 - `agentic/README.md`
-- `docs/architecture/boss-idea-response-system.md`
 
 Acceptance criteria:
 

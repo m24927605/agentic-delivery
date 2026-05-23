@@ -51,8 +51,15 @@ YAML-compatible scoring fields:
 - `score_rationale`
 - `recommendation_band`
 
-Scores use `1` to `5`, where higher means stronger presence of that dimension.
-For risk and effort, higher means more costly or riskier.
+Scores use `1` to `5`; direction is explicit per field:
+
+| Field group | Direction |
+| --- | --- |
+| `business_impact_score`, `market_confidence_score`, `implementation_confidence_score`, `reversibility_score` | Higher is better. |
+| `technical_effort_score`, `integration_complexity_score`, `security_risk_score`, `dependency_score` | Higher is worse. |
+
+The recommendation band must account for both groups instead of averaging all
+scores as if higher always meant better.
 
 ## CLI / Manifest / Pipeline Contract
 
