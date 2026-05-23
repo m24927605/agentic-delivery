@@ -97,12 +97,17 @@ require "time"
 goal_file = ENV.fetch("GOAL_FILE")
 manifest_path = ENV.fetch("MANIFEST")
 frontmatter, = BossIdea.load_markdown(goal_file)
+schema = BossIdea.load_yaml("agentic/schemas/boss-idea-intake.schema.yaml")
+allowed_fields = Array(schema.dig("schema", "required_fields")) + Array(schema.dig("schema", "optional_fields"))
+intake = frontmatter.select { |key, _| allowed_fields.include?(key.to_s) }
 manifest = YAML.load_file(manifest_path)
-manifest["boss_idea_intake"] = frontmatter.merge(
+manifest["boss_idea_intake"] = intake.merge(
   "source_file" => goal_file,
   "recorded_at" => Time.now.utc.iso8601
 )
-File.write(manifest_path, manifest.to_yaml)
+tmp_path = "#{manifest_path}.tmp"
+File.write(tmp_path, manifest.to_yaml)
+File.rename(tmp_path, manifest_path)
 RUBY
 
 printf '%s\n' "$RUN_OUTPUT"

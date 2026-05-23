@@ -122,7 +122,7 @@ module BossIdea
     root = Pathname.new(Dir.pwd).realpath.to_s
     target = Pathname.new(path).realpath.to_s
     target == root || target.start_with?("#{root}/")
-  rescue Errno::ENOENT
+  rescue SystemCallError
     false
   end
 

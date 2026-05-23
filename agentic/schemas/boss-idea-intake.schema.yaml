@@ -7,6 +7,15 @@ schema:
     - requested_response_time
     - response_class
     - business_question
+  optional_fields:
+    - idea_id
+    - urgency_class
+    - target_user_or_operator
+    - assumptions
+    - constraints
+    - non_goals
+    - required_artifacts
+    - triage_recommendation
   allowed_response_classes:
     - research
     - recommendation
