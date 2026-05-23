@@ -266,6 +266,11 @@ if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-r
   exit 1
 fi
 grep -q "score_rationale" /tmp/h20-boss-score-rationale.log
+if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-numeric-rationale.yaml >/tmp/h20-boss-score-rationale-type.log 2>&1; then
+  echo "expected numeric score rationale to fail" >&2
+  exit 1
+fi
+grep -q "score_rationale" /tmp/h20-boss-score-rationale-type.log
 if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-implementation-approval.yaml >/tmp/h20-boss-score-approval.log 2>&1; then
   echo "expected implementation approval in scorecard to fail" >&2
   exit 1
@@ -286,6 +291,11 @@ if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-r
   exit 1
 fi
 grep -q "cannot approve implementation" /tmp/h20-boss-score-artifact-status-case.log
+if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-padded-approved-artifact-status.yaml >/tmp/h20-boss-score-artifact-status-padding.log 2>&1; then
+  echo "expected padded approved artifact status in scorecard to fail" >&2
+  exit 1
+fi
+grep -q "cannot approve implementation" /tmp/h20-boss-score-artifact-status-padding.log
 
 scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/valid-memo.md >/dev/null
 if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-missing-options.md >/tmp/h20-boss-memo.log 2>&1; then

@@ -88,7 +88,7 @@ unless implementation_approval.nil? || implementation_approval == true || implem
   BossIdea.fail_with("scorecard.implementation_approval must be boolean")
 end
 
-if implementation_approval == true || data["artifact_status"].to_s.downcase == "approved"
+if implementation_approval == true || data["artifact_status"].to_s.strip.downcase == "approved"
   BossIdea.fail_with("scorecard cannot approve implementation")
 end
 

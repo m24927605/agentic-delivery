@@ -1,0 +1,15 @@
+value_score: 4
+urgency_score: 4
+effort_score: 2
+technical_risk_score: 3
+security_risk_score: 2
+market_confidence_score: 3
+implementation_confidence_score: 3
+reversibility_score: 4
+dependency_score: 2
+unknowns:
+  - Exact POC staffing availability.
+score_rationale: Scorecard cannot mark artifacts approved with padded status.
+recommendation_band: poc
+implementation_approval: false
+artifact_status: " approved "
