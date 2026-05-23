@@ -454,6 +454,9 @@ if from_query_pack
 end
 search_provider = "seed_replay" if search_provider.empty?
 fail_with("search provider is not allowed for this slice: #{search_provider}", 2) unless ALLOWED_PROVIDERS.include?(search_provider)
+if search_provider == "live_seed" && !(live && live_env)
+  fail_with("live_seed provider requires both --live and BOSS_IDEA_LIVE_CRAWL=1", 2)
+end
 
 ua = user_agent
 fail_with("crawler user-agent is invalid") unless valid_user_agent?(ua)

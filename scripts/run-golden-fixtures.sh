@@ -286,6 +286,18 @@ if BOSS_IDEA_LIVE_CRAWL=1 scripts/crawl-boss-idea-market.sh --live --force --res
 fi
 grep -q "live_approved" /tmp/h20-boss-market-crawl-live-seed.log
 
+if scripts/crawl-boss-idea-market.sh --force --results-only "$BOSS_IDEA_RUN" --search-provider live_seed --seeds "agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-live-seed.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/bad-live-seed-no-flags-results.yaml" >/tmp/h20-boss-market-crawl-live-seed-no-flags.log 2>&1; then
+  echo "expected live_seed without live flags to fail" >&2
+  exit 1
+fi
+grep -q "requires both" /tmp/h20-boss-market-crawl-live-seed-no-flags.log
+
+if BOSS_IDEA_LIVE_CRAWL=1 scripts/crawl-boss-idea-market.sh --live --force --results-only "$BOSS_IDEA_RUN" --search-provider live_seed --output "agentic/runs/$BOSS_IDEA_RUN/bad-live-seed-no-seeds-results.yaml" >/tmp/h20-boss-market-crawl-live-seed-no-seeds.log 2>&1; then
+  echo "expected live_seed without seeds to fail" >&2
+  exit 1
+fi
+grep -q "must specify --from-query-pack or --seeds" /tmp/h20-boss-market-crawl-live-seed-no-seeds.log
+
 cat >"agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-helper.py" <<'PY'
 #!/usr/bin/env python3
 import json
@@ -313,6 +325,23 @@ candidates:
 YAML
 BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_CRAWL4AI_PYTHON=python3 BOSS_IDEA_CRAWL4AI_HELPER="agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-helper.py" scripts/crawl-boss-idea-market.sh --live --force --results-only "$BOSS_IDEA_RUN" --seeds "agentic/runs/$BOSS_IDEA_RUN/valid-market-crawl-live-seed.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/live-seed-results.yaml" >/dev/null
 ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected live_seed mode") unless c["mode"] == "live_seed"; abort("expected fake crawl4ai version") unless c["crawl4ai_version"] == "fake-crawl4ai"' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+
+cat >"agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-runtime-missing.py" <<'PY'
+#!/usr/bin/env python3
+import json
+import sys
+print(json.dumps({
+    "ok": False,
+    "error": "crawl4ai runtime unavailable: ModuleNotFoundError: No module named crawl4ai",
+}), file=sys.stderr)
+sys.exit(3)
+PY
+chmod +x "agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-runtime-missing.py"
+if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_CRAWL4AI_PYTHON=python3 BOSS_IDEA_CRAWL4AI_HELPER="agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-runtime-missing.py" scripts/crawl-boss-idea-market.sh --live --force --results-only "$BOSS_IDEA_RUN" --seeds "agentic/runs/$BOSS_IDEA_RUN/valid-market-crawl-live-seed.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/bad-runtime-missing-results.yaml" >/tmp/h20-boss-market-crawl-runtime-missing.log 2>&1; then
+  echo "expected Crawl4AI runtime unavailable to fail" >&2
+  exit 1
+fi
+grep -q "crawl4ai runtime unavailable" /tmp/h20-boss-market-crawl-runtime-missing.log
 
 if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_CRAWL4AI_HELPER=scripts/lib/missing-crawl4ai-helper.py scripts/crawl-boss-idea-market.sh --live --force --results-only "$BOSS_IDEA_RUN" --seeds "agentic/runs/$BOSS_IDEA_RUN/valid-market-crawl-live-seed.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/bad-missing-helper-results.yaml" >/tmp/h20-boss-market-crawl-helper-missing.log 2>&1; then
   echo "expected missing Crawl4AI helper to fail" >&2

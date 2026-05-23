@@ -584,7 +584,11 @@ Implementation sub-slices:
   pinning, live smoke evidence, and no default golden internet dependency.
   Until BIR-10C ships, live execution accepts only explicit `live_seed`
   candidate files whose entries set `live_approved: true`; production-grade
-  competitor discovery still requires the BIR-10C query-to-URL provider.
+  competitor discovery still requires the BIR-10C query-to-URL provider. The
+  wrapper performs pre/post DNS checks around the Crawl4AI subprocess; exact
+  connect-time IP observation remains a BIR-10C hardening item. The live helper
+  enforces byte caps on returned markdown because Crawl4AI does not expose raw
+  response bytes through this helper boundary.
 - BIR-10C approved query-to-URL provider: planned. Adds the first Staff
   Security Engineer and Staff Software Architect approved live search provider
   using the `BOSS_IDEA_SEARCH_<PROVIDER>_*` credential contract.
