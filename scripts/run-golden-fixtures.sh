@@ -299,6 +299,26 @@ if scripts/crawl-boss-idea-market.sh --force --results-only "$BOSS_IDEA_RUN" --s
 fi
 grep -q "blocked IP" /tmp/h20-boss-market-crawl-localhost.log
 
+cat >"agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-malformed-url.yaml" <<'YAML'
+candidates:
+  - id: bad-malformed-url
+    query_id: competitor_landscape
+    url: "https://exa mple.com/x"
+    title: Bad malformed URL source
+    snippet: Should fail in the per-candidate loop and record crawl-log evidence.
+    provider: fixture
+    source_type: vendor_docs
+    signal: competitor
+    claim: This malformed target must not be crawled.
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/competitor-workflow.html
+YAML
+if scripts/crawl-boss-idea-market.sh --force --results-only "$BOSS_IDEA_RUN" --seeds "agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-malformed-url.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/bad-malformed-url-results.yaml" >/tmp/h20-boss-market-crawl-malformed-url.log 2>&1; then
+  echo "expected malformed market crawl seed URL to fail" >&2
+  exit 1
+fi
+grep -q "valid URL" /tmp/h20-boss-market-crawl-malformed-url.log
+ruby -ryaml -e 'log=YAML.load_file(ARGV.fetch(0)); abort("expected malformed-url failed entry") unless log.fetch("entries").any? { |entry| entry["status"] == "failed" && entry["error"].to_s.include?("valid URL") }' "agentic/runs/$BOSS_IDEA_RUN/crawl4ai/crawl-log.yaml"
+
 cat >"agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-redirect.yaml" <<'YAML'
 candidates:
   - id: bad-redirect
