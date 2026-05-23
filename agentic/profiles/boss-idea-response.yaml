@@ -10,6 +10,7 @@ source_of_truth:
   - agentic/hermes-actions.yaml
   - docs/architecture/agentic-delivery-system.md
   - docs/architecture/boss-idea-response-system.md
+  - docs/adr/006-boss-idea-crawl4ai-market-discovery.md
   - docs/standards/agentic-delivery-quality-standard.md
   - docs/standards/boss-idea-response-quality-standard.md
   - docs/backlog/boss-idea-response-slices.md

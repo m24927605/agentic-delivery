@@ -489,6 +489,7 @@ Source artifact: `docs/architecture/boss-idea-modules/crawl4ai-market-search-ada
 Files touched:
 
 - `docs/architecture/boss-idea-modules/crawl4ai-market-search-adapter.md`
+- `docs/adr/006-boss-idea-crawl4ai-market-discovery.md`
 - `docs/architecture/boss-idea-response-system.md`
 - `agentic/profiles/boss-idea-response.yaml`
 - `docs/backlog/boss-idea-response-slices.md`
@@ -501,18 +502,23 @@ Files touched:
 Acceptance criteria:
 
 - command consumes a Boss Idea market query pack;
+- command supports query-to-URL discovery through an approved public search
+  provider contract;
 - command supports Crawl4AI-backed public page crawling;
 - command can normalize crawled public pages into
   `boss-idea-market-search` results;
 - normalized results can feed `collect-boss-idea-research.sh` without manual
   editing;
 - crawler blocks localhost, private IP ranges, link-local addresses,
-  metadata-service targets, non-http(s) schemes, and output path traversal;
-- crawler enforces max pages, timeout, content length, and raw evidence path
-  limits;
+  metadata-service targets, DNS rebinding, unsafe redirects, TLS bypass,
+  non-http(s) schemes, and output path traversal;
+- crawler enforces robots policy, per-host rate limits, max redirects, max
+  pages, timeout, content length, and raw evidence path limits;
 - default golden fixtures use local HTML or controlled fixture inputs and do
   not require live internet;
 - live crawl smoke tests are opt-in;
+- production-grade competitor discovery requires live crawl/search evidence or
+  a manifest-recorded Staff+ waiver;
 - no crawl output can approve artifacts, decisions, roadmap, budget, or
   implementation.
 
@@ -520,6 +526,7 @@ Validation command:
 
 ```bash
 scripts/crawl-boss-idea-market.sh --dry-run <run-id>
+BOSS_IDEA_LIVE_CRAWL=1 scripts/crawl-boss-idea-market.sh <run-id> --from-query-pack --search-provider <provider> --output agentic/runs/<run-id>/market-search-results.yaml
 scripts/crawl-boss-idea-market.sh <run-id> --seeds agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml --output agentic/runs/<run-id>/market-search-results.yaml
 scripts/collect-boss-idea-research.sh <run-id> --search-results agentic/runs/<run-id>/market-search-results.yaml --output agentic/runs/<run-id>/market-research.md
 scripts/run-golden-fixtures.sh
@@ -528,9 +535,11 @@ scripts/run-golden-fixtures.sh
 Negative-path tests:
 
 - missing query pack fails;
-- missing seeds fail;
+- missing search provider or seeds fail;
 - unsupported URL scheme fails;
 - localhost, private IP, link-local, and metadata-service URLs fail;
+- DNS rebinding and redirect-to-private targets fail;
+- robots disallow, TLS verification failure, and per-host rate violations fail;
 - output outside the run directory fails;
 - oversized page or page count fails;
 - generated result missing competitor or mainstream-practice signal fails.

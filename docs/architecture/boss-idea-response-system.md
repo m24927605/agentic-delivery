@@ -114,6 +114,7 @@ options considered and recommendation fields; they are not a separate module.
 The profile-backed deliverables are:
 
 - `docs/architecture/boss-idea-response-system.md`
+- `docs/adr/006-boss-idea-crawl4ai-market-discovery.md`
 - `docs/architecture/boss-idea-modules/idea-intake.md`
 - `docs/architecture/boss-idea-modules/crawl4ai-market-search-adapter.md`
 - `docs/architecture/boss-idea-modules/market-research-evidence.md`
