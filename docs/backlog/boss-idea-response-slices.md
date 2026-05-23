@@ -514,9 +514,14 @@ Acceptance criteria:
   non-http(s) schemes, and output path traversal;
 - crawler enforces robots policy, per-host rate limits, max redirects, max
   pages, timeout, content length, and raw evidence path limits;
+- crawler records provider, mode, pinned Crawl4AI version, evidence paths, and
+  any Staff+ waiver in `boss_idea_market_crawl` manifest metadata;
+- live search providers require Staff Security Engineer and Staff Software
+  Architect approval before implementation release;
 - default golden fixtures use local HTML or controlled fixture inputs and do
   not require live internet;
-- live crawl smoke tests are opt-in;
+- live crawl smoke tests are opt-in and run before enabling or upgrading a live
+  provider;
 - production-grade competitor discovery requires live crawl/search evidence or
   a manifest-recorded Staff+ waiver;
 - no crawl output can approve artifacts, decisions, roadmap, budget, or
@@ -532,6 +537,9 @@ scripts/collect-boss-idea-research.sh <run-id> --search-results agentic/runs/<ru
 scripts/run-golden-fixtures.sh
 ```
 
+The live command must use an approved live provider, not `fixture` or `--seeds`.
+Fixture and seed replay commands must run without `BOSS_IDEA_LIVE_CRAWL=1`.
+
 Negative-path tests:
 
 - missing query pack fails;
@@ -539,9 +547,15 @@ Negative-path tests:
 - unsupported URL scheme fails;
 - localhost, private IP, link-local, and metadata-service URLs fail;
 - DNS rebinding and redirect-to-private targets fail;
+- redirect-chain DNS rebinding fails;
 - robots disallow, TLS verification failure, and per-host rate violations fail;
+- user-agent format mismatch fails;
+- content truncation without a crawl-log record fails;
+- Crawl4AI DOM, JavaScript, schema, or LLM extraction output fails;
+- consecutive policy-block and total-failure circuit breakers fail fast;
 - output outside the run directory fails;
 - oversized page or page count fails;
+- raw crawl evidence path not ignored by git fails;
 - generated result missing competitor or mainstream-practice signal fails.
 
 Rollback notes: remove the Crawl4AI adapter command, helper files, fixtures,

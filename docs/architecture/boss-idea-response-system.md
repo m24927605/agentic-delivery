@@ -76,7 +76,7 @@ Deferred scope:
 ```text
 raw idea
   -> idea intake
-  -> Crawl4AI-backed public source discovery
+  -> controlled search + Crawl4AI public-source crawl
   -> market research evidence
   -> feasibility scoring
   -> solution options and recommendation

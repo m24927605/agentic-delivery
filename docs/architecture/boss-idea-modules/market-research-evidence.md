@@ -10,8 +10,8 @@ an executive idea.
 Active scope:
 
 - define research questions;
-- use a controlled Crawl4AI-compatible adapter when rapid public competitor or
-  solution discovery is required;
+- require controlled crawl/search-sourced evidence for production-grade
+  competitor discovery unless the planning manifest records a Staff+ waiver;
 - collect public sources and citation metadata;
 - summarize competitor and mainstream approaches;
 - distinguish facts, inferences, and unknowns;
@@ -30,7 +30,7 @@ Active scope:
 
 ```text
 research questions
-  -> Crawl4AI-compatible public source discovery
+  -> controlled search + Crawl4AI-compatible public source crawl
   -> source collection
   -> citation metadata
   -> competitor matrix
@@ -38,6 +38,12 @@ research questions
   -> evidence confidence
   -> research review
 ```
+
+The required crawl/search path is defined by
+`docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`.
+Manual or curated sources may supplement the adapter, but they do not replace it
+for production-grade competitor discovery unless the planning manifest records
+the waiver defined by that module.
 
 ## Artifact Schema
 

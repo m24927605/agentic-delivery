@@ -138,17 +138,49 @@ Expected contract:
 - records crawl metadata in `boss_idea_market_crawl` manifest metadata;
 - does not approve artifacts, decisions, budget, or implementation.
 
+Manifest metadata shape:
+
+```yaml
+boss_idea_market_crawl:
+  provider: fixture | <approved-live-provider>
+  mode: fixture | live | seed_replay
+  crawl4ai_version: <pinned-version>
+  candidate_urls_path: agentic/runs/<run-id>/market-candidate-urls.yaml
+  results_path: agentic/runs/<run-id>/market-search-results.yaml
+  raw_evidence_path: agentic/runs/<run-id>/crawl4ai/raw/
+  crawl_log_path: agentic/runs/<run-id>/crawl4ai/crawl-log.yaml
+  live_smoke_evidence_path: agentic/reviews/boss-idea-response/bir-10/live-smoke-<date>.md
+  waiver:
+    reviewer: <staff-plus-role-or-user>
+    reason: <why-live-public-crawl-is-not-appropriate>
+    scope: <idea-or-run-scope>
+    expires_at: <yyyy-mm-dd>
+```
+
+`waiver` is omitted when crawl/search-sourced evidence exists. A waiver is
+valid only when `reviewer`, `reason`, `scope`, and `expires_at` are present.
+
 Search provider contract:
 
 - provider id is explicit in CLI input and manifest metadata;
 - provider returns URL candidates only, not final research claims;
 - provider credentials, if any, are read from environment variables and never
   written to tracked files;
+- credential environment variables must use
+  `BOSS_IDEA_SEARCH_<PROVIDER>_*`, with the common key names
+  `BOSS_IDEA_SEARCH_<PROVIDER>_API_KEY`,
+  `BOSS_IDEA_SEARCH_<PROVIDER>_BASE_URL`, and
+  `BOSS_IDEA_SEARCH_<PROVIDER>_TIMEOUT_SECONDS`;
 - provider output is stored under ignored run evidence;
 - default deterministic provider is `fixture`;
+- the only pre-approved provider for deterministic validation is `fixture`;
+- any new live provider requires Staff Security Engineer and Staff Software
+  Architect approval before it can ship;
 - live provider execution requires `BOSS_IDEA_LIVE_CRAWL=1`;
 - if `BOSS_IDEA_LIVE_CRAWL` is not set, the command must refuse public network
   search/crawl and use fixture/local inputs only.
+- `fixture` and `--seeds` must not be combined with
+  `BOSS_IDEA_LIVE_CRAWL=1`; live runs must use an approved live provider.
 
 Hermes action:
 
@@ -181,6 +213,8 @@ Required runtime controls:
 
 - `BrowserConfig(headless=True)`;
 - `CrawlerRunConfig` with explicit timeout and cache policy;
+- Crawl4AI version pinned in dependency metadata and recorded in the manifest;
+- Crawl4AI upgrades require Staff+ review before use in production discovery;
 - markdown output only;
 - no LLM extraction strategy;
 - no schema or DOM extraction strategy unless separately approved by Staff+
@@ -198,6 +232,20 @@ Required runtime controls:
 - stable user agent format:
   `agentic-delivery-boss-idea-crawler/<version> (+mailto:<contact>)`;
 - structured crawl log with success, skipped, and failed URLs.
+
+Default policy knobs:
+
+- max candidate URLs per query: 10, hard cap 20;
+- max crawled pages per query: 5, hard cap 10;
+- max crawled pages per run: 30, hard cap 50;
+- max redirect depth: 3;
+- page timeout: 20 seconds, hard cap 30 seconds;
+- max response body before markdown conversion: 2 MiB;
+- max retained markdown characters per page: 120,000;
+- per-host concurrency: 1;
+- minimum per-host delay: 2 seconds;
+- abort after 5 consecutive policy blocks or 10 total crawl/search failures in
+  one run unless an explicit Staff+ waiver raises the limit for that run.
 
 URL safety must run before every network request and after every redirect.
 Implementation must resolve hostnames, reject private or metadata-service
@@ -223,8 +271,13 @@ Block crawling when:
 - host is not in the per-run allowlist;
 - `robots` or site policy disallows crawl for the selected path;
 - per-host rate or concurrency policy would be exceeded;
+- the run reaches the configured consecutive policy-block threshold or total
+  crawl/search failure threshold;
 - page exceeds content size or timeout limits;
+- content truncation would be needed but cannot be recorded in the crawl log;
 - Crawl4AI returns no usable markdown;
+- Crawl4AI returns DOM, JavaScript-extracted, schema-extracted, or LLM-extracted
+  content instead of markdown-only output;
 - normalized results lack competitor or mainstream-practice signals;
 - claim text violates BIR-09 collector limits: multiline, more than 280
   characters, unsupported URL scheme, more than 12 consecutive words copied
@@ -258,12 +311,18 @@ Validation must include:
 - robots.txt allow and disallow fixtures;
 - per-host rate and max-redirect-depth tests;
 - deny-by-default allowlist test;
+- user-agent format test;
+- redirect-chain DNS-rebinding test;
+- content truncation log test;
+- markdown-only Crawl4AI output test that rejects DOM, JavaScript, schema, or
+  LLM extraction output;
 - negative tests for excessive page count and content length;
 - negative tests for claim length, multiline claim, more than 12 consecutive
   copied words, and more than 20 percent token overlap with one raw source;
 - negative tests for missing required signals;
 - validation of generated `market-search-results.yaml`;
 - validation of downstream `market-research.md`;
+- validation that raw crawl evidence paths are ignored and not tracked;
 - privacy scan over tracked files;
 - AIT plus Claude Code review.
 
@@ -294,8 +353,13 @@ Negative tests:
 - robots disallow fails;
 - TLS verification failure fails;
 - excessive redirect depth fails;
+- redirect-chain DNS rebinding to blocked IP fails;
 - per-host rate violation fails;
+- user-agent that does not match
+  `agentic-delivery-boss-idea-crawler/<version> (+mailto:<contact>)` fails;
 - oversized page fails;
+- truncated content without an explicit crawl-log truncation record fails;
+- DOM, JavaScript, schema, or LLM extraction output from Crawl4AI fails;
 - generated result with missing reference fails;
 - generated result with bad source type fails;
 - generated result with missing required signal fails;
@@ -316,6 +380,8 @@ Negative tests:
   blocked before Crawl4AI receives or follows the URL.
 - Raw crawl evidence remains ignored and public-safe summaries remain tracked
   only when explicitly generated.
+- Validation asserts raw evidence paths remain ignored and that no raw
+  Crawl4AI output is accidentally tracked.
 - No crawl or search output can approve artifacts, decisions, or implementation.
 
 ## Doc Review Standard
@@ -342,6 +408,10 @@ Implementation review must verify:
 - generated results pass `collect-boss-idea-research.sh`;
 - golden fixtures use local HTML or controlled fixture inputs;
 - live crawl smoke tests are opt-in and clearly labeled.
+- live crawl smoke tests run manually before enabling or upgrading a live
+  provider, are owned by the Staff Platform Engineer with Market Research Lead
+  review, and record public-safe evidence under
+  `agentic/reviews/boss-idea-response/bir-10/live-smoke-<date>.md`.
 
 ## Rollback
 
