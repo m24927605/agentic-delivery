@@ -368,9 +368,38 @@ fi
 grep -q "BOSS_IDEA_SEARCH_BRAVE_API_KEY" /tmp/h20-boss-market-crawl-brave-key.log
 
 BRAVE_KEY_ENV="BOSS_IDEA_SEARCH_BRAVE_API_KEY"
-env BOSS_IDEA_LIVE_CRAWL=1 "$BRAVE_KEY_ENV=fake" BOSS_IDEA_SEARCH_BRAVE_FIXTURE=agentic/fixtures/boss-idea-response/brave-search-fixture.json BOSS_IDEA_CRAWL4AI_PYTHON=python3 BOSS_IDEA_CRAWL4AI_HELPER="agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-helper.py" scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider brave --output "agentic/runs/$BOSS_IDEA_RUN/brave-results.yaml" >/dev/null
+env BOSS_IDEA_LIVE_CRAWL=1 "$BRAVE_KEY_ENV=fake" BOSS_IDEA_SEARCH_BRAVE_BASE_URL=http://127.0.0.1/should-not-be-used BOSS_IDEA_SEARCH_BRAVE_FIXTURE=agentic/fixtures/boss-idea-response/brave-search-fixture.json BOSS_IDEA_CRAWL4AI_PYTHON=python3 BOSS_IDEA_CRAWL4AI_HELPER="agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-helper.py" scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider brave --output "agentic/runs/$BOSS_IDEA_RUN/brave-results.yaml" >/dev/null
 scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
 ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected brave provider") unless c["provider"] == "brave"; abort("expected brave mode") unless c["mode"] == "brave"; abort("expected fake crawl4ai version") unless c["crawl4ai_version"] == "fake-crawl4ai"; abort("expected brave source count") unless c["source_count"].to_i >= 4' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+
+cat >"agentic/runs/$BOSS_IDEA_RUN/brave-private-fixture.json" <<'JSON'
+{
+  "query_results": {
+    "competitor_landscape": {"web": {"results": [{"url": "http://10.0.0.1/private-competitor", "title": "Private competitor", "description": "Should be blocked."}]}},
+    "mainstream_practices": {"web": {"results": [{"url": "http://10.0.0.1/private-mainstream", "title": "Private mainstream", "description": "Should be blocked."}]}},
+    "implementation_patterns": {"web": {"results": [{"url": "http://10.0.0.1/private-implementation", "title": "Private implementation", "description": "Should be blocked."}]}},
+    "operator_workflow": {"web": {"results": [{"url": "http://10.0.0.1/private-operator", "title": "Private operator", "description": "Should be blocked."}]}}
+  }
+}
+JSON
+if env BOSS_IDEA_LIVE_CRAWL=1 "$BRAVE_KEY_ENV=fake" BOSS_IDEA_SEARCH_BRAVE_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/brave-private-fixture.json" BOSS_IDEA_CRAWL4AI_PYTHON=python3 BOSS_IDEA_CRAWL4AI_HELPER="agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-helper.py" scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider brave --output "agentic/runs/$BOSS_IDEA_RUN/bad-brave-private-results.yaml" >/tmp/h20-boss-market-crawl-brave-private.log 2>&1; then
+  echo "expected Brave private-IP candidates to fail" >&2
+  exit 1
+fi
+grep -q "Brave search returned no candidate URLs" /tmp/h20-boss-market-crawl-brave-private.log
+
+cat >"agentic/runs/$BOSS_IDEA_RUN/brave-missing-results-fixture.json" <<'JSON'
+{
+  "query_results": {
+    "competitor_landscape": {}
+  }
+}
+JSON
+if env BOSS_IDEA_LIVE_CRAWL=1 "$BRAVE_KEY_ENV=fake" BOSS_IDEA_SEARCH_BRAVE_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/brave-missing-results-fixture.json" BOSS_IDEA_CRAWL4AI_PYTHON=python3 BOSS_IDEA_CRAWL4AI_HELPER="agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-helper.py" scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider brave --output "agentic/runs/$BOSS_IDEA_RUN/bad-brave-missing-results.yaml" >/tmp/h20-boss-market-crawl-brave-missing-results.log 2>&1; then
+  echo "expected Brave missing web.results fixture to fail" >&2
+  exit 1
+fi
+grep -q "missing web.results" /tmp/h20-boss-market-crawl-brave-missing-results.log
 
 cat >"agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-live-redirect.yaml" <<'YAML'
 candidates:

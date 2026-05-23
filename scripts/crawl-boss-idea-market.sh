@@ -406,41 +406,37 @@ rescue JSON::ParserError => e
   raise ArgumentError, "Crawl4AI helper returned invalid JSON: #{e.message}"
 end
 
+QUERY_SIGNALS = {
+  "competitor_landscape" => "competitor",
+  "mainstream_practices" => "mainstream_practice",
+  "implementation_patterns" => "implementation_pattern",
+  "operator_workflow" => "differentiator"
+}.freeze
+
+QUERY_SOURCE_TYPES = {
+  "competitor_landscape" => "vendor_docs",
+  "mainstream_practices" => "public_report",
+  "implementation_patterns" => "product_docs",
+  "operator_workflow" => "vendor_docs"
+}.freeze
+
+QUERY_CLAIMS = {
+  "competitor_landscape" => "A public search result may identify adjacent or competing solution evidence.",
+  "mainstream_practices" => "A public search result may describe mainstream practice evidence.",
+  "implementation_patterns" => "A public search result may describe relevant implementation pattern evidence.",
+  "operator_workflow" => "A public search result may clarify operator workflow expectations."
+}.freeze
+
 def signal_for_query(query_id)
-  case query_id.to_s
-  when "competitor_landscape"
-    "competitor"
-  when "mainstream_practices"
-    "mainstream_practice"
-  when "implementation_patterns"
-    "implementation_pattern"
-  else
-    "differentiator"
-  end
+  QUERY_SIGNALS.fetch(query_id.to_s) { fail_with("unknown query id for signal mapping: #{query_id}") }
 end
 
 def source_type_for_query(query_id)
-  case query_id.to_s
-  when "mainstream_practices"
-    "public_report"
-  when "implementation_patterns"
-    "product_docs"
-  else
-    "vendor_docs"
-  end
+  QUERY_SOURCE_TYPES.fetch(query_id.to_s) { fail_with("unknown query id for source type mapping: #{query_id}") }
 end
 
 def claim_for_query(query_id)
-  case query_id.to_s
-  when "competitor_landscape"
-    "A public search result may identify adjacent or competing solution evidence."
-  when "mainstream_practices"
-    "A public search result may describe mainstream practice evidence."
-  when "implementation_patterns"
-    "A public search result may describe relevant implementation pattern evidence."
-  else
-    "A public search result may clarify operator workflow expectations."
-  end
+  QUERY_CLAIMS.fetch(query_id.to_s) { fail_with("unknown query id for claim mapping: #{query_id}") }
 end
 
 def load_brave_fixture(path, query_id)
@@ -468,6 +464,10 @@ def fetch_brave_results(query)
 
   base_url = ENV["BOSS_IDEA_SEARCH_BRAVE_BASE_URL"].to_s.empty? ? "https://api.search.brave.com/res/v1/web/search" : ENV.fetch("BOSS_IDEA_SEARCH_BRAVE_BASE_URL")
   uri = URI.parse(base_url)
+  fail_with("Brave search base URL must use https") unless uri.scheme == "https"
+  unless uri.host == "api.search.brave.com" || ENV["BOSS_IDEA_SEARCH_BRAVE_ALLOW_CUSTOM_ENDPOINT"].to_s == "1"
+    fail_with("Brave search custom endpoint requires BOSS_IDEA_SEARCH_BRAVE_ALLOW_CUSTOM_ENDPOINT=1")
+  end
   params = URI.decode_www_form(uri.query.to_s)
   params.concat([
     ["q", query.fetch("query")],
@@ -506,6 +506,11 @@ def discover_brave_candidates(query_pack)
       url = result["url"].to_s
       title = result["title"].to_s.empty? ? "Brave search result #{index + 1}" : result["title"].to_s
       next if url.empty?
+      begin
+        parse_http_url!(url, "Brave result url")
+      rescue ArgumentError
+        next
+      end
 
       candidates << {
         "id" => safe_slug("#{query.fetch("id")}-#{title}"),

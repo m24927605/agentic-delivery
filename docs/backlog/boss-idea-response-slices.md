@@ -594,6 +594,9 @@ Implementation sub-slices:
   search provider using `BOSS_IDEA_SEARCH_BRAVE_API_KEY` and the
   `BOSS_IDEA_SEARCH_<PROVIDER>_*` credential contract. Default golden coverage
   uses tracked fixture JSON and a fake Crawl4AI helper, not public internet.
+  Brave candidates are `live_approved` at the provider level after the provider
+  itself is approved; future providers must document whether approval is
+  provider-level or per-URL.
 
 ## Review Expectations
 
