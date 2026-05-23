@@ -6,8 +6,9 @@ sources:
     access_date: "2026-05-23"
     reference: public-competitor-docs
 claims:
-  - text: This claim has no source mapping.
-    source_ids: []
-raw_evidence_path: agentic/reviews/boss-idea-response/research/raw-evidence.md
+  - text: This claim is cited.
+    source_ids:
+      - source-a
+raw_evidence_path: docs/private/raw-evidence.md
 ---
 # Invalid Market Research Evidence

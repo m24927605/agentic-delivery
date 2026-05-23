@@ -144,6 +144,26 @@ if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/in
   exit 1
 fi
 grep -q "source_ids" /tmp/h20-boss-research.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-unknown-source.md >/tmp/h20-boss-research-unknown.log 2>&1; then
+  echo "expected unknown research source to fail" >&2
+  exit 1
+fi
+grep -q "unknown sources" /tmp/h20-boss-research-unknown.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-bad-raw-path.md >/tmp/h20-boss-research-path.log 2>&1; then
+  echo "expected bad raw evidence path to fail" >&2
+  exit 1
+fi
+grep -q "raw_evidence_path" /tmp/h20-boss-research-path.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-bad-inference-label.md >/tmp/h20-boss-research-inference.log 2>&1; then
+  echo "expected bad inference label to fail" >&2
+  exit 1
+fi
+grep -q "label" /tmp/h20-boss-research-inference.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-duplicate-source.md >/tmp/h20-boss-research-duplicate.log 2>&1; then
+  echo "expected duplicate source id to fail" >&2
+  exit 1
+fi
+grep -q "duplicates" /tmp/h20-boss-research-duplicate.log
 
 scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/valid-scorecard.yaml >/dev/null
 if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-high-risk-no-mitigation.yaml >/tmp/h20-boss-score.log 2>&1; then

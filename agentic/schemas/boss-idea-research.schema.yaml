@@ -8,6 +8,22 @@ schema:
     - title
     - source_type
     - access_date
+    - reference
+  allowed_source_types:
+    - vendor_docs
+    - public_report
+    - analyst_note
+    - standards_doc
+    - product_docs
+    - public_repository
   claim_required_fields:
     - text
     - source_ids
+  inference_required_fields:
+    - text
+    - label
+    - source_ids
+  allowed_inference_labels:
+    - inference
+    - unknown
+    - unsupported
