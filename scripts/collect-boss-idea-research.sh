@@ -258,13 +258,6 @@ if signal_groups["competitor"] && signal_groups["mainstream_practice"]
     "source_ids" => ids
   }
 end
-unless signal_groups["differentiator"]
-  inferences << {
-    "text" => "Differentiation remains unknown because the collected source set does not include a differentiator signal.",
-    "label" => "unknown",
-    "source_ids" => source_ids
-  }
-end
 
 frontmatter = {
   "sources" => sources,

@@ -160,6 +160,12 @@ scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/
 scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/generated-research.md" >/dev/null
 grep -q "boss_idea_market_research" "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
 ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); abort("market research collection must not approve artifacts") unless m.fetch("artifacts").all? { |a| a["status"] == "planned" }' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/valid-market-search-results.yaml --output "agentic/runs/$BOSS_IDEA_RUN/generated-research.md" >/tmp/h20-boss-market-existing-output.log 2>&1; then
+  echo "expected market research overwrite without force to fail" >&2
+  exit 1
+fi
+grep -q "already exists" /tmp/h20-boss-market-existing-output.log
+scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --force --search-results agentic/fixtures/boss-idea-response/valid-market-search-results.yaml --output "agentic/runs/$BOSS_IDEA_RUN/generated-research.md" >/dev/null
 if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/invalid-market-search-missing-reference.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-generated-research.md" >/tmp/h20-boss-market-missing-reference.log 2>&1; then
   echo "expected market search result missing reference to fail" >&2
   exit 1
@@ -185,6 +191,26 @@ if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agent
   exit 1
 fi
 grep -q "future" /tmp/h20-boss-market-future-date.log
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/invalid-market-search-long-claim.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-generated-research.md" >/tmp/h20-boss-market-long-claim.log 2>&1; then
+  echo "expected market search result with long claim to fail" >&2
+  exit 1
+fi
+grep -q "280 characters" /tmp/h20-boss-market-long-claim.log
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/invalid-market-search-multiline-claim.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-generated-research.md" >/tmp/h20-boss-market-multiline-claim.log 2>&1; then
+  echo "expected market search result with multiline claim to fail" >&2
+  exit 1
+fi
+grep -q "one line" /tmp/h20-boss-market-multiline-claim.log
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/invalid-market-search-bad-url.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-generated-research.md" >/tmp/h20-boss-market-bad-url.log 2>&1; then
+  echo "expected market search result with bad url to fail" >&2
+  exit 1
+fi
+grep -q "url must be http or https" /tmp/h20-boss-market-bad-url.log
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/invalid-market-search-bad-reference-url.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-generated-research.md" >/tmp/h20-boss-market-bad-reference-url.log 2>&1; then
+  echo "expected market search result with bad reference url to fail" >&2
+  exit 1
+fi
+grep -q "reference URL must be http or https" /tmp/h20-boss-market-bad-reference-url.log
 if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/valid-market-search-results.yaml --output ../bad-market-research.md >/tmp/h20-boss-market-output-path.log 2>&1; then
   echo "expected market research output outside repo to fail" >&2
   exit 1
@@ -195,6 +221,10 @@ if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agent
   exit 1
 fi
 grep -q "output path must stay under" /tmp/h20-boss-market-output-run.log
+if find "agentic/runs/$BOSS_IDEA_RUN" -name "*.tmp" -print | grep -q .; then
+  echo "expected market research collection failures to clean tmp files" >&2
+  exit 1
+fi
 
 scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/valid-research.md >/dev/null
 if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-missing-sources.md >/tmp/h20-boss-research-missing-sources.log 2>&1; then

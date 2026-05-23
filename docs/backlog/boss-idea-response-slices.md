@@ -447,7 +447,9 @@ Acceptance criteria:
 - generated research artifact passes `validate-boss-idea-research.sh`;
 - search results require competitor and mainstream-practice signals;
 - missing reference, missing required signal, bad query id, bad source type,
-  future access date, or unsafe output path fails;
+  future access date, unsafe output path, oversized claim, multiline claim, or
+  unsafe URL scheme fails;
+- existing generated research cannot be overwritten without `--force`;
 - generated raw evidence path stays under ignored run evidence;
 - command updates the planning manifest with research artifact and evidence
   metadata without approving artifacts;

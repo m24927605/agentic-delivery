@@ -38,18 +38,22 @@ research questions
 
 ## Artifact Schema
 
-Markdown artifact fields:
+Markdown frontmatter fields:
 
-- `research_questions`
-- `source_inventory`
-- `access_dates`
-- `source_type`
-- `competitor_matrix`
-- `mainstream_practices`
-- `differentiation_notes`
-- `evidence_gaps`
-- `confidence_by_claim`
-- `recommended_follow_up`
+- `sources`
+- `claims`
+- `inferences`
+- `raw_evidence_path`
+
+Generated markdown sections:
+
+- `Search Questions`
+- `Competitor Signals`
+- `Mainstream Practices`
+- `Implementation Patterns`
+- `Differentiation Notes`
+- `Evidence Gaps`
+- `Recommended Follow Up`
 
 Each claim must include:
 

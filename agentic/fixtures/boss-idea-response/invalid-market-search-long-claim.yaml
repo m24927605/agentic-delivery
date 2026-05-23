@@ -1,0 +1,17 @@
+results:
+  - id: competitor-docs
+    query_id: competitor_landscape
+    title: Public competitor workflow documentation
+    source_type: vendor_docs
+    access_date: "2026-05-23"
+    reference: https://example.com/competitor/workflow
+    signal: competitor
+    claim: This claim is intentionally too long for the public-safe market research adapter contract because it repeats details beyond a short summary and should be rejected before it can be copied into a tracked or ignored generated research artifact that might later be summarized for executive review.
+  - id: mainstream-report
+    query_id: mainstream_practices
+    title: Public mainstream delivery practice report
+    source_type: public_report
+    access_date: "2026-05-23"
+    reference: https://example.com/reports/delivery-practices
+    signal: mainstream_practice
+    claim: Mainstream delivery teams use evidence-backed triage before committing engineering capacity.
