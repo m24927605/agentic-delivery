@@ -17,6 +17,7 @@ frontmatter, = BossIdea.load_markdown(path)
 BossIdea.required_mapping!(frontmatter, "research frontmatter")
 schema = BossIdea.load_yaml("agentic/schemas/boss-idea-research.schema.yaml")
 schema_root = schema.fetch("schema")
+BossIdea.require_fields!(frontmatter, Array(schema_root["required_fields"]), "research")
 
 sources = BossIdea.require_array!(frontmatter, "sources", "research")
 source_required_fields = Array(schema_root["source_required_fields"])
@@ -62,6 +63,7 @@ end
 
 raw_path = frontmatter["raw_evidence_path"].to_s
 BossIdea.fail_with("research.raw_evidence_path is required") if raw_path.empty?
+BossIdea.fail_with("research.raw_evidence_path must be repo-local") unless BossIdea.repo_local_path?(raw_path)
 unless raw_path.start_with?("agentic/reviews/") || raw_path.start_with?("agentic/runs/")
   BossIdea.fail_with("research.raw_evidence_path must stay under ignored evidence paths")
 end

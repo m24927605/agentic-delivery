@@ -3,6 +3,7 @@ schema:
   required_fields:
     - sources
     - claims
+    - raw_evidence_path
   source_required_fields:
     - id
     - title

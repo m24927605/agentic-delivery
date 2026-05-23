@@ -164,6 +164,21 @@ if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/in
   exit 1
 fi
 grep -q "duplicates" /tmp/h20-boss-research-duplicate.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-future-access-date.md >/tmp/h20-boss-research-future.log 2>&1; then
+  echo "expected future access date to fail" >&2
+  exit 1
+fi
+grep -q "future" /tmp/h20-boss-research-future.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-bad-source-type.md >/tmp/h20-boss-research-source-type.log 2>&1; then
+  echo "expected bad source type to fail" >&2
+  exit 1
+fi
+grep -q "source_type is invalid" /tmp/h20-boss-research-source-type.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-missing-reference.md >/tmp/h20-boss-research-reference.log 2>&1; then
+  echo "expected missing stable reference to fail" >&2
+  exit 1
+fi
+grep -q "reference" /tmp/h20-boss-research-reference.log
 
 scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/valid-scorecard.yaml >/dev/null
 if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-high-risk-no-mitigation.yaml >/tmp/h20-boss-score.log 2>&1; then
