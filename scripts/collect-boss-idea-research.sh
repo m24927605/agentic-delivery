@@ -104,31 +104,8 @@ def fail_with(message, code = 1)
   exit code
 end
 
-def repo_local_output_path?(path)
-  value = path.to_s
-  return false if value.empty?
-  return false if value.start_with?("/")
-  return false if value.split("/").include?("..")
-
-  true
-end
-
 def compact_query(value)
   value.to_s.gsub(/\s+/, " ").strip[0, 180]
-end
-
-def require_mapping!(value, label)
-  fail_with("#{label} must be a mapping") unless value.is_a?(Hash)
-  value
-end
-
-def require_fields!(record, fields, label)
-  fields.each do |field|
-    value = record[field.to_s]
-    if value.nil? || (value.respond_to?(:empty?) && value.empty?)
-      fail_with("#{label}.#{field} is required")
-    end
-  end
 end
 
 def safe_source_id?(value)
@@ -202,7 +179,7 @@ if dry_run
   exit 0
 end
 
-fail_with("invalid output path: #{output_path}", 2) unless repo_local_output_path?(output_path)
+fail_with("invalid output path: #{output_path}", 2) unless BossIdea.repo_local_path?(output_path)
 unless output_path.start_with?("#{run_dir}/")
   fail_with("output path must stay under #{run_dir}: #{output_path}", 2)
 end
@@ -223,8 +200,8 @@ required_result_fields = Array(search_schema["result_required_fields"])
 source_ids = []
 signals = []
 normalized_results = results.map do |result|
-  require_mapping!(result, "market_search.results[]")
-  require_fields!(result, required_result_fields, "market_search.results[]")
+  BossIdea.required_mapping!(result, "market_search.results[]")
+  BossIdea.require_fields!(result, required_result_fields, "market_search.results[]")
   id = result["id"].to_s
   fail_with("market_search.results[].id must be lowercase slug") unless safe_source_id?(id)
   fail_with("market_search.results[].query_id is unknown: #{result["query_id"]}") unless query_ids.include?(result["query_id"].to_s)
@@ -232,6 +209,13 @@ normalized_results = results.map do |result|
   fail_with("market_search.results[].signal is invalid: #{result["signal"]}") unless allowed_signals.include?(result["signal"].to_s)
   fail_with("market_search.results[].access_date must be YYYY-MM-DD") unless BossIdea.valid_date?(result["access_date"])
   fail_with("market_search.results[].access_date cannot be in the future") if Date.iso8601(result["access_date"].to_s) > Date.today
+  claim = result["claim"].to_s
+  fail_with("market_search.results[].claim must be one line") if claim.include?("\n")
+  fail_with("market_search.results[].claim must be 280 characters or fewer") if claim.length > 280
+  reference = result["reference"].to_s
+  if reference.match?(%r{\A[a-z][a-z0-9+.-]*://}) && reference !~ %r{\Ahttps?://}
+    fail_with("market_search.results[].reference URL must be http or https")
+  end
   if result["url"].to_s.length.positive? && result["url"].to_s !~ %r{\Ahttps?://}
     fail_with("market_search.results[].url must be http or https")
   end
@@ -330,10 +314,18 @@ body = <<~MARKDOWN
 MARKDOWN
 
 FileUtils.mkdir_p(run_dir)
-File.write(query_pack_path, query_pack.to_yaml)
-File.write(output_path, frontmatter.to_yaml + "---\n" + body)
+query_pack_tmp_path = "#{query_pack_path}.tmp"
+output_tmp_path = "#{output_path}.tmp"
+File.write(query_pack_tmp_path, query_pack.to_yaml)
+File.write(output_tmp_path, frontmatter.to_yaml + "---\n" + body)
 
-system("scripts/validate-boss-idea-research.sh", output_path) || exit(1)
+unless system("scripts/validate-boss-idea-research.sh", output_tmp_path)
+  FileUtils.rm_f(query_pack_tmp_path)
+  FileUtils.rm_f(output_tmp_path)
+  exit(1)
+end
+File.rename(query_pack_tmp_path, query_pack_path)
+File.rename(output_tmp_path, output_path)
 
 manifest["boss_idea_market_research"] = {
   "artifact_path" => output_path,

@@ -446,8 +446,8 @@ Acceptance criteria:
 - command consumes public-safe search results from a provider adapter contract;
 - generated research artifact passes `validate-boss-idea-research.sh`;
 - search results require competitor and mainstream-practice signals;
-- missing reference, missing required signal, bad query id, bad source type, or
-  future access date fails;
+- missing reference, missing required signal, bad query id, bad source type,
+  future access date, or unsafe output path fails;
 - generated raw evidence path stays under ignored run evidence;
 - command updates the planning manifest with research artifact and evidence
   metadata without approving artifacts;

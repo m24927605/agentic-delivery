@@ -159,6 +159,7 @@ grep -q "competitor_landscape" /tmp/h20-boss-market-query-pack.log
 scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/valid-market-search-results.yaml --output "agentic/runs/$BOSS_IDEA_RUN/generated-research.md" >/dev/null
 scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/generated-research.md" >/dev/null
 grep -q "boss_idea_market_research" "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); abort("market research collection must not approve artifacts") unless m.fetch("artifacts").all? { |a| a["status"] == "planned" }' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
 if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/invalid-market-search-missing-reference.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-generated-research.md" >/tmp/h20-boss-market-missing-reference.log 2>&1; then
   echo "expected market search result missing reference to fail" >&2
   exit 1
@@ -169,6 +170,31 @@ if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agent
   exit 1
 fi
 grep -q "required signals" /tmp/h20-boss-market-missing-signal.log
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/invalid-market-search-bad-query-id.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-generated-research.md" >/tmp/h20-boss-market-bad-query.log 2>&1; then
+  echo "expected market search result with bad query id to fail" >&2
+  exit 1
+fi
+grep -q "query_id is unknown" /tmp/h20-boss-market-bad-query.log
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/invalid-market-search-bad-source-type.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-generated-research.md" >/tmp/h20-boss-market-bad-source-type.log 2>&1; then
+  echo "expected market search result with bad source type to fail" >&2
+  exit 1
+fi
+grep -q "source_type is invalid" /tmp/h20-boss-market-bad-source-type.log
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/invalid-market-search-future-access-date.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-generated-research.md" >/tmp/h20-boss-market-future-date.log 2>&1; then
+  echo "expected market search result with future access date to fail" >&2
+  exit 1
+fi
+grep -q "future" /tmp/h20-boss-market-future-date.log
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/valid-market-search-results.yaml --output ../bad-market-research.md >/tmp/h20-boss-market-output-path.log 2>&1; then
+  echo "expected market research output outside repo to fail" >&2
+  exit 1
+fi
+grep -q "invalid output path" /tmp/h20-boss-market-output-path.log
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/valid-market-search-results.yaml --output "agentic/runs/${BOSS_IDEA_RUN}-other/bad.md" >/tmp/h20-boss-market-output-run.log 2>&1; then
+  echo "expected market research output outside run dir to fail" >&2
+  exit 1
+fi
+grep -q "output path must stay under" /tmp/h20-boss-market-output-run.log
 
 scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/valid-research.md >/dev/null
 if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-missing-sources.md >/tmp/h20-boss-research-missing-sources.log 2>&1; then
