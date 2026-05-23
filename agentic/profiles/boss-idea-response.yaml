@@ -21,7 +21,7 @@ required_artifacts:
   deliverables:
     - docs/architecture/boss-idea-response-system.md
     - docs/architecture/boss-idea-modules/idea-intake.md
-    - docs/architecture/boss-idea-modules/crawl4ai-market-search-adapter.md
+    - docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md
     - docs/architecture/boss-idea-modules/market-research-evidence.md
     - docs/architecture/boss-idea-modules/feasibility-scoring.md
     - docs/architecture/boss-idea-modules/boss-decision-memo.md
@@ -34,7 +34,7 @@ required_artifacts:
 memory:
   notes:
     - Executive ideas are not implementation authority.
-    - Crawl4AI-compatible market search is required for rapid public competitor and solution discovery.
+    - Crawl4AI-compatible market discovery is required for rapid public competitor and solution discovery.
     - Market research is evidence and must cite source metadata.
     - POC and MVP work require explicit timebox and success metrics.
     - Go decisions still require approved artifacts before implementation.
@@ -79,7 +79,7 @@ review_prompt:
   required_files:
     - docs/architecture/boss-idea-response-system.md
     - docs/architecture/boss-idea-modules/idea-intake.md
-    - docs/architecture/boss-idea-modules/crawl4ai-market-search-adapter.md
+    - docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md
     - docs/architecture/boss-idea-modules/market-research-evidence.md
     - docs/architecture/boss-idea-modules/feasibility-scoring.md
     - docs/architecture/boss-idea-modules/boss-decision-memo.md
@@ -103,7 +103,7 @@ strategy_gate:
   anchor_patterns:
     - idea intake
     - Crawl4AI
-    - market search adapter
+    - market discovery adapter
     - market research evidence
     - feasibility scoring
     - decision memo

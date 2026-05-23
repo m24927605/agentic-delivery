@@ -478,17 +478,17 @@ Staff+ escalation path: if round 5 fails, split query-pack generation from
 research artifact generation or keep only the provider contract while deferring
 artifact generation.
 
-## BIR-10: Crawl4AI Market Search Adapter
+## BIR-10: Crawl4AI Market Discovery Adapter
 
 Status: planned.
 
 Owner role: Market Research Lead.
 
-Source artifact: `docs/architecture/boss-idea-modules/crawl4ai-market-search-adapter.md`.
+Source artifact: `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`.
 
 Files touched:
 
-- `docs/architecture/boss-idea-modules/crawl4ai-market-search-adapter.md`
+- `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
 - `docs/adr/006-boss-idea-crawl4ai-market-discovery.md`
 - `docs/architecture/boss-idea-response-system.md`
 - `agentic/profiles/boss-idea-response.yaml`

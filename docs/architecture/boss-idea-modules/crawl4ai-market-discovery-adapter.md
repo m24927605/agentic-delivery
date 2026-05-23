@@ -29,9 +29,8 @@ Active scope:
 - normalize Crawl4AI markdown output into the existing
   `boss-idea-market-search` result contract;
 - support local fixture HTML for deterministic golden tests;
-- enforce source URL, domain, page count, timeout, content size, and evidence
-- DNS, redirect, robots, rate, page count, timeout, content size, and evidence
-  storage limits;
+- enforce DNS, redirect, robots, rate, page count, timeout, content size, and
+  evidence storage limits;
 - keep raw crawl output under ignored run evidence;
 - call `scripts/collect-boss-idea-research.sh` only after result normalization
   passes validation.
@@ -228,8 +227,9 @@ Block crawling when:
 - Crawl4AI returns no usable markdown;
 - normalized results lack competitor or mainstream-practice signals;
 - claim text violates BIR-09 collector limits: multiline, more than 280
-  characters, unsupported URL scheme, or raw-source overlap beyond the adapter's
-  configured threshold;
+  characters, unsupported URL scheme, more than 12 consecutive words copied
+  from one raw source, or more than 20 percent token overlap with one raw
+  source after stop-word removal;
 - raw evidence would be written to tracked paths.
 
 Escalate rather than block when:
@@ -259,7 +259,8 @@ Validation must include:
 - per-host rate and max-redirect-depth tests;
 - deny-by-default allowlist test;
 - negative tests for excessive page count and content length;
-- negative tests for claim length, multiline claim, and raw-source overlap;
+- negative tests for claim length, multiline claim, more than 12 consecutive
+  copied words, and more than 20 percent token overlap with one raw source;
 - negative tests for missing required signals;
 - validation of generated `market-search-results.yaml`;
 - validation of downstream `market-research.md`;
