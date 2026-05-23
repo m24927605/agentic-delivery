@@ -135,6 +135,7 @@ RAW_DIR = File.join(RUN_DIR, "crawl4ai/raw")
 CRAWL_LOG_PATH = File.join(RUN_DIR, "crawl4ai/crawl-log.yaml")
 DEFAULT_FIXTURE_SEEDS = "agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml"
 DEFAULT_USER_AGENT = "agentic-delivery-boss-idea-crawler/0.1.0 (+mailto:agentic-delivery@example.invalid)"
+ALLOWED_PROVIDERS = %w[fixture seed_replay].freeze
 STOP_WORDS = %w[
   a an and are as at be by for from has have in into is it its of on or that
   the this to with without
@@ -253,43 +254,43 @@ end
 
 def validate_ip_list!(values, label)
   Array(values).each do |value|
-    fail_with("#{label} resolves to blocked IP: #{value}") if blocked_ip?(value)
+    raise ArgumentError, "#{label} resolves to blocked IP: #{value}" if blocked_ip?(value)
   end
 end
 
 def parse_http_url!(value, label)
   uri = URI.parse(value.to_s)
-  fail_with("#{label} must be http or https") unless %w[http https].include?(uri.scheme)
-  fail_with("#{label} host is required") if uri.host.to_s.empty?
+  raise ArgumentError, "#{label} must be http or https" unless %w[http https].include?(uri.scheme)
+  raise ArgumentError, "#{label} host is required" if uri.host.to_s.empty?
   host = uri.host.downcase
-  fail_with("#{label} host is blocked: #{host}") if %w[localhost localhost.localdomain].include?(host) || host.end_with?(".localhost", ".local")
+  raise ArgumentError, "#{label} host is blocked: #{host}" if %w[localhost localhost.localdomain].include?(host) || host.end_with?(".localhost", ".local")
   literal = host_ip_literal(host)
-  fail_with("#{label} host resolves to blocked IP: #{host}") if literal && blocked_ip?(literal.to_s)
+  raise ArgumentError, "#{label} host resolves to blocked IP: #{host}" if literal && blocked_ip?(literal.to_s)
   uri
 rescue URI::InvalidURIError
-  fail_with("#{label} must be a valid URL")
+  raise ArgumentError, "#{label} must be a valid URL"
 end
 
 def validate_url_policy!(candidate, allow_hosts, redirect_depth = 0)
+  raise ArgumentError, "candidate.url exceeds max redirect depth" if redirect_depth > POLICY.fetch("max_redirect_depth")
   url = candidate["url"].to_s
   uri = parse_http_url!(url, "candidate.url")
   host = uri.host.downcase
-  fail_with("candidate.url host is not in per-run allowlist: #{host}") unless allow_hosts.include?(host)
-  fail_with("candidate.url exceeds max redirect depth") if redirect_depth > POLICY.fetch("max_redirect_depth")
+  raise ArgumentError, "candidate.url host is not in per-run allowlist: #{host}" unless allow_hosts.include?(host)
 
   validate_ip_list!(candidate["resolved_ips"], "candidate.url")
   validate_ip_list!(candidate["connect_ips"], "candidate.url connect-time")
   if Array(candidate["resolved_ips"]).any? && Array(candidate["connect_ips"]).any?
     safe_before = Array(candidate["resolved_ips"]).none? { |ip| blocked_ip?(ip) }
     blocked_connect = Array(candidate["connect_ips"]).any? { |ip| blocked_ip?(ip) }
-    fail_with("candidate.url DNS rebinding to blocked IP") if safe_before && blocked_connect
+    raise ArgumentError, "candidate.url DNS rebinding to blocked IP" if safe_before && blocked_connect
   end
 
   if candidate.key?("robots_allowed") && candidate["robots_allowed"] == false
-    fail_with("robots policy disallows crawl: #{url}")
+    raise ArgumentError, "robots policy disallows crawl: #{url}"
   end
   if candidate.key?("tls_valid") && candidate["tls_valid"] == false
-    fail_with("TLS certificate validation fails: #{url}")
+    raise ArgumentError, "TLS certificate validation fails: #{url}"
   end
 
   redirect_url = candidate["redirect_url"].to_s
@@ -314,15 +315,15 @@ def words(value)
 end
 
 def copyright_safe_claim!(claim, source_text)
-  fail_with("candidate.claim must be one line") if claim.include?("\n")
-  fail_with("candidate.claim must be 280 characters or fewer") if claim.length > 280
+  raise ArgumentError, "candidate.claim must be one line" if claim.include?("\n")
+  raise ArgumentError, "candidate.claim must be 280 characters or fewer" if claim.length > 280
 
   claim_words = words(claim)
   source_words = words(source_text)
   if claim_words.length >= 13
     source_ngrams = source_words.each_cons(13).map { |chunk| chunk.join(" ") }.to_set
     claim_words.each_cons(13) do |chunk|
-      fail_with("candidate.claim copies more than 12 consecutive source words") if source_ngrams.include?(chunk.join(" "))
+      raise ArgumentError, "candidate.claim copies more than 12 consecutive source words" if source_ngrams.include?(chunk.join(" "))
     end
   end
 
@@ -331,7 +332,7 @@ def copyright_safe_claim!(claim, source_text)
 
   filtered_source = source_words.reject { |word| STOP_WORDS.include?(word) }.uniq
   overlap = (filtered_claim & filtered_source).length.to_f / filtered_claim.length
-  fail_with("candidate.claim exceeds 20 percent raw-source token overlap") if overlap > 0.20
+  raise ArgumentError, "candidate.claim exceeds 20 percent raw-source token overlap" if overlap > 0.20
 end
 
 def load_candidates(path)
@@ -346,9 +347,9 @@ end
 
 def read_fixture_content(candidate)
   content_path = candidate["content_path"].to_s
-  fail_with("fixture candidate.content_path is required") if content_path.empty?
-  fail_with("invalid candidate.content_path: #{content_path}") unless BossIdea.repo_local_path?(content_path)
-  fail_with("candidate.content_path not found: #{content_path}") unless File.file?(content_path)
+  raise ArgumentError, "fixture candidate.content_path is required" if content_path.empty?
+  raise ArgumentError, "invalid candidate.content_path: #{content_path}" unless BossIdea.repo_local_path?(content_path)
+  raise ArgumentError, "candidate.content_path not found: #{content_path}" unless File.file?(content_path)
 
   File.read(content_path)
 end
@@ -363,6 +364,7 @@ query_pack = if File.file?(QUERY_PACK_PATH)
 else
   generated_query_pack(run_id, manifest)
 end
+query_pack_preexisting = File.file?(QUERY_PACK_PATH)
 fail_with("query pack run_id must equal #{run_id}") unless query_pack["run_id"].to_s == run_id
 query_ids = query_pack.fetch("queries").map { |query| query.fetch("id") }
 
@@ -394,6 +396,7 @@ if from_query_pack
   seeds_path = DEFAULT_FIXTURE_SEEDS
 end
 search_provider = "seed_replay" if search_provider.empty?
+fail_with("search provider is not allowed for this slice: #{search_provider}", 2) unless ALLOWED_PROVIDERS.include?(search_provider)
 
 ua = user_agent
 fail_with("crawler user-agent is invalid") unless valid_user_agent?(ua)
@@ -403,9 +406,21 @@ research_schema = BossIdea.load_yaml("agentic/schemas/boss-idea-research.schema.
 allowed_signals = Array(market_schema["allowed_signals"]).map(&:to_s)
 allowed_source_types = Array(research_schema["allowed_source_types"]).map(&:to_s)
 candidates = load_candidates(seeds_path)
-allow_hosts = candidates.map { |candidate| parse_http_url!(candidate["url"], "candidate.url").host.downcase }.uniq
+begin
+  allow_hosts = candidates.map { |candidate| parse_http_url!(candidate["url"], "candidate.url").host.downcase }.uniq
+rescue ArgumentError => e
+  fail_with(e.message)
+end
 
 fail_with("candidate URL count exceeds policy") if candidates.length > POLICY.fetch("max_crawled_pages_per_run")
+unless force
+  [output_path, CANDIDATE_URLS_PATH, CRAWL_LOG_PATH].each do |path|
+    fail_with("crawl artifact already exists: #{path}; use --force to overwrite") if File.exist?(path)
+  end
+  if Dir.exist?(RAW_DIR) && Dir.children(RAW_DIR).any?
+    fail_with("raw crawl evidence already exists: #{RAW_DIR}; use --force to overwrite")
+  end
+end
 
 per_query_counts = Hash.new(0)
 candidate_records = []
@@ -422,6 +437,7 @@ crawl_log = {
 
 consecutive_failures = 0
 total_failures = 0
+failure_messages = []
 seen_ids = {}
 today = Date.today.iso8601
 
@@ -432,23 +448,23 @@ candidates.each_with_index do |candidate, index|
   begin
     BossIdea.required_mapping!(candidate, "candidates[]")
     %w[query_id url title source_type signal claim].each do |field|
-      fail_with("candidates[].#{field} is required") if candidate[field].to_s.empty?
+      raise ArgumentError, "candidates[].#{field} is required" if candidate[field].to_s.empty?
     end
     query_id = candidate["query_id"].to_s
-    fail_with("candidates[].query_id is unknown: #{query_id}") unless query_ids.include?(query_id)
-    fail_with("candidates[].source_type is invalid: #{candidate["source_type"]}") unless allowed_source_types.include?(candidate["source_type"].to_s)
-    fail_with("candidates[].signal is invalid: #{candidate["signal"]}") unless allowed_signals.include?(candidate["signal"].to_s)
+    raise ArgumentError, "candidates[].query_id is unknown: #{query_id}" unless query_ids.include?(query_id)
+    raise ArgumentError, "candidates[].source_type is invalid: #{candidate["source_type"]}" unless allowed_source_types.include?(candidate["source_type"].to_s)
+    raise ArgumentError, "candidates[].signal is invalid: #{candidate["signal"]}" unless allowed_signals.include?(candidate["signal"].to_s)
     per_query_counts[query_id] += 1
-    fail_with("max crawled pages per query exceeded: #{query_id}") if per_query_counts[query_id] > POLICY.fetch("max_crawled_pages_per_query")
+    raise ArgumentError, "max crawled pages per query exceeded: #{query_id}" if per_query_counts[query_id] > POLICY.fetch("max_crawled_pages_per_query")
 
     uri = validate_url_policy!(candidate, allow_hosts)
     extraction_type = candidate["extraction_type"].to_s.empty? ? "markdown" : candidate["extraction_type"].to_s
-    fail_with("Crawl4AI output must be markdown-only") unless extraction_type == "markdown"
+    raise ArgumentError, "Crawl4AI output must be markdown-only" unless extraction_type == "markdown"
 
     html = read_fixture_content(candidate)
-    fail_with("candidate content exceeds max response bytes") if html.bytesize > POLICY.fetch("max_response_bytes")
+    raise ArgumentError, "candidate content exceeds max response bytes" if html.bytesize > POLICY.fetch("max_response_bytes")
     markdown = html_to_markdown(html)
-    fail_with("Crawl4AI returned no usable markdown") if markdown.empty?
+    raise ArgumentError, "Crawl4AI returned no usable markdown" if markdown.empty?
     truncated = false
     if markdown.length > POLICY.fetch("max_markdown_chars")
       markdown = markdown[0, POLICY.fetch("max_markdown_chars")]
@@ -458,7 +474,15 @@ candidates.each_with_index do |candidate, index|
     claim = candidate["claim"].to_s.gsub(/\s+/, " ").strip
     copyright_safe_claim!(claim, markdown)
     source_id = candidate["id"].to_s.empty? ? safe_slug(candidate["title"]) : candidate["id"].to_s
-    source_id = "#{source_id}-#{index + 1}" if seen_ids[source_id]
+    if seen_ids[source_id]
+      base_source_id = source_id
+      suffix = index + 1
+      source_id = "#{base_source_id}-#{suffix}"
+      while seen_ids[source_id]
+        suffix += 1
+        source_id = "#{base_source_id}-#{suffix}"
+      end
+    end
     seen_ids[source_id] = true
     raw_path = File.join(RAW_DIR, "#{source_id}.md")
     fail_with("raw crawl evidence file is not ignored by git: #{raw_path}") unless system("git", "check-ignore", "-q", raw_path)
@@ -496,19 +520,30 @@ candidates.each_with_index do |candidate, index|
   rescue StandardError => e
     consecutive_failures += 1
     total_failures += 1
+    failure_messages << e.message
     crawl_log.fetch("entries") << {
       "url" => candidate["url"].to_s,
       "status" => "failed",
       "error" => e.message
     }
-    raise if consecutive_failures >= POLICY.fetch("max_consecutive_policy_blocks") || total_failures >= POLICY.fetch("max_total_failures")
-    fail_with(e.message)
+    if consecutive_failures >= POLICY.fetch("max_consecutive_policy_blocks") || total_failures >= POLICY.fetch("max_total_failures")
+      FileUtils.mkdir_p(File.dirname(CRAWL_LOG_PATH))
+      File.write(CRAWL_LOG_PATH, crawl_log.to_yaml)
+      fail_with("crawl circuit breaker tripped: #{e.message}")
+    end
+    next
   end
+end
+
+if total_failures.positive?
+  FileUtils.mkdir_p(File.dirname(CRAWL_LOG_PATH))
+  File.write(CRAWL_LOG_PATH, crawl_log.to_yaml)
+  fail_with("crawl failed for #{total_failures} candidate(s): #{failure_messages.uniq.join("; ")}")
 end
 
 FileUtils.mkdir_p(File.dirname(output_path))
 FileUtils.mkdir_p(File.dirname(CANDIDATE_URLS_PATH))
-File.write(QUERY_PACK_PATH, query_pack.to_yaml)
+File.write(QUERY_PACK_PATH, query_pack.to_yaml) unless query_pack_preexisting && !force
 File.write(CANDIDATE_URLS_PATH, {
   "schema_version" => 1,
   "run_id" => run_id,
@@ -525,6 +560,7 @@ unless results_only
   end
 end
 
+manifest = load_manifest(MANIFEST_PATH)
 manifest["boss_idea_market_crawl"] = {
   "provider" => search_provider,
   "mode" => search_provider == "fixture" ? "fixture" : "seed_replay",
