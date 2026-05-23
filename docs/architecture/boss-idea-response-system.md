@@ -53,6 +53,8 @@ Active scope:
 
 - capture a vague or urgent idea as a structured intake record;
 - gather market and competitor evidence with citations and freshness metadata;
+- crawl or search public web sources through a controlled Crawl4AI-compatible
+  adapter when the team needs rapid competitor or solution discovery;
 - score feasibility, impact, effort, risk, confidence, and reversibility;
 - produce an executive decision memo with clear recommendation;
 - define POC or MVP timebox and implementation boundary;
@@ -62,7 +64,7 @@ Active scope:
 
 Deferred scope:
 
-- automatic web crawling or paid market data ingestion;
+- paid market data ingestion;
 - automatic product roadmap approval;
 - automatic budget approval;
 - automatic PR publishing or deployment;
@@ -74,6 +76,7 @@ Deferred scope:
 ```text
 raw idea
   -> idea intake
+  -> Crawl4AI-backed public source discovery
   -> market research evidence
   -> feasibility scoring
   -> solution options and recommendation
@@ -95,6 +98,7 @@ public-safe tracked artifact.
 | Module | Design artifact | Primary output |
 | --- | --- | --- |
 | Idea Intake | `docs/architecture/boss-idea-modules/idea-intake.md` | Structured idea brief |
+| Crawl4AI Market Search Adapter | `docs/architecture/boss-idea-modules/crawl4ai-market-search-adapter.md` | Public-source crawl/search results |
 | Market Research Evidence | `docs/architecture/boss-idea-modules/market-research-evidence.md` | Source-backed market scan |
 | Feasibility Scoring | `docs/architecture/boss-idea-modules/feasibility-scoring.md` | Scored feasibility record |
 | Boss Decision Memo | `docs/architecture/boss-idea-modules/boss-decision-memo.md` | Executive recommendation |
@@ -111,6 +115,7 @@ The profile-backed deliverables are:
 
 - `docs/architecture/boss-idea-response-system.md`
 - `docs/architecture/boss-idea-modules/idea-intake.md`
+- `docs/architecture/boss-idea-modules/crawl4ai-market-search-adapter.md`
 - `docs/architecture/boss-idea-modules/market-research-evidence.md`
 - `docs/architecture/boss-idea-modules/feasibility-scoring.md`
 - `docs/architecture/boss-idea-modules/boss-decision-memo.md`
@@ -152,12 +157,13 @@ implementation authority unless the relevant artifacts are also `approved`.
 
 ## CLI / Manifest / Pipeline Contract
 
-Initial implementation should add only repo-local commands and Hermes actions
-after the design artifacts are approved. Expected future commands:
+Implementation uses repo-local commands and Hermes actions. Required Boss Idea
+commands include:
 
 - `scripts/init-boss-idea-run.sh`
-- `scripts/generate-boss-idea-artifacts.sh`
-- `scripts/validate-boss-idea-artifacts.sh`
+- `scripts/crawl-boss-idea-market.sh`
+- `scripts/collect-boss-idea-research.sh`
+- `scripts/validate-boss-idea-research.sh`
 - `scripts/report-boss-idea-status.sh`
 
 The commands must write only ignored run manifests and tracked public-safe
@@ -169,6 +175,8 @@ logic in Hermes memory.
 The system must block or escalate when:
 
 - the idea lacks a decision owner or requested response time;
+- Crawl4AI/search adapter attempts to reach unsafe, private, or non-public
+  targets;
 - market research lacks source citations or dates;
 - feasibility scoring omits risk, effort, confidence, or unknowns;
 - a POC/MVP has no timebox or success criteria;

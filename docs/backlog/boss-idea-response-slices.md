@@ -13,12 +13,15 @@ Active scope:
 - implement idea-to-decision workflow on top of the existing Agentic Delivery
   System;
 - keep implementation local, public-safe, and manifest-backed;
+- provide a controlled Crawl4AI-compatible public web crawl/search path for
+  rapid competitor and solution discovery;
 - preserve the approval gate for implementation;
 - require AIT plus Claude Code review for every slice.
 
 Deferred scope:
 
-- automatic market web crawler;
+- paid market databases;
+- authenticated or private website crawling;
 - external dashboard;
 - PR publishing;
 - production deployment automation;
@@ -421,7 +424,7 @@ until BIR-01 through BIR-07 are complete.
 
 ## BIR-09: Market Competitor Search Automation
 
-Status: in review.
+Status: completed.
 
 Owner role: Market Research Lead.
 
@@ -474,6 +477,75 @@ Maximum review rounds: 5.
 Staff+ escalation path: if round 5 fails, split query-pack generation from
 research artifact generation or keep only the provider contract while deferring
 artifact generation.
+
+## BIR-10: Crawl4AI Market Search Adapter
+
+Status: planned.
+
+Owner role: Market Research Lead.
+
+Source artifact: `docs/architecture/boss-idea-modules/crawl4ai-market-search-adapter.md`.
+
+Files touched:
+
+- `docs/architecture/boss-idea-modules/crawl4ai-market-search-adapter.md`
+- `docs/architecture/boss-idea-response-system.md`
+- `agentic/profiles/boss-idea-response.yaml`
+- `docs/backlog/boss-idea-response-slices.md`
+- `scripts/crawl-boss-idea-market.sh`
+- Crawl4AI adapter helper files and fixtures
+- `agentic/hermes-actions.yaml`
+- `agentic/pipeline.yaml`
+- `agentic/README.md`
+
+Acceptance criteria:
+
+- command consumes a Boss Idea market query pack;
+- command supports Crawl4AI-backed public page crawling;
+- command can normalize crawled public pages into
+  `boss-idea-market-search` results;
+- normalized results can feed `collect-boss-idea-research.sh` without manual
+  editing;
+- crawler blocks localhost, private IP ranges, link-local addresses,
+  metadata-service targets, non-http(s) schemes, and output path traversal;
+- crawler enforces max pages, timeout, content length, and raw evidence path
+  limits;
+- default golden fixtures use local HTML or controlled fixture inputs and do
+  not require live internet;
+- live crawl smoke tests are opt-in;
+- no crawl output can approve artifacts, decisions, roadmap, budget, or
+  implementation.
+
+Validation command:
+
+```bash
+scripts/crawl-boss-idea-market.sh --dry-run <run-id>
+scripts/crawl-boss-idea-market.sh <run-id> --seeds agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml --output agentic/runs/<run-id>/market-search-results.yaml
+scripts/collect-boss-idea-research.sh <run-id> --search-results agentic/runs/<run-id>/market-search-results.yaml --output agentic/runs/<run-id>/market-research.md
+scripts/run-golden-fixtures.sh
+```
+
+Negative-path tests:
+
+- missing query pack fails;
+- missing seeds fail;
+- unsupported URL scheme fails;
+- localhost, private IP, link-local, and metadata-service URLs fail;
+- output outside the run directory fails;
+- oversized page or page count fails;
+- generated result missing competitor or mainstream-practice signal fails.
+
+Rollback notes: remove the Crawl4AI adapter command, helper files, fixtures,
+Hermes action, pipeline references, README updates, and ignored crawl output.
+Keep BIR-09 collector and validators because they remain provider-neutral.
+
+AIT review evidence path: `agentic/reviews/boss-idea-response/bir-10/round-<n>.json`.
+
+Maximum review rounds: 5.
+
+Staff+ escalation path: if round 5 fails, keep the BIR-09 provider contract and
+decide whether to split URL safety, Crawl4AI execution, and result
+normalization into separate implementation slices.
 
 ## Review Expectations
 

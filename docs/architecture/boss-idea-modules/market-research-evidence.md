@@ -10,6 +10,8 @@ an executive idea.
 Active scope:
 
 - define research questions;
+- use a controlled Crawl4AI-compatible adapter when rapid public competitor or
+  solution discovery is required;
 - collect public sources and citation metadata;
 - summarize competitor and mainstream approaches;
 - distinguish facts, inferences, and unknowns;
@@ -28,6 +30,7 @@ Active scope:
 
 ```text
 research questions
+  -> Crawl4AI-compatible public source discovery
   -> source collection
   -> citation metadata
   -> competitor matrix
