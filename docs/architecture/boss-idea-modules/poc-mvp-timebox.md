@@ -82,6 +82,9 @@ Block POC/MVP planning when:
 The production launch guard applies to `scope_in`; production deployment should
 normally appear in `scope_out` for POC/MVP plans.
 
+Generated templates default `decision_after_timebox` to `stop` as a conservative
+sentinel until the reviewer records the actual post-timebox decision.
+
 ## Validation Strategy
 
 Validation checks:

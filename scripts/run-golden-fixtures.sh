@@ -436,6 +436,21 @@ if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/inv
   exit 1
 fi
 grep -q "scope_out" /tmp/h20-boss-poc-scope-out.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-missing-scope-in.md >/tmp/h20-boss-poc-scope-in.log 2>&1; then
+  echo "expected missing POC scope-in to fail" >&2
+  exit 1
+fi
+grep -q "scope_in" /tmp/h20-boss-poc-scope-in.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-empty-staffing.md >/tmp/h20-boss-poc-staffing-empty.log 2>&1; then
+  echo "expected empty POC staffing assumption to fail" >&2
+  exit 1
+fi
+grep -q "staffing_assumption" /tmp/h20-boss-poc-staffing-empty.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-bad-demo-path.md >/tmp/h20-boss-poc-demo-path.log 2>&1; then
+  echo "expected bad POC demo path to fail" >&2
+  exit 1
+fi
+grep -q "demo_path" /tmp/h20-boss-poc-demo-path.log
 if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-bad-validation-command.md >/tmp/h20-boss-poc-command.log 2>&1; then
   echo "expected bad POC validation command to fail" >&2
   exit 1
