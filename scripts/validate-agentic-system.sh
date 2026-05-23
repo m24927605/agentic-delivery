@@ -97,6 +97,7 @@ core_files=(
   agentic/schemas/boss-idea-decision.schema.yaml
   agentic/fixtures/boss-idea-response/valid-idea.md
   agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml
+  agentic/fixtures/boss-idea-response/brave-search-fixture.json
   agentic/fixtures/boss-idea-response/valid-market-search-results.yaml
   agentic/fixtures/boss-idea-response/valid-research.md
   agentic/fixtures/boss-idea-response/valid-scorecard.yaml

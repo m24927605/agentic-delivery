@@ -355,6 +355,23 @@ if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_CRAWL4AI_HELPER=scripts/lib/missing-crawl4ai
 fi
 grep -q "helper not found" /tmp/h20-boss-market-crawl-helper-missing.log
 
+if scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider brave --output "agentic/runs/$BOSS_IDEA_RUN/bad-brave-no-live-results.yaml" >/tmp/h20-boss-market-crawl-brave-no-live.log 2>&1; then
+  echo "expected Brave provider without live flags to fail" >&2
+  exit 1
+fi
+grep -q "public network search/crawl requires" /tmp/h20-boss-market-crawl-brave-no-live.log
+
+if BOSS_IDEA_LIVE_CRAWL=1 scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider brave --output "agentic/runs/$BOSS_IDEA_RUN/bad-brave-missing-key-results.yaml" >/tmp/h20-boss-market-crawl-brave-key.log 2>&1; then
+  echo "expected Brave provider without API key to fail" >&2
+  exit 1
+fi
+grep -q "BOSS_IDEA_SEARCH_BRAVE_API_KEY" /tmp/h20-boss-market-crawl-brave-key.log
+
+BRAVE_KEY_ENV="BOSS_IDEA_SEARCH_BRAVE_API_KEY"
+env BOSS_IDEA_LIVE_CRAWL=1 "$BRAVE_KEY_ENV=fake" BOSS_IDEA_SEARCH_BRAVE_FIXTURE=agentic/fixtures/boss-idea-response/brave-search-fixture.json BOSS_IDEA_CRAWL4AI_PYTHON=python3 BOSS_IDEA_CRAWL4AI_HELPER="agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-helper.py" scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider brave --output "agentic/runs/$BOSS_IDEA_RUN/brave-results.yaml" >/dev/null
+scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
+ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected brave provider") unless c["provider"] == "brave"; abort("expected brave mode") unless c["mode"] == "brave"; abort("expected fake crawl4ai version") unless c["crawl4ai_version"] == "fake-crawl4ai"; abort("expected brave source count") unless c["source_count"].to_i >= 4' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+
 cat >"agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-live-redirect.yaml" <<'YAML'
 candidates:
   - id: live-redirect-private

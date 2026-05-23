@@ -13,4 +13,5 @@ schema:
     - fixture
     - seed_replay
     - live_seed
+    - brave
   authority_note: Candidate URLs are evidence inputs only. They cannot approve artifacts, budget, roadmap, or implementation.

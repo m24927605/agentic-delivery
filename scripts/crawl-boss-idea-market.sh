@@ -111,6 +111,7 @@ require "date"
 require "fileutils"
 require "ipaddr"
 require "json"
+require "net/http"
 require "open3"
 require "resolv"
 require "set"
@@ -137,7 +138,7 @@ RAW_DIR = File.join(RUN_DIR, "crawl4ai/raw")
 CRAWL_LOG_PATH = File.join(RUN_DIR, "crawl4ai/crawl-log.yaml")
 DEFAULT_FIXTURE_SEEDS = "agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml"
 DEFAULT_USER_AGENT = "agentic-delivery-boss-idea-crawler/0.1.0 (+mailto:agentic-delivery@example.invalid)"
-ALLOWED_PROVIDERS = %w[fixture seed_replay live_seed].freeze
+ALLOWED_PROVIDERS = %w[fixture seed_replay live_seed brave].freeze
 STOP_WORDS = %w[
   a an and are as at be by for from has have in into is it its of on or that
   the this to with without
@@ -405,6 +406,126 @@ rescue JSON::ParserError => e
   raise ArgumentError, "Crawl4AI helper returned invalid JSON: #{e.message}"
 end
 
+def signal_for_query(query_id)
+  case query_id.to_s
+  when "competitor_landscape"
+    "competitor"
+  when "mainstream_practices"
+    "mainstream_practice"
+  when "implementation_patterns"
+    "implementation_pattern"
+  else
+    "differentiator"
+  end
+end
+
+def source_type_for_query(query_id)
+  case query_id.to_s
+  when "mainstream_practices"
+    "public_report"
+  when "implementation_patterns"
+    "product_docs"
+  else
+    "vendor_docs"
+  end
+end
+
+def claim_for_query(query_id)
+  case query_id.to_s
+  when "competitor_landscape"
+    "A public search result may identify adjacent or competing solution evidence."
+  when "mainstream_practices"
+    "A public search result may describe mainstream practice evidence."
+  when "implementation_patterns"
+    "A public search result may describe relevant implementation pattern evidence."
+  else
+    "A public search result may clarify operator workflow expectations."
+  end
+end
+
+def load_brave_fixture(path, query_id)
+  fail_with("invalid Brave fixture path: #{path}") unless BossIdea.repo_local_path?(path)
+  fail_with("Brave fixture not found: #{path}") unless File.file?(path)
+
+  payload = JSON.parse(File.read(path))
+  if payload["query_results"].is_a?(Hash)
+    payload.fetch("query_results").fetch(query_id)
+  else
+    payload
+  end
+rescue JSON::ParserError => e
+  fail_with("invalid Brave fixture JSON: #{e.message}")
+rescue KeyError
+  fail_with("Brave fixture missing query result: #{query_id}")
+end
+
+def fetch_brave_results(query)
+  subscription_token = ENV["BOSS_IDEA_SEARCH_BRAVE_API_KEY"].to_s
+  fail_with("missing BOSS_IDEA_SEARCH_BRAVE_API_KEY", 2) if subscription_token.empty?
+
+  fixture_path = ENV["BOSS_IDEA_SEARCH_BRAVE_FIXTURE"].to_s
+  return load_brave_fixture(fixture_path, query.fetch("id")) unless fixture_path.empty?
+
+  base_url = ENV["BOSS_IDEA_SEARCH_BRAVE_BASE_URL"].to_s.empty? ? "https://api.search.brave.com/res/v1/web/search" : ENV.fetch("BOSS_IDEA_SEARCH_BRAVE_BASE_URL")
+  uri = URI.parse(base_url)
+  params = URI.decode_www_form(uri.query.to_s)
+  params.concat([
+    ["q", query.fetch("query")],
+    ["count", "3"],
+    ["safesearch", "strict"]
+  ])
+  uri.query = URI.encode_www_form(params)
+  request = Net::HTTP::Get.new(uri)
+  request["Accept"] = "application/json"
+  request["X-Subscription-Token"] = subscription_token
+  timeout = Integer(ENV["BOSS_IDEA_SEARCH_BRAVE_TIMEOUT_SECONDS"].to_s.empty? ? "10" : ENV.fetch("BOSS_IDEA_SEARCH_BRAVE_TIMEOUT_SECONDS"))
+
+  response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: timeout, read_timeout: timeout) do |http|
+    http.request(request)
+  end
+  fail_with("Brave search failed: HTTP #{response.code}", 1) unless response.is_a?(Net::HTTPSuccess)
+
+  JSON.parse(response.body)
+rescue URI::InvalidURIError
+  fail_with("invalid Brave search base URL")
+rescue JSON::ParserError => e
+  fail_with("invalid Brave search JSON: #{e.message}")
+rescue ArgumentError
+  fail_with("invalid BOSS_IDEA_SEARCH_BRAVE_TIMEOUT_SECONDS")
+end
+
+def discover_brave_candidates(query_pack)
+  candidates = []
+  Array(query_pack.fetch("queries")).each do |query|
+    payload = fetch_brave_results(query)
+    results = payload.dig("web", "results")
+    fail_with("Brave search result missing web.results") unless results.is_a?(Array)
+    results.first(3).each_with_index do |result, index|
+      next unless result.is_a?(Hash)
+
+      url = result["url"].to_s
+      title = result["title"].to_s.empty? ? "Brave search result #{index + 1}" : result["title"].to_s
+      next if url.empty?
+
+      candidates << {
+        "id" => safe_slug("#{query.fetch("id")}-#{title}"),
+        "query_id" => query.fetch("id"),
+        "url" => url,
+        "title" => title,
+        "snippet" => result["description"].to_s[0, 240],
+        "provider" => "brave",
+        "source_type" => source_type_for_query(query.fetch("id")),
+        "signal" => signal_for_query(query.fetch("id")),
+        "claim" => claim_for_query(query.fetch("id")),
+        "live_approved" => true
+      }
+    end
+  end
+  fail_with("Brave search returned no candidate URLs") if candidates.empty?
+
+  candidates
+end
+
 manifest = load_manifest(MANIFEST_PATH)
 run = manifest["run"].is_a?(Hash) ? manifest["run"] : {}
 fail_with("run.id must equal #{run_id}") unless run["id"].to_s == run_id
@@ -448,7 +569,7 @@ if from_query_pack
   fail_with("missing --search-provider", 2) if search_provider.empty?
   if search_provider != "fixture"
     fail_with("public network search/crawl requires --live and BOSS_IDEA_LIVE_CRAWL=1", 2) unless live && live_env
-    fail_with("live search provider is not implemented in this slice: #{search_provider}", 2)
+    fail_with("live search provider is not implemented in this slice: #{search_provider}", 2) unless search_provider == "brave"
   end
   seeds_path = DEFAULT_FIXTURE_SEEDS
 end
@@ -465,7 +586,7 @@ market_schema = BossIdea.load_yaml("agentic/schemas/boss-idea-market-search.sche
 research_schema = BossIdea.load_yaml("agentic/schemas/boss-idea-research.schema.yaml").fetch("schema")
 allowed_signals = Array(market_schema["allowed_signals"]).map(&:to_s)
 allowed_source_types = Array(research_schema["allowed_source_types"]).map(&:to_s)
-candidates = load_candidates(seeds_path)
+candidates = from_query_pack && search_provider == "brave" ? discover_brave_candidates(query_pack) : load_candidates(seeds_path)
 allow_hosts = candidates.each_with_object([]) do |candidate, hosts|
   hosts << parse_http_url!(candidate["url"], "candidate.url").host.downcase
 rescue ArgumentError
@@ -525,7 +646,7 @@ candidates.each_with_index do |candidate, index|
     raise ArgumentError, "Crawl4AI output must be markdown-only" unless extraction_type == "markdown"
 
     crawl4ai_version = "not-used-fixture"
-    if search_provider == "live_seed"
+    if %w[live_seed brave].include?(search_provider)
       raise ArgumentError, "live seed candidate requires live_approved: true" unless candidate["live_approved"] == true
       before_ips = resolve_public_host!(uri.host, "candidate.url")
       markdown, truncated, crawl4ai_version = crawl4ai_markdown(candidate, ua)

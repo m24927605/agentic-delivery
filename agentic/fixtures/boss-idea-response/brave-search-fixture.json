@@ -1,0 +1,48 @@
+{
+  "query_results": {
+    "competitor_landscape": {
+      "web": {
+        "results": [
+          {
+            "url": "https://93.184.216.34/brave-competitor",
+            "title": "Brave fixture competitor result",
+            "description": "A public candidate URL for competitor landscape research."
+          }
+        ]
+      }
+    },
+    "mainstream_practices": {
+      "web": {
+        "results": [
+          {
+            "url": "https://93.184.216.34/brave-mainstream",
+            "title": "Brave fixture mainstream result",
+            "description": "A public candidate URL for mainstream practice research."
+          }
+        ]
+      }
+    },
+    "implementation_patterns": {
+      "web": {
+        "results": [
+          {
+            "url": "https://93.184.216.34/brave-implementation",
+            "title": "Brave fixture implementation result",
+            "description": "A public candidate URL for implementation pattern research."
+          }
+        ]
+      }
+    },
+    "operator_workflow": {
+      "web": {
+        "results": [
+          {
+            "url": "https://93.184.216.34/brave-operator",
+            "title": "Brave fixture operator result",
+            "description": "A public candidate URL for operator workflow research."
+          }
+        ]
+      }
+    }
+  }
+}

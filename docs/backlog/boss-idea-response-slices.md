@@ -589,9 +589,11 @@ Implementation sub-slices:
   connect-time IP observation remains a BIR-10C hardening item. The live helper
   enforces byte caps on returned markdown because Crawl4AI does not expose raw
   response bytes through this helper boundary.
-- BIR-10C approved query-to-URL provider: planned. Adds the first Staff
-  Security Engineer and Staff Software Architect approved live search provider
-  using the `BOSS_IDEA_SEARCH_<PROVIDER>_*` credential contract.
+- BIR-10C approved query-to-URL provider: in progress. Adds Brave Search as the
+  first Staff Security Engineer and Staff Software Architect approved live
+  search provider using `BOSS_IDEA_SEARCH_BRAVE_API_KEY` and the
+  `BOSS_IDEA_SEARCH_<PROVIDER>_*` credential contract. Default golden coverage
+  uses tracked fixture JSON and a fake Crawl4AI helper, not public internet.
 
 ## Review Expectations
 
