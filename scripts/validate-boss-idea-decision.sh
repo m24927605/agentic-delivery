@@ -37,6 +37,8 @@ if normalized == "go"
   if schema["go_requires_implementation_artifacts_approved"] == true && data["implementation_artifacts_approved"] != true
     BossIdea.fail_with("go decision cannot unblock implementation without approved artifacts")
   end
+elsif data["implementation_artifacts_approved"] == true
+  BossIdea.fail_with("only go decision can assert approved implementation artifacts")
 end
 
 puts "boss idea decision ok: #{path}"

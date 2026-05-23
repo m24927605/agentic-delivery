@@ -52,18 +52,16 @@ if [[ -z "$DECISION_FILE" || -z "$RUN_ID" ]]; then
   exit 2
 fi
 
-scripts/validate-boss-idea-decision.sh "$DECISION_FILE" >/dev/null
-
 DECISION_FILE="$DECISION_FILE" RUN_ID="$RUN_ID" ACTOR="$ACTOR" ROLE="$ROLE" ruby <<'RUBY'
 require File.expand_path("scripts/lib/agentic_identity", Dir.pwd)
 require File.expand_path("scripts/lib/boss_idea", Dir.pwd)
+require "date"
 require "time"
 
 decision_file = ENV.fetch("DECISION_FILE")
 run_id = ENV["RUN_ID"].to_s
 actor = ENV["ACTOR"].to_s
 role = ENV["ROLE"].to_s
-decision = BossIdea.load_yaml(decision_file)
 
 policy = AgenticIdentity.load_policy
 errors = AgenticIdentity.validate_policy(policy)
@@ -74,10 +72,16 @@ rescue AgenticIdentity::AuthorizationError => e
   BossIdea.fail_with("authorization failed: #{e.message}")
 end
 
+unless system("scripts/validate-boss-idea-decision.sh", decision_file, out: File::NULL)
+  BossIdea.fail_with("invalid decision: #{decision_file}")
+end
+decision = BossIdea.load_yaml(decision_file)
+
 BossIdea.fail_with("invalid run id: #{run_id}", 2) unless BossIdea.repo_local_path?(run_id) && !run_id.include?("/")
 manifest_path = "agentic/runs/#{run_id}/manifest.yaml"
 BossIdea.fail_with("planning manifest not found: #{manifest_path}") unless File.file?(manifest_path)
-manifest = YAML.load_file(manifest_path)
+# Planning manifests may contain YAML anchors from profile data emitted by init-agentic-run.
+manifest = YAML.safe_load(File.read(manifest_path), permitted_classes: [Date], aliases: true) || {}
 BossIdea.required_mapping!(manifest, "planning manifest")
 run = BossIdea.required_mapping!(manifest["run"], "planning manifest.run")
 BossIdea.fail_with("blocked_schema_invalid: manifest run.id does not match #{run_id}") unless run["id"].to_s == run_id

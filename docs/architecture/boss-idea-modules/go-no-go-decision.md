@@ -76,6 +76,7 @@ Block decision recording when:
 - decision value is unknown;
 - reason is missing;
 - evidence artifact list is empty;
+- metric result is missing;
 - go decision has no success metric result;
 - implementation is requested without approved artifacts.
 

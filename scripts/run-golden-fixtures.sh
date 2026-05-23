@@ -615,6 +615,11 @@ if scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/in
   exit 1
 fi
 grep -q "metric_result" /tmp/h20-boss-decision-metric.log
+if scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/invalid-decision-no-go-approved-artifacts.yaml >/tmp/h20-boss-decision-no-go-approved.log 2>&1; then
+  echo "expected no-go decision with approved artifacts claim to fail" >&2
+  exit 1
+fi
+grep -q "only go decision" /tmp/h20-boss-decision-no-go-approved.log
 
 RUN_ID="$BOSS_DECISION_RUN" scripts/init-boss-idea-run.sh agentic/fixtures/boss-idea-response/valid-idea.md >/dev/null
 if scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-decision.yaml >/tmp/h20-boss-decision-no-run.log 2>&1; then
@@ -671,5 +676,6 @@ grep -q "approved manifest artifacts" /tmp/h20-boss-decision-manifest-approval.l
 scripts/update-artifact-status.sh "$BOSS_DECISION_RUN" docs/architecture/boss-idea-modules/go-no-go-decision.md approved --reason "H20 boss decision approval fixture" >/dev/null
 scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-decision.yaml --run-id "$BOSS_DECISION_RUN" >/dev/null
 grep -q "boss_idea_decisions" "agentic/runs/$BOSS_DECISION_RUN/manifest.yaml"
+ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); d=Array(m["boss_idea_decisions"]); abort("missing decision audit fields") unless d.all? { |entry| entry["actor"].to_s != "" && entry["actor_role"].to_s != "" && entry["authorization"].is_a?(Hash) }' "agentic/runs/$BOSS_DECISION_RUN/manifest.yaml"
 
 echo "golden fixtures ok"

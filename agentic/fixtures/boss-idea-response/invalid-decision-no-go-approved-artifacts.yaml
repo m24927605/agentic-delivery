@@ -1,0 +1,6 @@
+decision: no_go
+reason: No-go cannot assert approved implementation artifacts.
+evidence_artifacts:
+  - docs/architecture/boss-idea-modules/go-no-go-decision.md
+metric_result: metric did not pass
+implementation_artifacts_approved: true
