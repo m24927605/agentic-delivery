@@ -37,6 +37,8 @@ approved recommendation
 
 ## Artifact Schema
 
+Schema source of truth: `agentic/schemas/boss-idea-poc-mvp.schema.yaml`.
+
 Markdown fields:
 
 - `work_type`
@@ -76,6 +78,9 @@ Block POC/MVP planning when:
 - validation command is missing;
 - acceptance criteria are missing;
 - plan attempts to include production launch without explicit scope.
+
+The production launch guard applies to `scope_in`; production deployment should
+normally appear in `scope_out` for POC/MVP plans.
 
 ## Validation Strategy
 

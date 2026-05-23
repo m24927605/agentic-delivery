@@ -461,6 +461,21 @@ if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/inv
   exit 1
 fi
 grep -q "timebox_days" /tmp/h20-boss-poc-timebox-large.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-zero-timebox.md >/tmp/h20-boss-poc-timebox-zero.log 2>&1; then
+  echo "expected zero POC timebox to fail" >&2
+  exit 1
+fi
+grep -q "timebox_days" /tmp/h20-boss-poc-timebox-zero.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-non-integer-timebox.md >/tmp/h20-boss-poc-timebox-type.log 2>&1; then
+  echo "expected non-integer POC timebox to fail" >&2
+  exit 1
+fi
+grep -q "timebox_days" /tmp/h20-boss-poc-timebox-type.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-mvp-plan-timebox-too-large.md >/tmp/h20-boss-mvp-timebox-large.log 2>&1; then
+  echo "expected oversized MVP timebox to fail" >&2
+  exit 1
+fi
+grep -q "timebox_days" /tmp/h20-boss-mvp-timebox-large.log
 if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-bad-work-type.md >/tmp/h20-boss-poc-work-type.log 2>&1; then
   echo "expected bad POC work type to fail" >&2
   exit 1

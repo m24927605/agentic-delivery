@@ -25,7 +25,7 @@ BossIdea.fail_with("work type must be #{allowed.join(" or ")}", 2) unless allowe
 max_days = schema.dig("timebox_days", "max_by_work_type", work_type).to_i
 timebox_days = work_type == "mvp" ? [15, max_days].min : [5, max_days].min
 staffing = work_type == "mvp" ? "one implementation owner, one reviewer, and one product owner" : "one implementation owner and one reviewer"
-decision = work_type == "mvp" ? "go" : "go"
+decision = "stop"
 
 puts <<~MARKDOWN
 ---
