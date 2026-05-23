@@ -729,6 +729,7 @@ actions:
     reads:
       - "{{decision_file}}"
       - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/schemas/boss-idea-decision.schema.yaml
     writes:
       - agentic/runs/{{run_id}}/manifest.yaml
     success_signals:
@@ -751,6 +752,7 @@ actions:
     optional_inputs: []
     reads:
       - "{{decision_file}}"
+      - agentic/schemas/boss-idea-decision.schema.yaml
     writes: []
     success_signals:
       - stdout_contains: boss idea decision ok

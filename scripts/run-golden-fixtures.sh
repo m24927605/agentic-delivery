@@ -14,6 +14,8 @@ BOSS_DECISION_RUN="${RUN_PREFIX}-boss-decision"
 BOSS_MEMO_BAD_ID_RUN="${RUN_PREFIX}-boss-memo-bad-id"
 BOSS_MEMO_BAD_PROFILE_RUN="${RUN_PREFIX}-boss-memo-bad-profile"
 BOSS_MEMO_BAD_ARTIFACTS_RUN="${RUN_PREFIX}-boss-memo-bad-artifacts"
+BOSS_DECISION_BAD_ID_RUN="${RUN_PREFIX}-boss-decision-bad-id"
+BOSS_DECISION_BAD_PROFILE_RUN="${RUN_PREFIX}-boss-decision-bad-profile"
 REQUESTED_ARTIFACT="docs/architecture/example-requested-artifact.md"
 
 cleanup() {
@@ -27,6 +29,8 @@ cleanup() {
     "agentic/runs/$BOSS_MEMO_BAD_ID_RUN" \
     "agentic/runs/$BOSS_MEMO_BAD_PROFILE_RUN" \
     "agentic/runs/$BOSS_MEMO_BAD_ARTIFACTS_RUN" \
+    "agentic/runs/$BOSS_DECISION_BAD_ID_RUN" \
+    "agentic/runs/$BOSS_DECISION_BAD_PROFILE_RUN" \
     "agentic/reviews/auto-doc-to-implementation/h16/$IMPLEMENTATION_RUN" \
     "agentic/reviews/auto-doc-to-implementation/h18/$IMPLEMENTATION_RUN" \
     "agentic/reviews/auto-doc-to-implementation/$PLANNING_RUN"
@@ -591,8 +595,80 @@ if scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/in
   exit 1
 fi
 grep -q "approved artifacts" /tmp/h20-boss-decision-unapproved.log
+if scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/invalid-decision-bad-evidence-path.yaml >/tmp/h20-boss-decision-evidence-path.log 2>&1; then
+  echo "expected bad decision evidence path to fail" >&2
+  exit 1
+fi
+grep -q "evidence artifact" /tmp/h20-boss-decision-evidence-path.log
+if scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/invalid-decision-missing-reason.yaml >/tmp/h20-boss-decision-reason.log 2>&1; then
+  echo "expected missing decision reason to fail" >&2
+  exit 1
+fi
+grep -q "reason" /tmp/h20-boss-decision-reason.log
+if scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/invalid-decision-missing-evidence.yaml >/tmp/h20-boss-decision-evidence.log 2>&1; then
+  echo "expected missing decision evidence to fail" >&2
+  exit 1
+fi
+grep -q "evidence_artifacts" /tmp/h20-boss-decision-evidence.log
+if scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/invalid-decision-missing-metric-result.yaml >/tmp/h20-boss-decision-metric.log 2>&1; then
+  echo "expected missing go decision metric result to fail" >&2
+  exit 1
+fi
+grep -q "metric_result" /tmp/h20-boss-decision-metric.log
 
 RUN_ID="$BOSS_DECISION_RUN" scripts/init-boss-idea-run.sh agentic/fixtures/boss-idea-response/valid-idea.md >/dev/null
+if scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-decision.yaml >/tmp/h20-boss-decision-no-run.log 2>&1; then
+  echo "expected record decision without run id to fail" >&2
+  exit 1
+fi
+grep -q "usage:" /tmp/h20-boss-decision-no-run.log
+if scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-no-go-decision.yaml --run-id "${BOSS_DECISION_RUN}-missing" >/tmp/h20-boss-decision-missing-run.log 2>&1; then
+  echo "expected record decision with missing manifest to fail" >&2
+  exit 1
+fi
+grep -q "planning manifest not found" /tmp/h20-boss-decision-missing-run.log
+mkdir -p "agentic/runs/$BOSS_DECISION_BAD_ID_RUN"
+cat >"agentic/runs/$BOSS_DECISION_BAD_ID_RUN/manifest.yaml" <<YAML
+schema_version: 1
+run:
+  id: wrong-run
+  profile: boss-idea-response
+artifacts:
+  - path: docs/architecture/boss-idea-modules/go-no-go-decision.md
+    status: approved
+YAML
+if scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-no-go-decision.yaml --run-id "$BOSS_DECISION_BAD_ID_RUN" >/tmp/h20-boss-decision-bad-id.log 2>&1; then
+  echo "expected record decision with bad manifest id to fail" >&2
+  exit 1
+fi
+grep -q "blocked_schema_invalid" /tmp/h20-boss-decision-bad-id.log
+mkdir -p "agentic/runs/$BOSS_DECISION_BAD_PROFILE_RUN"
+cat >"agentic/runs/$BOSS_DECISION_BAD_PROFILE_RUN/manifest.yaml" <<YAML
+schema_version: 1
+run:
+  id: $BOSS_DECISION_BAD_PROFILE_RUN
+  profile: default-delivery
+artifacts:
+  - path: docs/architecture/boss-idea-modules/go-no-go-decision.md
+    status: approved
+YAML
+if scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-no-go-decision.yaml --run-id "$BOSS_DECISION_BAD_PROFILE_RUN" >/tmp/h20-boss-decision-bad-profile.log 2>&1; then
+  echo "expected record decision with bad manifest profile to fail" >&2
+  exit 1
+fi
+grep -q "blocked_schema_invalid" /tmp/h20-boss-decision-bad-profile.log
+if scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-no-go-decision.yaml --run-id "$BOSS_DECISION_RUN" --actor claude_code_cli --role code_reviewer >/tmp/h20-boss-decision-auth.log 2>&1; then
+  echo "expected unauthorized decision record to fail" >&2
+  exit 1
+fi
+grep -q "authorization failed" /tmp/h20-boss-decision-auth.log
+scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-no-go-decision.yaml --run-id "$BOSS_DECISION_RUN" >/dev/null
+if scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-decision.yaml --run-id "$BOSS_DECISION_RUN" >/tmp/h20-boss-decision-manifest-approval.log 2>&1; then
+  echo "expected go decision without approved manifest artifacts to fail" >&2
+  exit 1
+fi
+grep -q "approved manifest artifacts" /tmp/h20-boss-decision-manifest-approval.log
+scripts/update-artifact-status.sh "$BOSS_DECISION_RUN" docs/architecture/boss-idea-modules/go-no-go-decision.md approved --reason "H20 boss decision approval fixture" >/dev/null
 scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-decision.yaml --run-id "$BOSS_DECISION_RUN" >/dev/null
 grep -q "boss_idea_decisions" "agentic/runs/$BOSS_DECISION_RUN/manifest.yaml"
 

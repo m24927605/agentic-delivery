@@ -34,18 +34,15 @@ evidence package
 
 ## Artifact Schema
 
+Schema source of truth: `agentic/schemas/boss-idea-decision.schema.yaml`.
+
 Decision fields:
 
 - `decision`
-- `decision_owner`
-- `decision_date`
+- `reason`
 - `evidence_artifacts`
 - `metric_result`
-- `residual_risks`
-- `accepted_risks`
-- `next_action`
-- `follow_up_date`
-- `implementation_allowed`
+- `implementation_artifacts_approved`
 
 Valid decisions:
 
@@ -57,10 +54,11 @@ Valid decisions:
 
 ## CLI / Manifest / Pipeline Contract
 
-Future command:
+Commands:
 
 ```bash
-scripts/record-boss-idea-decision.sh <run-id> --decision <decision> --reason <text>
+scripts/validate-boss-idea-decision.sh <decision.yaml>
+scripts/record-boss-idea-decision.sh <decision.yaml> --run-id <run-id>
 ```
 
 Contract:
@@ -78,7 +76,6 @@ Block decision recording when:
 - decision value is unknown;
 - reason is missing;
 - evidence artifact list is empty;
-- decision owner is missing;
 - go decision has no success metric result;
 - implementation is requested without approved artifacts.
 
@@ -87,9 +84,8 @@ Block decision recording when:
 Validation checks:
 
 - decision fields are complete;
-- evidence artifacts exist and are repo-local;
+- evidence artifacts are public-safe/ignored repo-local paths;
 - go decisions reference metric results;
-- no-go and defer decisions include follow-up handling;
 - manifest artifact approval remains separate.
 
 ## Test Cases

@@ -1,0 +1,5 @@
+decision: no_go
+evidence_artifacts:
+  - docs/architecture/boss-idea-modules/go-no-go-decision.md
+metric_result: metric did not pass
+implementation_artifacts_approved: false

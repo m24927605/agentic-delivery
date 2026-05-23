@@ -1,0 +1,4 @@
+decision: no_go
+reason: Missing evidence should fail.
+metric_result: metric did not pass
+implementation_artifacts_approved: false

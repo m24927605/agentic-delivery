@@ -1,0 +1,6 @@
+decision: no_go
+reason: Bad evidence path should fail.
+evidence_artifacts:
+  - private/go-no-go-decision.md
+metric_result: metric did not pass
+implementation_artifacts_approved: false

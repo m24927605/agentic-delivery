@@ -1,0 +1,15 @@
+schema:
+  id: boss-idea-decision
+  required_fields:
+    - decision
+    - reason
+    - metric_result
+    - evidence_artifacts
+  allowed_decisions:
+    - go
+    - no_go
+    - defer
+    - pivot
+    - research_more
+  go_requires_implementation_artifacts_approved: true
+  evidence_path_policy: ignored_or_public

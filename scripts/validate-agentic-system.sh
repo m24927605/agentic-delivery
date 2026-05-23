@@ -89,6 +89,7 @@ core_files=(
   agentic/schemas/boss-decision-memo.schema.yaml
   agentic/schemas/boss-idea-poc-mvp.schema.yaml
   agentic/schemas/boss-idea-success-metrics.schema.yaml
+  agentic/schemas/boss-idea-decision.schema.yaml
   agentic/fixtures/boss-idea-response/valid-idea.md
   agentic/fixtures/boss-idea-response/valid-research.md
   agentic/fixtures/boss-idea-response/valid-scorecard.yaml

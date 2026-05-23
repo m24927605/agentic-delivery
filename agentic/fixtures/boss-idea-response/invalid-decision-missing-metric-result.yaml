@@ -1,0 +1,5 @@
+decision: go
+reason: Missing go metric result should fail.
+evidence_artifacts:
+  - docs/architecture/boss-idea-modules/go-no-go-decision.md
+implementation_artifacts_approved: true

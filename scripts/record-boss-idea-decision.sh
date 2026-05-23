@@ -47,7 +47,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$DECISION_FILE" ]]; then
+if [[ -z "$DECISION_FILE" || -z "$RUN_ID" ]]; then
   usage
   exit 2
 fi
@@ -68,25 +68,44 @@ decision = BossIdea.load_yaml(decision_file)
 policy = AgenticIdentity.load_policy
 errors = AgenticIdentity.validate_policy(policy)
 BossIdea.fail_with("invalid identity policy: #{errors.join("; ")}") unless errors.empty?
-auth = AgenticIdentity.authorize!(policy, action: "boss_idea.decision.record", actor: actor, role: role)
-
-if !run_id.empty?
-  BossIdea.fail_with("invalid run id: #{run_id}", 2) unless BossIdea.repo_local_path?(run_id) && !run_id.include?("/")
-  manifest_path = "agentic/runs/#{run_id}/manifest.yaml"
-  BossIdea.fail_with("planning manifest not found: #{manifest_path}") unless File.file?(manifest_path)
-  manifest = YAML.load_file(manifest_path)
-  manifest["boss_idea_decisions"] = Array(manifest["boss_idea_decisions"])
-  manifest["boss_idea_decisions"] << decision.merge(
-    "source_file" => decision_file,
-    "recorded_at" => Time.now.utc.iso8601,
-    "actor" => auth.fetch("actor"),
-    "actor_role" => auth.fetch("actor_role"),
-    "authorization" => AgenticIdentity.audit_record(auth)
-  )
-  manifest["run"] ||= {}
-  manifest["run"]["updated_at"] = Time.now.utc.iso8601
-  File.write(manifest_path, manifest.to_yaml)
+begin
+  auth = AgenticIdentity.authorize!(policy, action: "boss_idea.decision.record", actor: actor, role: role)
+rescue AgenticIdentity::AuthorizationError => e
+  BossIdea.fail_with("authorization failed: #{e.message}")
 end
+
+BossIdea.fail_with("invalid run id: #{run_id}", 2) unless BossIdea.repo_local_path?(run_id) && !run_id.include?("/")
+manifest_path = "agentic/runs/#{run_id}/manifest.yaml"
+BossIdea.fail_with("planning manifest not found: #{manifest_path}") unless File.file?(manifest_path)
+manifest = YAML.load_file(manifest_path)
+BossIdea.required_mapping!(manifest, "planning manifest")
+run = BossIdea.required_mapping!(manifest["run"], "planning manifest.run")
+BossIdea.fail_with("blocked_schema_invalid: manifest run.id does not match #{run_id}") unless run["id"].to_s == run_id
+BossIdea.fail_with("blocked_schema_invalid: manifest profile must be boss-idea-response") unless run["profile"].to_s == "boss-idea-response"
+
+normalized_decision = decision["decision"].to_s.tr("-", "_")
+if normalized_decision == "go"
+  artifacts = Array(manifest["artifacts"]).select { |artifact| artifact.is_a?(Hash) }
+  approved_paths = artifacts.select { |artifact| artifact["status"].to_s == "approved" }.map { |artifact| artifact["path"].to_s }
+  evidence_paths = Array(decision["evidence_artifacts"]).map(&:to_s)
+  if approved_paths.empty? || (approved_paths & evidence_paths).empty?
+    BossIdea.fail_with("go decision cannot unblock implementation without approved manifest artifacts")
+  end
+end
+
+manifest["boss_idea_decisions"] = Array(manifest["boss_idea_decisions"])
+manifest["boss_idea_decisions"] << decision.merge(
+  "source_file" => decision_file,
+  "recorded_at" => Time.now.utc.iso8601,
+  "actor" => auth.fetch("actor"),
+  "actor_role" => auth.fetch("actor_role"),
+  "authorization" => AgenticIdentity.audit_record(auth)
+)
+manifest["run"] ||= {}
+manifest["run"]["updated_at"] = Time.now.utc.iso8601
+tmp_path = "#{manifest_path}.tmp"
+File.write(tmp_path, manifest.to_yaml)
+File.rename(tmp_path, manifest_path)
 
 puts "boss idea decision recorded: #{decision_file}"
 RUBY
