@@ -1,0 +1,113 @@
+profile:
+  id: boss-idea-response
+  name: Boss Idea Response
+  purpose: Public-safe profile for triaging executive ideas into research, recommendation, POC, MVP, or no-go decisions.
+  not_customer_facing: true
+  not_runtime_dependency: true
+
+source_of_truth:
+  - agentic/pipeline.yaml
+  - agentic/hermes-actions.yaml
+  - docs/architecture/agentic-delivery-system.md
+  - docs/architecture/boss-idea-response-system.md
+  - docs/standards/agentic-delivery-quality-standard.md
+  - docs/standards/boss-idea-response-quality-standard.md
+  - docs/backlog/boss-idea-response-slices.md
+
+required_artifacts:
+  strategy:
+    - docs/architecture/boss-idea-response-system.md
+  deliverables:
+    - docs/architecture/boss-idea-response-system.md
+    - docs/architecture/boss-idea-modules/idea-intake.md
+    - docs/architecture/boss-idea-modules/market-research-evidence.md
+    - docs/architecture/boss-idea-modules/feasibility-scoring.md
+    - docs/architecture/boss-idea-modules/boss-decision-memo.md
+    - docs/architecture/boss-idea-modules/poc-mvp-timebox.md
+    - docs/architecture/boss-idea-modules/success-metrics.md
+    - docs/architecture/boss-idea-modules/go-no-go-decision.md
+    - docs/backlog/boss-idea-response-slices.md
+    - docs/standards/boss-idea-response-quality-standard.md
+
+memory:
+  notes:
+    - Executive ideas are not implementation authority.
+    - Market research is evidence and must cite source metadata.
+    - POC and MVP work require explicit timebox and success metrics.
+    - Go decisions still require approved artifacts before implementation.
+
+review_board:
+  required_agents:
+    - product-manager
+    - market-research-analyst
+    - engineering-software-architect
+    - engineering-platform-engineer
+    - engineering-security-engineer
+    - engineering-qa-architect
+    - engineering-technical-writer
+    - engineering-manager
+    - engineering-code-reviewer
+
+domain:
+  product_positioning: Internal executive idea response workflow for research, recommendation, POC, MVP, and go/no-go decisions.
+  primary_strategy_doc: docs/architecture/boss-idea-response-system.md
+  required_questions:
+    - Is the raw idea separated from the decision question?
+    - Are market claims backed by citation metadata?
+    - Are feasibility scores explained and advisory only?
+    - Does the decision memo state recommendation, risk, timebox, and next step?
+    - Are POC and MVP plans timeboxed with scope-out and success metrics?
+    - Does go/no-go preserve artifact approval and manifest authority?
+  strategy_gate_checks:
+    - Executive ideas do not bypass planning.
+    - Research evidence does not approve implementation.
+    - POC and MVP plans require explicit approval before task generation.
+    - Hermes memory remains non-authoritative.
+    - Tracked artifacts remain public-safe.
+  rejected_directions:
+    - direct_implementation_from_raw_idea
+    - uncited_market_claims
+    - ai_review_as_approval
+    - poc_scope_without_timebox
+    - go_decision_without_approved_artifacts
+
+review_prompt:
+  required_files:
+    - docs/architecture/boss-idea-response-system.md
+    - docs/architecture/boss-idea-modules/idea-intake.md
+    - docs/architecture/boss-idea-modules/market-research-evidence.md
+    - docs/architecture/boss-idea-modules/feasibility-scoring.md
+    - docs/architecture/boss-idea-modules/boss-decision-memo.md
+    - docs/architecture/boss-idea-modules/poc-mvp-timebox.md
+    - docs/architecture/boss-idea-modules/success-metrics.md
+    - docs/architecture/boss-idea-modules/go-no-go-decision.md
+    - docs/backlog/boss-idea-response-slices.md
+    - docs/standards/boss-idea-response-quality-standard.md
+    - docs/standards/agentic-delivery-quality-standard.md
+    - agentic/README.md
+  output_sections:
+    - Overall assessment
+    - Executive workflow risks
+    - Research evidence risks
+    - Approval gate risks
+    - Implementation slice quality
+    - Validation gaps
+    - Recommendation
+
+strategy_gate:
+  anchor_patterns:
+    - idea intake
+    - market research evidence
+    - feasibility scoring
+    - decision memo
+    - POC
+    - MVP
+    - go/no-go
+  platform_risk_patterns:
+    - direct implementation
+    - automatic approval
+    - uncited claim
+  internal_tool_terms:
+    - Hermes
+    - AIT
+    - Claude Code
