@@ -1,4 +1,7 @@
 .ait/
+.envrc
+.claude/
+.codex/
 
 # Local private delivery artifacts.
 docs/*strategy*.md
