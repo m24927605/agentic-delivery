@@ -211,6 +211,15 @@ if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agent
   exit 1
 fi
 grep -q "reference URL must be http or https" /tmp/h20-boss-market-bad-reference-url.log
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/invalid-market-search-validator-bad-reference.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-validator-research.md" >/tmp/h20-boss-market-validator-reference.log 2>&1; then
+  echo "expected generated research with validator-rejected reference to fail" >&2
+  exit 1
+fi
+grep -q "reference URL must be http or https" /tmp/h20-boss-market-validator-reference.log
+if test -e "agentic/runs/$BOSS_IDEA_RUN/bad-validator-research.md" || test -e "agentic/runs/$BOSS_IDEA_RUN/bad-validator-research.md.tmp"; then
+  echo "expected validator failure to clean partial research output" >&2
+  exit 1
+fi
 if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/valid-market-search-results.yaml --output ../bad-market-research.md >/tmp/h20-boss-market-output-path.log 2>&1; then
   echo "expected market research output outside repo to fail" >&2
   exit 1
@@ -261,7 +270,12 @@ if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/in
   echo "expected bad research URL scheme to fail" >&2
   exit 1
 fi
-grep -q "URL must be http or https" /tmp/h20-boss-research-url.log
+grep -q "sources\\[\\].url URL must be http or https" /tmp/h20-boss-research-url.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-bad-reference-url.md >/tmp/h20-boss-research-reference-url.log 2>&1; then
+  echo "expected bad research reference URL scheme to fail" >&2
+  exit 1
+fi
+grep -q "sources\\[\\].reference URL must be http or https" /tmp/h20-boss-research-reference-url.log
 if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-raw-path-traversal.md >/tmp/h20-boss-research-path-traversal.log 2>&1; then
   echo "expected traversal raw evidence path to fail" >&2
   exit 1
