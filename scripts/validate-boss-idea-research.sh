@@ -19,6 +19,14 @@ schema = BossIdea.load_yaml("agentic/schemas/boss-idea-research.schema.yaml")
 schema_root = schema.fetch("schema")
 BossIdea.require_fields!(frontmatter, Array(schema_root["required_fields"]), "research")
 
+def validate_public_url_scheme!(value, label)
+  text = value.to_s
+  return if text.empty?
+  return unless text.match?(%r{\A[a-z][a-z0-9+.-]*:})
+
+  BossIdea.fail_with("#{label} URL must be http or https") unless text.match?(%r{\Ahttps?://})
+end
+
 sources = BossIdea.require_array!(frontmatter, "sources", "research")
 source_required_fields = Array(schema_root["source_required_fields"])
 allowed_source_types = Array(schema_root["allowed_source_types"]).map(&:to_s)
@@ -31,6 +39,8 @@ source_ids = sources.map do |source|
   unless allowed_source_types.include?(source["source_type"].to_s)
     BossIdea.fail_with("research.sources[].source_type is invalid: #{source["source_type"]}")
   end
+  validate_public_url_scheme!(source["reference"], "research.sources[].reference")
+  validate_public_url_scheme!(source["url"], "research.sources[].url")
   source["id"].to_s
 end
 duplicates = source_ids.group_by(&:itself).select { |_, values| values.length > 1 }.keys

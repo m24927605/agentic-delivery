@@ -257,6 +257,11 @@ if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/in
   exit 1
 fi
 grep -q "raw_evidence_path" /tmp/h20-boss-research-path.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-bad-url.md >/tmp/h20-boss-research-url.log 2>&1; then
+  echo "expected bad research URL scheme to fail" >&2
+  exit 1
+fi
+grep -q "URL must be http or https" /tmp/h20-boss-research-url.log
 if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-raw-path-traversal.md >/tmp/h20-boss-research-path-traversal.log 2>&1; then
   echo "expected traversal raw evidence path to fail" >&2
   exit 1
