@@ -478,7 +478,12 @@ def fetch_brave_results(query)
   request = Net::HTTP::Get.new(uri)
   request["Accept"] = "application/json"
   request["X-Subscription-Token"] = subscription_token
-  timeout = Integer(ENV["BOSS_IDEA_SEARCH_BRAVE_TIMEOUT_SECONDS"].to_s.empty? ? "10" : ENV.fetch("BOSS_IDEA_SEARCH_BRAVE_TIMEOUT_SECONDS"))
+  timeout_value = ENV["BOSS_IDEA_SEARCH_BRAVE_TIMEOUT_SECONDS"].to_s.empty? ? "10" : ENV.fetch("BOSS_IDEA_SEARCH_BRAVE_TIMEOUT_SECONDS")
+  begin
+    timeout = Integer(timeout_value)
+  rescue ArgumentError
+    fail_with("invalid BOSS_IDEA_SEARCH_BRAVE_TIMEOUT_SECONDS")
+  end
 
   response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: timeout, read_timeout: timeout) do |http|
     http.request(request)
@@ -490,8 +495,6 @@ rescue URI::InvalidURIError
   fail_with("invalid Brave search base URL")
 rescue JSON::ParserError => e
   fail_with("invalid Brave search JSON: #{e.message}")
-rescue ArgumentError
-  fail_with("invalid BOSS_IDEA_SEARCH_BRAVE_TIMEOUT_SECONDS")
 end
 
 def discover_brave_candidates(query_pack)
