@@ -62,7 +62,6 @@ Array(frontmatter["inferences"]).each do |inference|
 end
 
 raw_path = frontmatter["raw_evidence_path"].to_s
-BossIdea.fail_with("research.raw_evidence_path is required") if raw_path.empty?
 BossIdea.fail_with("research.raw_evidence_path must be repo-local") unless BossIdea.repo_local_path?(raw_path)
 unless raw_path.start_with?("agentic/reviews/") || raw_path.start_with?("agentic/runs/")
   BossIdea.fail_with("research.raw_evidence_path must stay under ignored evidence paths")

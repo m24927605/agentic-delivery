@@ -154,6 +154,11 @@ if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/in
   exit 1
 fi
 grep -q "raw_evidence_path" /tmp/h20-boss-research-path.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-raw-path-traversal.md >/tmp/h20-boss-research-path-traversal.log 2>&1; then
+  echo "expected traversal raw evidence path to fail" >&2
+  exit 1
+fi
+grep -q "repo-local" /tmp/h20-boss-research-path-traversal.log
 if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-bad-inference-label.md >/tmp/h20-boss-research-inference.log 2>&1; then
   echo "expected bad inference label to fail" >&2
   exit 1
