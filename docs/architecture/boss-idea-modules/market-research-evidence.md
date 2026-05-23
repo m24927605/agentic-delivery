@@ -62,17 +62,22 @@ Each claim must include:
 
 ## CLI / Manifest / Pipeline Contract
 
-Future command:
-
 ```bash
-scripts/collect-boss-idea-research.sh <run-id>
+scripts/collect-boss-idea-research.sh --dry-run <run-id>
+scripts/collect-boss-idea-research.sh <run-id> --search-results <results.yaml> --output <research.md>
 ```
 
 Contract:
 
-- records source metadata in ignored run evidence;
+- derives a market search query pack from `boss_idea_intake`;
+- consumes public-safe search results from a provider adapter or curated source
+  inventory;
+- records query metadata in ignored run evidence;
 - writes only summarized public-safe research artifacts;
-- refuses to mark research as complete if required citation fields are missing;
+- validates the generated artifact with `scripts/validate-boss-idea-research.sh`;
+- records artifact and evidence paths in the planning manifest;
+- refuses to collect research if required citation fields, required market
+  signals, or source dates are missing;
 - does not approve artifacts or implementation.
 
 ## Failure Behavior

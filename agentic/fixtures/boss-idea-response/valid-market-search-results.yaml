@@ -1,0 +1,35 @@
+results:
+  - id: competitor-docs
+    query_id: competitor_landscape
+    title: Public competitor workflow documentation
+    source_type: vendor_docs
+    access_date: "2026-05-23"
+    reference: https://example.com/competitor/workflow
+    url: https://example.com/competitor/workflow
+    signal: competitor
+    claim: A comparable public workflow separates intake, evidence collection, and decision recording.
+  - id: mainstream-report
+    query_id: mainstream_practices
+    title: Public mainstream delivery practice report
+    source_type: public_report
+    access_date: "2026-05-23"
+    reference: https://example.com/reports/delivery-practices
+    url: https://example.com/reports/delivery-practices
+    signal: mainstream_practice
+    claim: Mainstream delivery teams use evidence-backed triage before committing engineering capacity.
+  - id: implementation-docs
+    query_id: implementation_patterns
+    title: Public implementation pattern documentation
+    source_type: product_docs
+    access_date: "2026-05-23"
+    reference: public-implementation-pattern-docs
+    signal: implementation_pattern
+    claim: Bounded POC workflows commonly define validation evidence before implementation proceeds.
+  - id: differentiation-note
+    query_id: operator_workflow
+    title: Public operator workflow comparison
+    source_type: analyst_note
+    access_date: "2026-05-23"
+    reference: public-operator-workflow-comparison
+    signal: differentiator
+    claim: Differentiation depends on how quickly operators can turn raw ideas into source-backed decisions.

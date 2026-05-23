@@ -270,6 +270,15 @@ scripts/init-boss-idea-run.sh --dry-run agentic/fixtures/boss-idea-response/vali
 RUN_ID=<run-id> scripts/init-boss-idea-run.sh agentic/fixtures/boss-idea-response/valid-idea.md
 ```
 
+Generate a market search query pack, then collect source-backed market research
+from public-safe search results:
+
+```bash
+scripts/collect-boss-idea-research.sh --dry-run <run-id>
+scripts/collect-boss-idea-research.sh <run-id> --search-results agentic/fixtures/boss-idea-response/valid-market-search-results.yaml --output agentic/runs/<run-id>/market-research.md
+scripts/validate-boss-idea-research.sh agentic/runs/<run-id>/market-research.md
+```
+
 Validate each downstream artifact independently:
 
 ```bash
@@ -406,6 +415,7 @@ Hermes actions map to repo-local commands:
 | `create_artifact_revision_tasks` | `scripts/create-artifact-revision-tasks.sh <run-id>` |
 | `run_agency_review` | `RUN_ID=<run-id> scripts/run-agency-review.sh` |
 | `summarize_review` | `scripts/summarize-agency-review.sh <run-id>` |
+| `collect_boss_idea_research` | `scripts/collect-boss-idea-research.sh <run-id> --search-results <results.yaml> --output <research.md>` |
 | `start_implementation_run` | `RUN_ID=<run-id> scripts/init-implementation-run.sh --planning-run <planning-run-id>` |
 | `generate_implementation_task_graph` | `scripts/generate-implementation-task-graph.sh <run-id>` |
 | `dispatch_implementation_task` | `scripts/dispatch-implementation-task.sh <run-id> <task-id>` |

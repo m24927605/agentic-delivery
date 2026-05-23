@@ -1,0 +1,9 @@
+results:
+  - id: competitor-docs
+    query_id: competitor_landscape
+    title: Public competitor workflow documentation
+    source_type: vendor_docs
+    access_date: "2026-05-23"
+    reference: https://example.com/competitor/workflow
+    signal: competitor
+    claim: A comparable public workflow separates intake, evidence collection, and decision recording.

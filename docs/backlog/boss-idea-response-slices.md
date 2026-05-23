@@ -419,6 +419,60 @@ Maximum review rounds: 5.
 Staff+ escalation path: split fixtures by module or defer integrated fixture
 until BIR-01 through BIR-07 are complete.
 
+## BIR-09: Market Competitor Search Automation
+
+Status: in review.
+
+Owner role: Market Research Lead.
+
+Source artifact: `docs/architecture/boss-idea-modules/market-research-evidence.md`.
+
+Files touched:
+
+- `scripts/collect-boss-idea-research.sh`
+- `scripts/run-golden-fixtures.sh`
+- `scripts/validate-agentic-system.sh`
+- `agentic/schemas/boss-idea-market-search.schema.yaml`
+- `agentic/fixtures/boss-idea-response/`
+- `agentic/hermes-actions.yaml`
+- `agentic/pipeline.yaml`
+- `agentic/README.md`
+- `docs/architecture/boss-idea-modules/market-research-evidence.md`
+- `docs/backlog/boss-idea-response-slices.md`
+
+Acceptance criteria:
+
+- command derives a market search query pack from boss idea intake;
+- command consumes public-safe search results from a provider adapter contract;
+- generated research artifact passes `validate-boss-idea-research.sh`;
+- search results require competitor and mainstream-practice signals;
+- missing reference, missing required signal, bad query id, bad source type, or
+  future access date fails;
+- generated raw evidence path stays under ignored run evidence;
+- command updates the planning manifest with research artifact and evidence
+  metadata without approving artifacts;
+- Hermes and pipeline contracts expose the command.
+
+Validation command:
+
+```bash
+scripts/collect-boss-idea-research.sh --dry-run <run-id>
+scripts/collect-boss-idea-research.sh <run-id> --search-results agentic/fixtures/boss-idea-response/valid-market-search-results.yaml --output agentic/runs/<run-id>/market-research.md
+scripts/validate-boss-idea-research.sh agentic/runs/<run-id>/market-research.md
+scripts/run-golden-fixtures.sh
+```
+
+Rollback notes: remove the collector command, search schema, fixtures, Hermes
+action, pipeline references, and generated golden fixture coverage.
+
+AIT review evidence path: `agentic/reviews/boss-idea-response/bir-09/round-<n>.json`.
+
+Maximum review rounds: 5.
+
+Staff+ escalation path: if round 5 fails, split query-pack generation from
+research artifact generation or keep only the provider contract while deferring
+artifact generation.
+
 ## Review Expectations
 
 Each slice must pass validation and AIT plus Claude Code review before the next

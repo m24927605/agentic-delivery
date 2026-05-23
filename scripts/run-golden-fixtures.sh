@@ -154,6 +154,22 @@ scripts/validate-manifest-schema.sh "$BOSS_IDEA_RUN" >/dev/null
 grep -q "boss_idea_intake" "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
 ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); abort("expected all artifacts planned") unless m.fetch("artifacts").all? { |a| a["status"] == "planned" }' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
 
+scripts/collect-boss-idea-research.sh --dry-run "$BOSS_IDEA_RUN" >/tmp/h20-boss-market-query-pack.log
+grep -q "competitor_landscape" /tmp/h20-boss-market-query-pack.log
+scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/valid-market-search-results.yaml --output "agentic/runs/$BOSS_IDEA_RUN/generated-research.md" >/dev/null
+scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/generated-research.md" >/dev/null
+grep -q "boss_idea_market_research" "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/invalid-market-search-missing-reference.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-generated-research.md" >/tmp/h20-boss-market-missing-reference.log 2>&1; then
+  echo "expected market search result missing reference to fail" >&2
+  exit 1
+fi
+grep -q "reference" /tmp/h20-boss-market-missing-reference.log
+if scripts/collect-boss-idea-research.sh "$BOSS_IDEA_RUN" --search-results agentic/fixtures/boss-idea-response/invalid-market-search-missing-mainstream.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-generated-research.md" >/tmp/h20-boss-market-missing-signal.log 2>&1; then
+  echo "expected market search result missing mainstream signal to fail" >&2
+  exit 1
+fi
+grep -q "required signals" /tmp/h20-boss-market-missing-signal.log
+
 scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/valid-research.md >/dev/null
 if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-missing-sources.md >/tmp/h20-boss-research-missing-sources.log 2>&1; then
   echo "expected missing research sources to fail" >&2

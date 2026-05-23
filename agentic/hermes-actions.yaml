@@ -590,6 +590,37 @@ actions:
       max_attempts: 2
       requires_human_decision_on_exhaustion: true
 
+  - id: collect_boss_idea_research
+    purpose: Generate source-backed market and competitor research from a boss idea run and public-safe search results.
+    mode: planning
+    authorization:
+      action: artifact.generate
+    command_template: scripts/collect-boss-idea-research.sh {{run_id}} --search-results {{search_results}} --output {{research_file}}
+    required_inputs:
+      - run_id
+      - search_results
+      - research_file
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/schemas/boss-idea-market-search.schema.yaml
+      - agentic/schemas/boss-idea-research.schema.yaml
+      - "{{search_results}}"
+    writes:
+      - "{{research_file}}"
+      - agentic/runs/{{run_id}}/market-research-query-pack.yaml
+      - agentic/runs/{{run_id}}/manifest.yaml
+    success_signals:
+      - stdout_contains: boss idea market research collected
+      - file_exists: "{{research_file}}"
+    failure_states:
+      - blocked_schema_invalid
+      - blocked_missing_source
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
   - id: score_boss_idea_feasibility
     purpose: Validate and summarize boss idea feasibility scorecard inputs.
     mode: planning

@@ -1,0 +1,23 @@
+schema:
+  id: boss-idea-market-search
+  required_fields:
+    - results
+  result_required_fields:
+    - id
+    - query_id
+    - title
+    - source_type
+    - access_date
+    - reference
+    - claim
+    - signal
+  allowed_signals:
+    - competitor
+    - mainstream_practice
+    - implementation_pattern
+    - differentiator
+    - risk
+    - unknown
+  required_signals:
+    - competitor
+    - mainstream_practice

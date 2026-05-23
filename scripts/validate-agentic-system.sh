@@ -73,6 +73,7 @@ core_files=(
   scripts/validate-implementation-run.sh
   scripts/validate-manifest-schema.sh
   scripts/init-boss-idea-run.sh
+  scripts/collect-boss-idea-research.sh
   scripts/validate-boss-idea-research.sh
   scripts/score-boss-idea-feasibility.sh
   scripts/generate-boss-decision-memo.sh
@@ -84,6 +85,7 @@ core_files=(
   scripts/validate-boss-idea-decision.sh
   scripts/lib/boss_idea.rb
   agentic/schemas/boss-idea-intake.schema.yaml
+  agentic/schemas/boss-idea-market-search.schema.yaml
   agentic/schemas/boss-idea-research.schema.yaml
   agentic/schemas/boss-idea-scorecard.schema.yaml
   agentic/schemas/boss-decision-memo.schema.yaml
@@ -91,6 +93,7 @@ core_files=(
   agentic/schemas/boss-idea-success-metrics.schema.yaml
   agentic/schemas/boss-idea-decision.schema.yaml
   agentic/fixtures/boss-idea-response/valid-idea.md
+  agentic/fixtures/boss-idea-response/valid-market-search-results.yaml
   agentic/fixtures/boss-idea-response/valid-research.md
   agentic/fixtures/boss-idea-response/valid-scorecard.yaml
   agentic/fixtures/boss-idea-response/valid-memo.md
@@ -187,6 +190,7 @@ for script in \
   scripts/validate-implementation-run.sh \
   scripts/validate-manifest-schema.sh \
   scripts/init-boss-idea-run.sh \
+  scripts/collect-boss-idea-research.sh \
   scripts/validate-boss-idea-research.sh \
   scripts/score-boss-idea-feasibility.sh \
   scripts/generate-boss-decision-memo.sh \
