@@ -503,6 +503,76 @@ if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-resp
   exit 1
 fi
 grep -q "threshold" /tmp/h20-boss-metrics.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-missing-owner.yaml >/tmp/h20-boss-metrics-owner.log 2>&1; then
+  echo "expected missing metric owner to fail" >&2
+  exit 1
+fi
+grep -q "owner_role" /tmp/h20-boss-metrics-owner.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-bad-evidence-path.yaml >/tmp/h20-boss-metrics-evidence.log 2>&1; then
+  echo "expected bad metric evidence path to fail" >&2
+  exit 1
+fi
+grep -q "evidence_path" /tmp/h20-boss-metrics-evidence.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-timebox-exceeds-plan.yaml >/tmp/h20-boss-metrics-timebox-exceeds.log 2>&1; then
+  echo "expected metric timebox exceeding plan to fail" >&2
+  exit 1
+fi
+grep -q "exceeds selected plan timebox" /tmp/h20-boss-metrics-timebox-exceeds.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-auto-decision.yaml >/tmp/h20-boss-metrics-auto.log 2>&1; then
+  echo "expected metric auto decision to fail" >&2
+  exit 1
+fi
+grep -q "automatically record" /tmp/h20-boss-metrics-auto.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-string-auto-decision.yaml >/tmp/h20-boss-metrics-auto-string.log 2>&1; then
+  echo "expected string metric auto decision to fail" >&2
+  exit 1
+fi
+grep -q "automatically record" /tmp/h20-boss-metrics-auto-string.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-non-integer-timebox.yaml >/tmp/h20-boss-metrics-timebox-type.log 2>&1; then
+  echo "expected non-integer metric timebox to fail" >&2
+  exit 1
+fi
+grep -q "timebox_days" /tmp/h20-boss-metrics-timebox-type.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-zero-timebox.yaml >/tmp/h20-boss-metrics-timebox-zero.log 2>&1; then
+  echo "expected zero metric timebox to fail" >&2
+  exit 1
+fi
+grep -q "timebox_days" /tmp/h20-boss-metrics-timebox-zero.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-missing-plan-timebox.yaml >/tmp/h20-boss-metrics-plan-timebox.log 2>&1; then
+  echo "expected missing plan timebox to fail" >&2
+  exit 1
+fi
+grep -q "plan_timebox_days" /tmp/h20-boss-metrics-plan-timebox.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-string-plan-timebox.yaml >/tmp/h20-boss-metrics-plan-timebox-type.log 2>&1; then
+  echo "expected string plan timebox to fail" >&2
+  exit 1
+fi
+grep -q "plan_timebox_days" /tmp/h20-boss-metrics-plan-timebox-type.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-missing-metrics.yaml >/tmp/h20-boss-metrics-missing.log 2>&1; then
+  echo "expected missing metrics array to fail" >&2
+  exit 1
+fi
+grep -q "metrics" /tmp/h20-boss-metrics-missing.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-empty-metrics.yaml >/tmp/h20-boss-metrics-empty.log 2>&1; then
+  echo "expected empty metrics array to fail" >&2
+  exit 1
+fi
+grep -q "metrics" /tmp/h20-boss-metrics-empty.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-bad-shape.yaml >/tmp/h20-boss-metrics-shape.log 2>&1; then
+  echo "expected bad metric shape to fail" >&2
+  exit 1
+fi
+grep -q "must be a mapping" /tmp/h20-boss-metrics-shape.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-bad-decision-mapping.yaml >/tmp/h20-boss-metrics-mapping.log 2>&1; then
+  echo "expected bad metric decision mapping to fail" >&2
+  exit 1
+fi
+grep -q "decision_mapping" /tmp/h20-boss-metrics-mapping.log
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-incomplete-decision-mapping.yaml >/tmp/h20-boss-metrics-incomplete-mapping.log 2>&1; then
+  echo "expected incomplete metric decision mapping to fail" >&2
+  exit 1
+fi
+grep -q "inconclusive" /tmp/h20-boss-metrics-incomplete-mapping.log
 
 scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-decision.yaml >/dev/null
 scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-no-go-decision.yaml >/dev/null

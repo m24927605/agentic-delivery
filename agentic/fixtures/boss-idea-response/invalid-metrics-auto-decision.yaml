@@ -10,4 +10,4 @@ metrics:
       inconclusive: requires more research before decision
     evidence_path: agentic/reviews/boss-idea-response/metrics/result.md
     timebox_days: 5
-    auto_decision: false
+    auto_decision: true

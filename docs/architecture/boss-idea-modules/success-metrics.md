@@ -35,31 +35,37 @@ decision memo + POC/MVP plan
 
 ## Artifact Schema
 
+Schema source of truth: `agentic/schemas/boss-idea-success-metrics.schema.yaml`.
+
+Top-level fields:
+
+- `plan_timebox_days`
+- `metrics`
+
 Metric fields:
 
-- `metric_id`
-- `question_answered`
-- `measurement_method`
-- `target_threshold`
-- `minimum_threshold`
+- `name`
+- `method`
+- `threshold`
 - `evidence_path`
 - `owner_role`
-- `review_method`
 - `decision_mapping`
+- `timebox_days`
+- `auto_decision`
 
 ## CLI / Manifest / Pipeline Contract
 
-Future command:
+Command:
 
 ```bash
-scripts/validate-boss-idea-success-metrics.sh <run-id>
+scripts/validate-boss-idea-success-metrics.sh <metrics.yaml>
 ```
 
 Contract:
 
 - validates metric shape;
-- records validation evidence in ignored paths;
-- requires metrics before POC/MVP execution can be marked complete;
+- checks validation evidence paths are ignored or public-safe;
+- validates metric timeboxes against the selected POC/MVP plan timebox;
 - does not decide go/no-go by itself.
 
 ## Failure Behavior
@@ -80,7 +86,8 @@ Validation checks:
 - every metric has method, threshold, owner, and decision mapping;
 - pass/fail/inconclusive mapping is explicit;
 - evidence path is ignored or public-safe;
-- metric count is small enough for the timebox.
+- each metric timebox is positive and does not exceed `plan_timebox_days`;
+- metric output cannot automatically record go/no-go.
 
 ## Test Cases
 

@@ -1,5 +1,8 @@
 schema:
   id: boss-idea-success-metrics
+  required_fields:
+    - plan_timebox_days
+    - metrics
   metric_required_fields:
     - name
     - method
@@ -8,3 +11,13 @@ schema:
     - decision_mapping
     - evidence_path
     - timebox_days
+  decision_mapping_required_fields:
+    - pass
+    - fail
+    - inconclusive
+  timebox_days:
+    min: 1
+    must_not_exceed_plan_timebox: true
+  evidence_path_policy: ignored_or_public
+  auto_decision_allowed_values:
+    - false

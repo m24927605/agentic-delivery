@@ -7,7 +7,6 @@ metrics:
     decision_mapping:
       pass: supports go decision review
       fail: supports no_go decision review
-      inconclusive: requires more research before decision
     evidence_path: agentic/reviews/boss-idea-response/metrics/result.md
     timebox_days: 5
     auto_decision: false

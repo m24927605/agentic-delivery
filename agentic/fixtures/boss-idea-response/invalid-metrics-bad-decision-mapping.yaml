@@ -4,10 +4,7 @@ metrics:
     method: inspect tracked memo artifact
     threshold: memo has recommendation and evidence summary
     owner_role: Staff QA Architect
-    decision_mapping:
-      pass: supports go decision review
-      fail: supports no_go decision review
-      inconclusive: requires more research before decision
+    decision_mapping: supports go or no_go decision
     evidence_path: agentic/reviews/boss-idea-response/metrics/result.md
     timebox_days: 5
     auto_decision: false

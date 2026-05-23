@@ -3,7 +3,6 @@ metrics:
   - name: reviewed decision memo
     method: inspect tracked memo artifact
     threshold: memo has recommendation and evidence summary
-    owner_role: Staff QA Architect
     decision_mapping:
       pass: supports go decision review
       fail: supports no_go decision review

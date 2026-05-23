@@ -1,4 +1,4 @@
-plan_timebox_days: 5
+plan_timebox_days: "5"
 metrics:
   - name: reviewed decision memo
     method: inspect tracked memo artifact
