@@ -1,0 +1,33 @@
+schema:
+  id: boss-idea-poc-mvp
+  required_fields:
+    - work_type
+    - timebox_days
+    - staffing_assumption
+    - scope_in
+    - scope_out
+    - demo_path
+    - validation_command
+    - acceptance_criteria
+    - rollback_notes
+    - decision_after_timebox
+  allowed_work_types:
+    - poc
+    - mvp
+  timebox_days:
+    min: 1
+    max_by_work_type:
+      poc: 10
+      mvp: 30
+  decision_after_timebox_values:
+    - go
+    - no_go
+    - extend_with_approval
+    - pivot
+    - stop
+  production_scope_patterns:
+    - production deployment
+    - production launch
+    - production rollout
+    - customer rollout
+    - go live

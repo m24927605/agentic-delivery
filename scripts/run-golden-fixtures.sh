@@ -414,12 +414,58 @@ if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/in
 fi
 grep -q "Time And Staffing" /tmp/h20-boss-memo-time-section.log
 
+scripts/plan-boss-idea-poc-mvp.sh poc >"agentic/runs/$BOSS_IDEA_RUN/generated-poc-plan.md"
+scripts/validate-boss-idea-poc-mvp.sh "agentic/runs/$BOSS_IDEA_RUN/generated-poc-plan.md" >/dev/null
+scripts/plan-boss-idea-poc-mvp.sh mvp >"agentic/runs/$BOSS_IDEA_RUN/generated-mvp-plan.md"
+scripts/validate-boss-idea-poc-mvp.sh "agentic/runs/$BOSS_IDEA_RUN/generated-mvp-plan.md" >/dev/null
+if scripts/plan-boss-idea-poc-mvp.sh pilot >/tmp/h20-boss-poc-generator-type.log 2>&1; then
+  echo "expected bad POC/MVP generator work type to fail" >&2
+  exit 1
+fi
+grep -q "work type" /tmp/h20-boss-poc-generator-type.log
+
 scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/valid-poc-plan.md >/dev/null
+scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/valid-mvp-plan.md >/dev/null
 if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-missing-timebox.md >/tmp/h20-boss-poc.log 2>&1; then
   echo "expected missing POC timebox to fail" >&2
   exit 1
 fi
 grep -q "timebox_days" /tmp/h20-boss-poc.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-missing-scope-out.md >/tmp/h20-boss-poc-scope-out.log 2>&1; then
+  echo "expected missing POC scope-out to fail" >&2
+  exit 1
+fi
+grep -q "scope_out" /tmp/h20-boss-poc-scope-out.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-bad-validation-command.md >/tmp/h20-boss-poc-command.log 2>&1; then
+  echo "expected bad POC validation command to fail" >&2
+  exit 1
+fi
+grep -q "validation_command" /tmp/h20-boss-poc-command.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-production-scope.md >/tmp/h20-boss-poc-production.log 2>&1; then
+  echo "expected POC production scope to fail" >&2
+  exit 1
+fi
+grep -q "production" /tmp/h20-boss-poc-production.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-missing-acceptance-criteria.md >/tmp/h20-boss-poc-acceptance.log 2>&1; then
+  echo "expected missing POC acceptance criteria to fail" >&2
+  exit 1
+fi
+grep -q "acceptance_criteria" /tmp/h20-boss-poc-acceptance.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-missing-decision.md >/tmp/h20-boss-poc-decision.log 2>&1; then
+  echo "expected missing POC post-timebox decision to fail" >&2
+  exit 1
+fi
+grep -q "decision_after_timebox" /tmp/h20-boss-poc-decision.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-timebox-too-large.md >/tmp/h20-boss-poc-timebox-large.log 2>&1; then
+  echo "expected oversized POC timebox to fail" >&2
+  exit 1
+fi
+grep -q "timebox_days" /tmp/h20-boss-poc-timebox-large.log
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-bad-work-type.md >/tmp/h20-boss-poc-work-type.log 2>&1; then
+  echo "expected bad POC work type to fail" >&2
+  exit 1
+fi
+grep -q "work_type" /tmp/h20-boss-poc-work-type.log
 
 scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/valid-metrics.yaml >/dev/null
 if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-missing-threshold.yaml >/tmp/h20-boss-metrics.log 2>&1; then

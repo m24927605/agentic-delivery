@@ -40,7 +40,7 @@ approved recommendation
 Markdown fields:
 
 - `work_type`
-- `timebox`
+- `timebox_days`
 - `staffing_assumption`
 - `scope_in`
 - `scope_out`
@@ -55,7 +55,7 @@ Markdown fields:
 Future command:
 
 ```bash
-scripts/plan-boss-idea-poc-mvp.sh <run-id>
+scripts/plan-boss-idea-poc-mvp.sh [poc|mvp]
 ```
 
 Contract:
