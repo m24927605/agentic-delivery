@@ -60,6 +60,11 @@ unless allowed_bands.include?(data["recommendation_band"].to_s)
   BossIdea.fail_with("scorecard.recommendation_band is invalid: #{data["recommendation_band"]}")
 end
 
+rationale = data["score_rationale"]
+unless rationale.is_a?(String) && !rationale.strip.empty?
+  BossIdea.fail_with("scorecard.score_rationale must be a non-empty string")
+end
+
 high_risk_threshold = Integer(schema.fetch("high_risk_threshold"))
 if Array(schema["high_risk_fields"]).any? { |field| data[field].to_i >= high_risk_threshold }
   BossIdea.require_array!(data, "mitigations", "scorecard")
@@ -78,7 +83,12 @@ if Array(schema["low_confidence_fields"]).any? { |field| data[field].to_i <= low
   BossIdea.fail_with("low confidence requires unknowns or follow_up_questions") if support_count.zero?
 end
 
-if data["implementation_approval"] == true || data["artifact_status"].to_s == "approved"
+implementation_approval = data["implementation_approval"]
+unless implementation_approval.nil? || implementation_approval == true || implementation_approval == false
+  BossIdea.fail_with("scorecard.implementation_approval must be boolean")
+end
+
+if implementation_approval == true || data["artifact_status"].to_s.downcase == "approved"
   BossIdea.fail_with("scorecard cannot approve implementation")
 end
 

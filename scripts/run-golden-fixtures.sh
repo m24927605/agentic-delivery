@@ -241,26 +241,51 @@ if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-r
   exit 1
 fi
 grep -q "mitigations" /tmp/h20-boss-score-security.log
+if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-scalar-mitigation.yaml >/tmp/h20-boss-score-mitigation-type.log 2>&1; then
+  echo "expected scalar scorecard mitigation to fail" >&2
+  exit 1
+fi
+grep -q "mitigations must be a non-empty array" /tmp/h20-boss-score-mitigation-type.log
 if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-low-confidence-no-followup.yaml >/tmp/h20-boss-score-confidence.log 2>&1; then
   echo "expected low confidence without follow-up to fail" >&2
   exit 1
 fi
 grep -q "low confidence" /tmp/h20-boss-score-confidence.log
+if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-empty-unknowns.yaml >/tmp/h20-boss-score-confidence-empty.log 2>&1; then
+  echo "expected empty low-confidence support to fail" >&2
+  exit 1
+fi
+grep -q "low confidence" /tmp/h20-boss-score-confidence-empty.log
 if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-low-confidence-scalar-unknowns.yaml >/tmp/h20-boss-score-confidence-type.log 2>&1; then
   echo "expected scalar low-confidence support to fail" >&2
   exit 1
 fi
 grep -q "unknowns must be an array" /tmp/h20-boss-score-confidence-type.log
+if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-blank-rationale.yaml >/tmp/h20-boss-score-rationale.log 2>&1; then
+  echo "expected blank score rationale to fail" >&2
+  exit 1
+fi
+grep -q "score_rationale" /tmp/h20-boss-score-rationale.log
 if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-implementation-approval.yaml >/tmp/h20-boss-score-approval.log 2>&1; then
   echo "expected implementation approval in scorecard to fail" >&2
   exit 1
 fi
 grep -q "cannot approve implementation" /tmp/h20-boss-score-approval.log
+if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-string-implementation-approval.yaml >/tmp/h20-boss-score-approval-type.log 2>&1; then
+  echo "expected string implementation approval in scorecard to fail" >&2
+  exit 1
+fi
+grep -q "implementation_approval must be boolean" /tmp/h20-boss-score-approval-type.log
 if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-approved-artifact-status.yaml >/tmp/h20-boss-score-artifact-status.log 2>&1; then
   echo "expected approved artifact status in scorecard to fail" >&2
   exit 1
 fi
 grep -q "cannot approve implementation" /tmp/h20-boss-score-artifact-status.log
+if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-mixed-case-approved-artifact-status.yaml >/tmp/h20-boss-score-artifact-status-case.log 2>&1; then
+  echo "expected mixed-case approved artifact status in scorecard to fail" >&2
+  exit 1
+fi
+grep -q "cannot approve implementation" /tmp/h20-boss-score-artifact-status-case.log
 
 scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/valid-memo.md >/dev/null
 if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-missing-options.md >/tmp/h20-boss-memo.log 2>&1; then

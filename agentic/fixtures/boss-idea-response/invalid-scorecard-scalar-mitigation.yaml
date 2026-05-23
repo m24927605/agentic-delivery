@@ -1,0 +1,15 @@
+value_score: 4
+urgency_score: 4
+effort_score: 3
+technical_risk_score: 5
+security_risk_score: 2
+market_confidence_score: 3
+implementation_confidence_score: 3
+reversibility_score: 3
+dependency_score: 2
+unknowns:
+  - Risk mitigation is malformed.
+score_rationale: Scalar mitigation should fail.
+recommendation_band: defer
+mitigations: keep it small
+implementation_approval: false
