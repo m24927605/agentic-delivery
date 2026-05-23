@@ -71,6 +71,7 @@ Block memo generation when:
 - evidence summary is empty;
 - options considered are missing;
 - risks and unknowns are missing;
+- POC or MVP recommendation lacks timebox or staffing assumptions;
 - next step is missing;
 - memo claims approval without manifest status.
 

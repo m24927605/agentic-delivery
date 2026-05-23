@@ -76,7 +76,9 @@ Block initialization when:
 - run id is invalid;
 - goal file path is not repo-local;
 - decision owner is missing;
+- requested-by role is missing;
 - requested response time is missing;
+- business question is missing;
 - response class is unknown.
 
 ## Validation Strategy

@@ -55,8 +55,8 @@ Scores use `1` to `5`; direction is explicit per field:
 
 | Field group | Direction |
 | --- | --- |
-| `business_impact_score`, `market_confidence_score`, `implementation_confidence_score`, `reversibility_score` | Higher is better. |
-| `technical_effort_score`, `integration_complexity_score`, `security_risk_score`, `dependency_score` | Higher is worse. |
+| `value_score`, `urgency_score`, `market_confidence_score`, `implementation_confidence_score`, `reversibility_score` | Higher is better. |
+| `effort_score`, `technical_risk_score`, `security_risk_score`, `dependency_score` | Higher is worse. |
 
 The recommendation band must account for both groups instead of averaging all
 scores as if higher always meant better.
