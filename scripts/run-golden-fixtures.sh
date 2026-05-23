@@ -16,12 +16,14 @@ BOSS_MEMO_BAD_PROFILE_RUN="${RUN_PREFIX}-boss-memo-bad-profile"
 BOSS_MEMO_BAD_ARTIFACTS_RUN="${RUN_PREFIX}-boss-memo-bad-artifacts"
 BOSS_DECISION_BAD_ID_RUN="${RUN_PREFIX}-boss-decision-bad-id"
 BOSS_DECISION_BAD_PROFILE_RUN="${RUN_PREFIX}-boss-decision-bad-profile"
+BOSS_IMPLEMENTATION_RUN="${RUN_PREFIX}-boss-implementation"
 REQUESTED_ARTIFACT="docs/architecture/example-requested-artifact.md"
 
 cleanup() {
   rm -rf \
     "agentic/runs/$PLANNING_RUN" \
     "agentic/runs/$NO_APPROVED_RUN" \
+    "agentic/runs/${NO_APPROVED_RUN}-impl" \
     "agentic/runs/$IMPLEMENTATION_RUN" \
     "agentic/runs/$BAD_SCHEMA_RUN" \
     "agentic/runs/$BOSS_IDEA_RUN" \
@@ -31,10 +33,14 @@ cleanup() {
     "agentic/runs/$BOSS_MEMO_BAD_ARTIFACTS_RUN" \
     "agentic/runs/$BOSS_DECISION_BAD_ID_RUN" \
     "agentic/runs/$BOSS_DECISION_BAD_PROFILE_RUN" \
+    "agentic/runs/$BOSS_IMPLEMENTATION_RUN" \
     "agentic/reviews/auto-doc-to-implementation/h16/$IMPLEMENTATION_RUN" \
+    "agentic/reviews/auto-doc-to-implementation/h16/$BOSS_IMPLEMENTATION_RUN" \
     "agentic/reviews/auto-doc-to-implementation/h18/$IMPLEMENTATION_RUN" \
+    "agentic/reviews/auto-doc-to-implementation/h18/$BOSS_IMPLEMENTATION_RUN" \
     "agentic/reviews/auto-doc-to-implementation/$PLANNING_RUN"
   rm -f "$REQUESTED_ARTIFACT"
+  rm -f /tmp/h20-*.log
 }
 
 cleanup
@@ -677,5 +683,9 @@ scripts/update-artifact-status.sh "$BOSS_DECISION_RUN" docs/architecture/boss-id
 scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-decision.yaml --run-id "$BOSS_DECISION_RUN" >/dev/null
 grep -q "boss_idea_decisions" "agentic/runs/$BOSS_DECISION_RUN/manifest.yaml"
 ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); d=Array(m["boss_idea_decisions"]); abort("missing decision audit fields") unless d.all? { |entry| entry["actor"].to_s != "" && entry["actor_role"].to_s != "" && entry["authorization"].is_a?(Hash) }' "agentic/runs/$BOSS_DECISION_RUN/manifest.yaml"
+RUN_ID="$BOSS_IMPLEMENTATION_RUN" scripts/init-implementation-run.sh --planning-run "$BOSS_DECISION_RUN" --artifact docs/architecture/boss-idea-modules/go-no-go-decision.md >/dev/null
+scripts/validate-manifest-schema.sh "$BOSS_IMPLEMENTATION_RUN" >/dev/null
+scripts/validate-implementation-run.sh "$BOSS_IMPLEMENTATION_RUN" >/dev/null
+ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); abort("expected boss idea implementation profile") unless m.dig("run", "profile") == "boss-idea-response"; paths=Array(m["approved_inputs"]).map { |input| input["path"] }; abort("missing approved boss idea input") unless paths.include?("docs/architecture/boss-idea-modules/go-no-go-decision.md")' "agentic/runs/$BOSS_IMPLEMENTATION_RUN/implementation-manifest.yaml"
 
 echo "golden fixtures ok"

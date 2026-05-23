@@ -390,9 +390,17 @@ Acceptance criteria:
 
 - fixture covers idea intake through no-go path;
 - fixture covers idea intake through POC-approved path;
-- negative checks include missing citation, missing timebox, missing metric,
-  unknown decision value, and unapproved implementation input;
-- privacy scan remains clean.
+- fixture covers generated template paths and static valid fixtures;
+- negative checks include missing citation, missing timebox, missing metric
+  threshold, unknown decision value, unapproved go or implementation input,
+  authorization failure, bad evidence or path input, and manifest authority
+  failure;
+- no-go records cleanly without approved implementation artifacts;
+- go cannot record until manifest artifacts are approved;
+- approved boss idea artifacts can seed an implementation manifest;
+- privacy scan remains clean;
+- fixture is deterministic, cleans up generated repo-local and temporary
+  output, and does not rely on external network access.
 
 Validation command:
 
