@@ -1,0 +1,674 @@
+version: v0.6
+purpose: Hermes action contract for the public-safe Agentic Delivery System scaffold.
+state_authority: repo_manifest
+identity_policy: agentic/identity-policy.yaml
+rules:
+  - Hermes memory is execution context only.
+  - Repo-local manifest is authoritative run state.
+  - Every action must map to a repo-local command.
+  - Hermes must not modify profile source of truth.
+  - Hermes must not simulate Claude Code agency-agents review.
+
+defaults:
+  shell: bash
+  working_directory: repo_root
+  review_only: true
+  max_code_review_rounds_per_slice: 5
+
+execute_mode:
+  dry_run_available_for_all_actions: true
+  mutating_actions_require_pre_post_validation: true
+  pre_validation_command: scripts/validate-agentic-system.sh
+  post_validation_command: scripts/validate-agentic-system.sh
+  operator_decision_actions:
+    - update_artifact_status
+    - run_artifact_review_loop
+    - run_implementation_review_loop
+  executable_actions:
+    - validate_scaffold
+    - start_planning_run
+    - update_run_state
+    - update_artifact_status
+    - generate_artifacts
+    - run_artifact_generation_agent
+    - run_artifact_review_loop
+    - create_artifact_revision_tasks
+    - start_implementation_run
+    - generate_implementation_task_graph
+    - dispatch_implementation_task
+    - execute_implementation_task
+    - run_implementation_review_loop
+    - validate_implementation_run
+    - validate_manifest_schema
+    - validate_artifact_templates
+    - privacy_scan_tracked
+    - run_golden_fixtures
+    - record_validation_evidence
+    - hermes_memory_sync
+    - hermes_scheduler_dry_run
+    - hermes_gateway_dry_run
+    - run_agency_review
+    - summarize_review
+    - report_run_status
+
+success_signal_types:
+  - stdout_contains
+  - file_exists
+  - manifest_path
+  - manifest_field_equals
+  - directory_has_files
+
+actions:
+  - id: validate_scaffold
+    purpose: Validate core Agentic Delivery System scaffold and selected profile.
+    mode: both
+    command_template: scripts/validate-agentic-system.sh
+    required_inputs: []
+    optional_inputs:
+      - PROFILE
+    reads:
+      - agentic/pipeline.yaml
+      - agentic/profiles/*.yaml
+      - scripts/*.sh
+    writes: []
+    success_signals:
+      - stdout_contains: agentic system scaffold ok
+    failure_states:
+      - blocked_schema_invalid
+      - blocked_missing_source
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: start_planning_run
+    purpose: Initialize a manifest-backed planning delivery run.
+    mode: planning
+    authorization:
+      action: planning.run.initialize
+    command_template: PROFILE={{profile}} RUN_ID={{run_id}} scripts/init-agentic-run.sh {{goal}}
+    required_inputs:
+      - goal
+    optional_inputs:
+      - profile
+      - run_id
+    reads:
+      - agentic/pipeline.yaml
+      - agentic/profiles/{{profile}}.yaml
+    writes:
+      - agentic/runs/{{run_id}}/manifest.yaml
+    success_signals:
+      - file_exists: agentic/runs/{{run_id}}/manifest.yaml
+      - manifest_path: agentic/runs/{{run_id}}/manifest.yaml
+      - manifest_field_equals:
+          path: run.state
+          value: initialized
+    failure_states:
+      - blocked_missing_source
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: update_run_state
+    purpose: Update planning or implementation run state using the shared state machine.
+    mode: both
+    authorization:
+      action: run.state.update
+    command_template: scripts/update-run-state.sh {{run_id}} {{state}}
+    required_inputs:
+      - run_id
+      - state
+    optional_inputs: []
+    reads:
+      - agentic/pipeline.yaml
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+    writes:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+    success_signals:
+      - manifest_field_equals:
+          path: run.state
+          value: "{{state}}"
+    failure_states:
+      - blocked_schema_invalid
+      - blocked_human_decision_required
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: update_artifact_status
+    purpose: Update one planning artifact lifecycle status and append approval audit history.
+    mode: planning
+    authorization:
+      action: artifact.status.update
+    command_template: scripts/update-artifact-status.sh {{run_id}} {{artifact_path}} {{status}} --reason {{reason}}
+    required_inputs:
+      - run_id
+      - artifact_path
+      - status
+      - reason
+    optional_inputs: []
+    input_contract:
+      run_id: "Planning run id containing the artifact."
+      artifact_path: "Artifact path exactly as recorded in agentic/runs/<run-id>/manifest.yaml."
+      status: "One of planned, drafted, reviewed, changes_requested, approved, rejected, deferred."
+      reason: "Public-safe audit reason for the status transition."
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+    writes:
+      - agentic/runs/{{run_id}}/manifest.yaml
+    success_signals:
+      - stdout_contains: updated artifact status
+      - manifest_path: agentic/runs/{{run_id}}/manifest.yaml
+    failure_states:
+      - blocked_missing_source
+      - blocked_schema_invalid
+      - blocked_human_decision_required
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: generate_artifacts
+    purpose: Generate or refresh drafted planning artifacts from the manifest without approving them.
+    mode: planning
+    authorization:
+      action: artifact.generate
+    command_template: scripts/generate-artifacts.sh {{run_id}}
+    required_inputs:
+      - run_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/profiles/*.yaml
+    writes:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - docs/**/*.md
+      - docs/**/*.yaml
+      - agentic/README.md
+    success_signals:
+      - stdout_contains: generated artifacts
+      - manifest_path: agentic/runs/{{run_id}}/manifest.yaml
+    failure_states:
+      - blocked_missing_source
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: run_artifact_generation_agent
+    purpose: Preview AI document-generation work for requested artifacts in a planning manifest.
+    mode: planning
+    authorization:
+      action: artifact.generate
+    command_template: scripts/run-artifact-generation-agent.sh --dry-run {{run_id}}
+    required_inputs:
+      - run_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+    writes:
+      - agentic/runs/{{run_id}}/artifact-generation/*.prompt.md
+    success_signals:
+      - stdout_contains: artifact generation agent dry-run
+    failure_states:
+      - blocked_missing_source
+      - blocked_schema_invalid
+      - blocked_human_decision_required
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: run_artifact_review_loop
+    purpose: Record one bounded artifact review loop round with ignored local evidence.
+    mode: planning
+    authorization:
+      action: artifact.review.record
+    command_template: scripts/run-artifact-review-loop.sh {{run_id}}
+    required_inputs:
+      - run_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/prompts/review-agent.md
+    writes:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/reviews/auto-doc-to-implementation/{{run_id}}/*.json
+    success_signals:
+      - stdout_contains: review loop completed
+    failure_states:
+      - blocked_review_failed
+      - blocked_human_decision_required
+    retry_policy:
+      retryable: true
+      max_attempts: 5
+      requires_human_decision_on_exhaustion: true
+
+  - id: create_artifact_revision_tasks
+    purpose: Convert artifact review findings into bounded revision tasks without approving artifacts.
+    mode: planning
+    authorization:
+      action: artifact.revision.create
+    command_template: scripts/create-artifact-revision-tasks.sh {{run_id}}
+    required_inputs:
+      - run_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/reviews/auto-doc-to-implementation/{{run_id}}/*.json
+    writes:
+      - agentic/runs/{{run_id}}/manifest.yaml
+    success_signals:
+      - stdout_contains: artifact revision tasks ready
+    failure_states:
+      - blocked_missing_source
+      - blocked_review_failed
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: run_agency_review
+    purpose: Run profile-declared Claude Code agency-agents through AIT for a planning run.
+    mode: planning
+    authorization:
+      action: agency.review.run
+    command_template: RUN_ID={{run_id}} scripts/run-agency-review.sh
+    required_inputs:
+      - run_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/prompts/review-agent.md
+      - agentic/profiles/*.yaml
+    writes:
+      - agentic/runs/{{run_id}}/review-outputs/*.json
+      - agentic/runs/{{run_id}}/manifest.yaml
+    success_signals:
+      - manifest_field_equals:
+          path: run.state
+          value: agency_review_completed
+      - directory_has_files:
+          path: agentic/runs/{{run_id}}/review-outputs
+          pattern: "*.json"
+    failure_states:
+      - blocked_review_failed
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: summarize_review
+    purpose: Summarize AIT review outputs for a planning run.
+    mode: planning
+    authorization:
+      action: review.summary.write
+    command_template: scripts/summarize-agency-review.sh {{run_id}}
+    required_inputs:
+      - run_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/review-outputs/*.json
+      - agentic/runs/{{run_id}}/manifest.yaml
+    writes:
+      - agentic/runs/{{run_id}}/review-summary.md
+      - agentic/runs/{{run_id}}/manifest.yaml
+    success_signals:
+      - file_exists: agentic/runs/{{run_id}}/review-summary.md
+    failure_states:
+      - blocked_review_failed
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: start_implementation_run
+    purpose: Initialize an implementation run from approved artifacts in a parent planning run.
+    mode: implementation
+    authorization:
+      action: implementation.run.initialize
+    command_template: RUN_ID={{run_id}} scripts/init-implementation-run.sh {{implementation_args}}
+    required_inputs:
+      - implementation_args
+    optional_inputs:
+      - run_id
+    input_contract:
+      implementation_args: "Complete CLI argument fragment containing --planning-run <id>; optional --artifact <path> arguments must also be approved in that parent planning run."
+      profile_override: "Pass --profile <id> inside implementation_args when an explicit implementation profile override is required."
+      aliases:
+        planning_run: "Runner convenience alias rendered as --planning-run <id>."
+        parent_planning_run: "Runner convenience alias rendered as --planning-run <id>."
+    reads:
+      - agentic/pipeline.yaml
+      - agentic/profiles/*.yaml
+      - agentic/runs/{{parent_planning_run}}/manifest.yaml
+    writes:
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+    success_signals:
+      - file_exists: agentic/runs/{{run_id}}/implementation-manifest.yaml
+      - manifest_path: agentic/runs/{{run_id}}/implementation-manifest.yaml
+      - manifest_field_equals:
+          path: run.mode
+          value: implementation
+    failure_states:
+      - blocked_missing_approved_artifact
+      - blocked_missing_source
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: generate_implementation_task_graph
+    purpose: Convert approved implementation inputs into bounded implementation tasks.
+    mode: implementation
+    authorization:
+      action: implementation.task.graph
+    command_template: scripts/generate-implementation-task-graph.sh {{run_id}}
+    required_inputs:
+      - run_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+    writes:
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+    success_signals:
+      - stdout_contains: implementation task graph ok
+      - manifest_path: agentic/runs/{{run_id}}/implementation-manifest.yaml
+    failure_states:
+      - blocked_missing_approved_artifact
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: dispatch_implementation_task
+    purpose: Dispatch one implementation task while enforcing disjoint write scope.
+    mode: implementation
+    authorization:
+      action: implementation.task.dispatch
+    command_template: scripts/dispatch-implementation-task.sh {{run_id}} {{task_id}}
+    required_inputs:
+      - run_id
+      - task_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+    writes:
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+      - agentic/runs/{{run_id}}/dispatch/{{task_id}}.yaml
+    success_signals:
+      - stdout_contains: worker dispatch ready
+    failure_states:
+      - blocked_overlapping_write_scope
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: execute_implementation_task
+    purpose: Execute one bounded implementation task and record ignored worker validation evidence.
+    mode: implementation
+    authorization:
+      action: implementation.task.execute
+    command_template: scripts/execute-implementation-task.sh {{run_id}} {{task_id}}
+    required_inputs:
+      - run_id
+      - task_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+    writes:
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+      - agentic/runs/{{run_id}}/worker/{{task_id}}/*.log
+      - agentic/reviews/auto-doc-to-implementation/h16/{{run_id}}/{{task_id}}/*.log
+    success_signals:
+      - stdout_contains: implementation task execution completed
+    failure_states:
+      - blocked_tests_failed
+      - blocked_overlapping_write_scope
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: run_implementation_review_loop
+    purpose: Record one bounded implementation review-fix round for a completed task.
+    mode: implementation
+    authorization:
+      action: implementation.review.record
+    command_template: scripts/run-implementation-review-loop.sh {{run_id}} {{task_id}}
+    required_inputs:
+      - run_id
+      - task_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+      - agentic/prompts/slice-code-review.md
+    writes:
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+      - agentic/reviews/auto-doc-to-implementation/h18/{{run_id}}/{{task_id}}/*.json
+    success_signals:
+      - stdout_contains: implementation review loop completed
+    failure_states:
+      - blocked_code_review_required
+      - blocked_human_decision_required
+    retry_policy:
+      retryable: true
+      max_attempts: 5
+      requires_human_decision_on_exhaustion: true
+
+  - id: validate_implementation_run
+    purpose: Validate implementation manifest structure and required inputs.
+    mode: implementation
+    command_template: scripts/validate-implementation-run.sh {{run_id}}
+    required_inputs:
+      - run_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+      - agentic/pipeline.yaml
+    writes: []
+    success_signals:
+      - stdout_contains: implementation manifest ok
+    failure_states:
+      - blocked_missing_approved_artifact
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: validate_manifest_schema
+    purpose: Validate planning or implementation manifest schema invariants.
+    mode: both
+    command_template: scripts/validate-manifest-schema.sh {{run_id}}
+    required_inputs:
+      - run_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+      - agentic/schemas/manifest.schema.yaml
+    writes: []
+    success_signals:
+      - stdout_contains: manifest schema ok
+    failure_states:
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: validate_artifact_templates
+    purpose: Validate generated and requested artifact sections for a planning run.
+    mode: planning
+    command_template: scripts/validate-artifact-templates.sh {{run_id}}
+    required_inputs:
+      - run_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/schemas/artifact-template.schema.yaml
+    writes: []
+    success_signals:
+      - stdout_contains: artifact templates ok
+    failure_states:
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: privacy_scan_tracked
+    purpose: Scan tracked files for public-safety and common secret assignment patterns.
+    mode: both
+    command_template: scripts/privacy-scan-tracked.sh
+    required_inputs: []
+    optional_inputs: []
+    reads:
+      - "*"
+    writes: []
+    success_signals:
+      - stdout_contains: privacy scan ok
+    failure_states:
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: run_golden_fixtures
+    purpose: Run public-safe golden regression fixtures for the agentic scaffold.
+    mode: both
+    authorization:
+      action: validation.run
+    command_template: scripts/run-golden-fixtures.sh
+    required_inputs: []
+    optional_inputs: []
+    reads:
+      - agentic/fixtures/**
+      - scripts/*.sh
+    writes:
+      - agentic/runs/h20-golden-*
+      - agentic/reviews/auto-doc-to-implementation/h16/h20-golden-*
+      - agentic/reviews/auto-doc-to-implementation/h18/h20-golden-*
+    success_signals:
+      - stdout_contains: golden fixtures ok
+    failure_states:
+      - blocked_schema_invalid
+      - blocked_tests_failed
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: record_validation_evidence
+    purpose: Record redacted local validation evidence under ignored review paths.
+    mode: both
+    authorization:
+      action: validation.record
+    command_template: scripts/record-validation-evidence.sh --slice {{slice_id}} -- {{validation_command}}
+    required_inputs:
+      - slice_id
+      - validation_command
+    optional_inputs: []
+    reads:
+      - scripts/*.sh
+    writes:
+      - agentic/reviews/auto-doc-to-implementation/{{slice_id}}/validation-round-*.log
+    success_signals:
+      - stdout_contains: validation evidence
+    failure_states:
+      - blocked_tests_failed
+    retry_policy:
+      retryable: true
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: report_run_status
+    purpose: Reconstruct and print run status from planning or implementation manifest.
+    mode: both
+    command_template: scripts/report-run-status.sh {{run_id}}
+    required_inputs:
+      - run_id
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/runs/{{run_id}}/implementation-manifest.yaml
+    writes: []
+    success_signals:
+      - stdout_contains: run_id
+      - stdout_contains: state
+    failure_states:
+      - blocked_missing_source
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: hermes_memory_sync
+    purpose: Dry-run the non-authoritative Hermes memory sync payload.
+    mode: both
+    command_template: scripts/hermes-memory-sync.sh --dry-run
+    required_inputs: []
+    optional_inputs: []
+    reads:
+      - agentic/runs/*/manifest.yaml
+      - agentic/runs/*/implementation-manifest.yaml
+    writes: []
+    success_signals:
+      - stdout_contains: hermes memory sync dry run
+    failure_states:
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: hermes_scheduler_dry_run
+    purpose: Preview resumable manifest-backed work without changing state.
+    mode: both
+    command_template: scripts/hermes-scheduler-dry-run.sh
+    required_inputs: []
+    optional_inputs: []
+    reads:
+      - agentic/runs/*/manifest.yaml
+      - agentic/runs/*/implementation-manifest.yaml
+    writes: []
+    success_signals:
+      - stdout_contains: hermes scheduler dry run
+    failure_states:
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: hermes_gateway_dry_run
+    purpose: List exactly what data crosses the Hermes adapter boundary.
+    mode: both
+    command_template: scripts/hermes-gateway-dry-run.sh
+    required_inputs: []
+    optional_inputs: []
+    reads:
+      - agentic/hermes-actions.yaml
+      - docs/architecture/hermes-orchestration-adapter.md
+    writes: []
+    success_signals:
+      - stdout_contains: hermes gateway dry run
+    failure_states:
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true

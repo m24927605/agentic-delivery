@@ -1,0 +1,274 @@
+pipeline:
+  id: agentic-delivery-system
+  version: v0.6
+  purpose: Public-safe repeatable delivery pipeline for planning artifacts and implementation delivery artifacts.
+  default_profile: default-delivery
+  profile_dir: agentic/profiles
+  identity_policy: agentic/identity-policy.yaml
+  modes:
+    - planning
+    - implementation
+  not_customer_facing: true
+  not_runtime_dependency: true
+
+states:
+  success:
+    - initialized
+    - strategy_loaded
+    - artifact_plan_created
+    - research_in_progress
+    - draft_artifacts_ready
+    - artifact_review_loop_completed
+    - schema_validation_passed
+    - agency_review_running
+    - agency_review_completed
+    - integration_in_progress
+    - final_artifacts_ready
+    - delivered
+    - implementation_planned
+    - implementation_task_graph_ready
+    - worker_dispatch_ready
+    - branch_prepared
+    - code_changes_ready
+    - tests_running
+    - tests_passed
+    - implementation_review_ready
+    - pr_ready
+    - release_ready
+    - hermes_sync_ready
+  failure:
+    - blocked_strategy_conflict
+    - blocked_missing_source
+    - blocked_review_failed
+    - blocked_schema_invalid
+    - blocked_human_decision_required
+    - blocked_missing_approved_artifact
+    - blocked_tests_failed
+    - blocked_code_review_required
+    - blocked_overlapping_write_scope
+    - blocked_authorization_failed
+
+agents:
+  orchestrator:
+    can_write: true
+    owns:
+      - task_graph
+      - artifact_manifest
+      - pipeline_state
+    must_check:
+      - strategy_gate
+  strategy_gate:
+    can_write: true
+    output: strategy_gate_report
+    checks:
+      - follows_profile_source_of_truth
+      - avoids_profile_rejected_directions
+      - separates_internal_tools_from_customer_facing_artifacts
+      - records_required_human_decisions
+  connector_research:
+    can_write: true
+    output:
+      - connector_docs_extraction
+      - connector_gap_list
+      - draft_connector_spec
+    restrictions:
+      - profile_specific_restrictions_apply
+  policy_mapping:
+    can_write: true
+    output:
+      - policy_input_mapping
+  evidence_mapping:
+    can_write: true
+    output:
+      - evidence_mapping
+    restrictions:
+      - profile_specific_restrictions_apply
+  document_builder:
+    can_write: true
+    output:
+      - proposal
+      - architecture
+      - adr
+      - schema
+      - roadmap
+      - review
+      - demo
+  artifact_generator:
+    can_write: true
+    output:
+      - drafted_artifacts
+    restrictions:
+      - must_not_approve_artifacts
+      - must_keep_generated_text_public_safe
+  schema_validation:
+    can_write: true
+    output: validation_report
+  ait_review_runner:
+    can_write: true
+    output: review_outputs
+    command_template: scripts/run-agency-review.sh
+  integration:
+    can_write: true
+    output:
+      - accepted_rejected_deferred_decisions
+      - revised_artifacts
+  implementation:
+    can_write: true
+    input:
+      - approved_artifacts
+      - accepted_decisions
+      - implementation_manifest
+    output:
+      - implementation_tasks
+      - branch_plan
+      - code_changes
+      - test_plan
+      - pr_checklist
+      - release_notes
+    restrictions:
+      - must_follow_profile_source_of_truth
+      - must_follow_approved_artifacts
+      - must_not_reinterpret_product_positioning
+  code_review:
+    can_write: false
+    input:
+      - implementation_manifest
+      - approved_artifacts
+      - code_changes
+      - test_results
+    output:
+      - implementation_review_findings
+    checks:
+      - conforms_to_approved_artifacts
+      - tests_cover_acceptance_criteria
+      - error_handling_and_rollback_are_defined
+      - security_impact_is_assessed
+  worker_dispatch:
+    can_write: true
+    input:
+      - implementation_tasks
+      - write_scopes
+    output:
+      - worker_dispatch_records
+    checks:
+      - refuses_overlapping_write_scopes
+      - records_validation_command
+      - records_rollback_notes
+  delivery:
+    can_write: true
+    output: final_summary
+
+review_board:
+  required_agents:
+    from_profile: true
+  default_agents:
+    - product-manager
+    - engineering-software-architect
+    - engineering-security-engineer
+    - compliance-auditor
+    - sales-engineer
+  execution:
+    adapter: claude-code
+    via: ait
+    apply: never
+    review: never
+    stdin: none
+    format: json
+
+required_artifacts:
+  from_profile: true
+
+validation:
+  scripts:
+    - scripts/validate-agentic-system.sh
+    - scripts/authorize-agentic-action.sh
+    - scripts/init-agentic-run.sh
+    - scripts/init-implementation-run.sh
+    - scripts/generate-artifacts.sh
+    - scripts/run-artifact-generation-agent.sh
+    - scripts/run-artifact-review-loop.sh
+    - scripts/create-artifact-revision-tasks.sh
+    - scripts/generate-implementation-task-graph.sh
+    - scripts/dispatch-implementation-task.sh
+    - scripts/execute-implementation-task.sh
+    - scripts/run-implementation-review-loop.sh
+    - scripts/privacy-scan-tracked.sh
+    - scripts/record-validation-evidence.sh
+    - scripts/redact-local-evidence.sh
+    - scripts/run-golden-fixtures.sh
+    - scripts/hermes-memory-sync.sh
+    - scripts/hermes-scheduler-dry-run.sh
+    - scripts/hermes-gateway-dry-run.sh
+    - scripts/report-run-status.sh
+    - scripts/run-hermes-action.sh
+    - scripts/run-agency-review.sh
+    - scripts/summarize-agency-review.sh
+    - scripts/strategy-gate-check.sh
+    - scripts/update-artifact-status.sh
+    - scripts/update-run-state.sh
+    - scripts/validate-artifact-templates.sh
+    - scripts/validate-hermes-actions.sh
+    - scripts/validate-identity-policy.sh
+    - scripts/validate-implementation-run.sh
+    - scripts/validate-manifest-schema.sh
+  syntax:
+    yaml:
+      - agentic/pipeline.yaml
+      - agentic/hermes-actions.yaml
+      - agentic/identity-policy.yaml
+      - agentic/schemas/artifact-template.schema.yaml
+      - agentic/schemas/identity-policy.schema.yaml
+      - agentic/schemas/manifest.schema.yaml
+      - docs/connectors/interface-spec.schema.yaml
+    bash:
+      - scripts/validate-agentic-system.sh
+      - scripts/authorize-agentic-action.sh
+      - scripts/init-agentic-run.sh
+      - scripts/init-implementation-run.sh
+      - scripts/generate-artifacts.sh
+      - scripts/run-artifact-generation-agent.sh
+      - scripts/run-artifact-review-loop.sh
+      - scripts/create-artifact-revision-tasks.sh
+      - scripts/generate-implementation-task-graph.sh
+      - scripts/dispatch-implementation-task.sh
+      - scripts/execute-implementation-task.sh
+      - scripts/run-implementation-review-loop.sh
+      - scripts/privacy-scan-tracked.sh
+      - scripts/record-validation-evidence.sh
+      - scripts/redact-local-evidence.sh
+      - scripts/run-golden-fixtures.sh
+      - scripts/hermes-memory-sync.sh
+      - scripts/hermes-scheduler-dry-run.sh
+      - scripts/hermes-gateway-dry-run.sh
+      - scripts/report-run-status.sh
+      - scripts/run-hermes-action.sh
+      - scripts/run-agency-review.sh
+      - scripts/summarize-agency-review.sh
+      - scripts/strategy-gate-check.sh
+      - scripts/update-artifact-status.sh
+      - scripts/update-run-state.sh
+      - scripts/validate-artifact-templates.sh
+      - scripts/validate-hermes-actions.sh
+      - scripts/validate-identity-policy.sh
+      - scripts/validate-implementation-run.sh
+      - scripts/validate-manifest-schema.sh
+
+memory:
+  from_profile: true
+
+decision_policy:
+  accepted:
+    criteria:
+      - conforms_to_profile_source_of_truth
+      - reduces_profile_defined_risk
+      - does_not_expand_profile_boundary
+  rejected:
+    criteria:
+      - matches_profile_rejected_direction
+      - introduces_unapproved_dependency
+      - makes_internal_tools_customer_facing
+  deferred:
+    criteria:
+      - useful_but_not_phase_0_or_phase_1
+      - requires_human_business_decision
+      - requires_pilot_customer_choice

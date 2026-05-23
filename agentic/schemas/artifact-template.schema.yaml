@@ -1,0 +1,48 @@
+schema_version: 1
+purpose: Required public-safe sections for generated and requested delivery artifacts.
+defaults:
+  required_markdown_headings:
+    - Purpose
+    - Scope
+    - Acceptance Criteria
+    - Validation
+    - Rollback
+    - Review Expectations
+kinds:
+  architecture:
+    required_markdown_headings:
+      - Purpose
+      - Scope
+      - Acceptance Criteria
+      - Validation
+      - Rollback
+      - Review Expectations
+  roadmap:
+    required_markdown_headings:
+      - Purpose
+      - Scope
+      - Acceptance Criteria
+      - Validation
+      - Rollback
+      - Review Expectations
+  adr:
+    required_markdown_headings:
+      - Purpose
+      - Decision
+      - Consequences
+      - Acceptance Criteria
+      - Validation
+      - Rollback
+      - Review Expectations
+  schema:
+    required_yaml_keys:
+      - schema_version
+      - purpose
+  other:
+    required_markdown_headings:
+      - Purpose
+      - Scope
+      - Acceptance Criteria
+      - Validation
+      - Rollback
+      - Review Expectations

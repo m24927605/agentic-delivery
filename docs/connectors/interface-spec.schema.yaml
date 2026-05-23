@@ -1,0 +1,602 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://example.invalid/schemas/connector-interface-spec.schema.yaml"
+title: "Connector Interface Spec"
+description: "Public-safe schema for describing how a connector maps source systems to policy inputs and decision evidence fields."
+type: object
+additionalProperties: false
+required:
+  - spec_version
+  - connector
+  - sources
+  - action_surfaces
+  - policy_input_mapping
+  - evidence_mapping
+  - health_signals
+  - failure_behavior
+  - connector_gaps
+properties:
+  spec_version:
+    type: string
+    description: "Connector interface spec 版本。"
+    pattern: "^v[0-9]+\\.[0-9]+$"
+  connector:
+    type: object
+    additionalProperties: false
+    required:
+      - id
+      - display_name
+      - domain
+      - ownership_model
+      - runtime_role
+    properties:
+      id:
+        type: string
+        pattern: "^[a-z0-9][a-z0-9_\\-]*$"
+      display_name:
+        type: string
+      domain:
+        type: string
+        enum:
+          - identity
+          - data_label
+          - observability
+          - siem
+          - guardrail_dlp
+          - approval_workflow
+          - action_surface
+          - internal_system
+      ownership_model:
+        type: string
+        enum:
+          - consume_existing_system
+          - proxy_action_surface
+          - export_event_only
+          - local_cache
+      runtime_role:
+        type: string
+        enum:
+          - policy_input_provider
+          - evidence_source
+          - enforcement_surface
+          - notification_export
+          - approval_orchestration
+      non_goal:
+        type: string
+        description: "明確說明此 connector 不取代的外部系統能力，例如不取代 IdP、SIEM 或 data catalog。"
+  sources:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - source_id
+        - source_type
+        - source_url_or_path
+        - captured_at
+        - content_hash
+        - crawl_tool
+        - allowed_for_local_index
+      properties:
+        source_id:
+          type: string
+        source_type:
+          type: string
+          enum:
+            - public_docs
+            - internal_docs
+            - sdk_repo
+            - openapi_spec
+            - manual_review
+        source_url_or_path:
+          type: string
+        captured_at:
+          type: string
+          format: date-time
+        content_hash:
+          type: string
+          pattern: "^sha256:[a-fA-F0-9]{64}$"
+        crawl_tool:
+          type: string
+          enum:
+            - crawl4ai
+            - manual
+            - existing_spec
+        crawl_tool_version:
+          type: string
+        allowed_for_local_index:
+          type: boolean
+        extraction_review_state:
+          type: string
+          enum:
+            - draft
+            - reviewed
+            - accepted
+            - rejected
+        reviewer_identity:
+          type: string
+        reviewed_at:
+          type: string
+          format: date-time
+        review_decision_reason:
+          type: string
+        data_owner_signoff:
+          type: string
+        legal_or_security_signoff:
+          type: string
+  auth_model:
+    type: object
+    additionalProperties: false
+    properties:
+      type:
+        type: string
+        enum:
+          - oauth2
+          - api_key
+          - mtls
+          - service_account
+          - delegated_user
+          - workload_identity
+          - unknown
+      scopes:
+        type: array
+        items:
+          type: string
+      secret_handling:
+        type: string
+        enum:
+          - local_secret_store
+          - customer_vault
+          - environment_variable
+          - not_applicable
+      delegation_supported:
+        type: boolean
+      notes:
+        type: string
+  agent_identity_attestation_model:
+    type: object
+    additionalProperties: false
+    description: "當 connector 或 action surface 依賴 agent identity 時，描述 agent.id 如何被驗證，避免 self-asserted identity 直接進 policy。"
+    properties:
+      supported_methods:
+        type: array
+        items:
+          type: string
+          enum:
+            - none
+            - shared_secret
+            - mtls
+            - spiffe
+            - signed_jwt
+            - workload_identity
+      minimum_required_for_high_risk_actions:
+        type: string
+        enum:
+          - mtls
+          - spiffe
+          - signed_jwt
+          - workload_identity
+      identity_source_field:
+        type: string
+  action_surfaces:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - action_surface_id
+        - type
+        - direction
+        - runtime_interception_point
+      properties:
+        action_surface_id:
+          type: string
+        type:
+          type: string
+          enum:
+            - mcp_tool
+            - http_api
+            - db_query
+            - email_send
+            - workflow
+            - webhook
+            - code_shell
+            - service_bus
+            - trace_intake
+            - event_export
+        direction:
+          type: string
+          enum:
+            - inbound_signal
+            - outbound_action
+            - bidirectional
+        runtime_interception_point:
+          type: string
+          description: "How the delivery runtime or integration layer intercepts or receives this action surface."
+        latency_budget_ms:
+          type: integer
+          minimum: 0
+        supports_dry_run:
+          type: boolean
+        supports_idempotency_key:
+          type: boolean
+  endpoints:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - endpoint_id
+        - method
+        - path
+        - purpose
+      properties:
+        endpoint_id:
+          type: string
+        method:
+          type: string
+          enum:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - EVENT
+            - WEBHOOK
+        path:
+          type: string
+        purpose:
+          type: string
+        auth_scopes:
+          type: array
+          items:
+            type: string
+        rate_limit_notes:
+          type: string
+        freshness_notes:
+          type: string
+        rate_limit_handling:
+          type: object
+          additionalProperties: false
+          properties:
+            strategy:
+              type: string
+              enum:
+                - backoff
+                - circuit_breaker
+                - queue
+                - drop_low_risk
+                - require_approval
+            retry_budget:
+              type: integer
+              minimum: 0
+            decision_on_rate_limited:
+              type: string
+              enum:
+                - block
+                - require_approval
+                - use_cached_context
+                - allow_low_risk_only
+  policy_input_mapping:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - input_name
+        - input_type
+        - source
+        - freshness_requirement
+        - required_for_decision
+        - failure_behavior
+      properties:
+        input_name:
+          type: string
+          examples:
+            - agent.id
+            - user.groups
+            - data.label
+            - destination.type
+            - guardrail.signal
+        input_type:
+          type: string
+          enum:
+            - identity
+            - service_account
+            - tool_metadata
+            - action_parameter
+            - data_label
+            - destination
+            - guardrail_signal
+            - dlp_signal
+            - approval_state
+            - trace_reference
+            - connector_health
+            - policy_version
+        source:
+          type: object
+          additionalProperties: false
+          required:
+            - connector_id
+            - source_kind
+          properties:
+            connector_id:
+              type: string
+            source_kind:
+              type: string
+              enum:
+                - endpoint
+                - event
+                - local_cache
+                - request_envelope
+                - policy_bundle
+                - manual_config
+            endpoint_id:
+              type: string
+            field_path:
+              type: string
+        freshness_requirement:
+          type: string
+          enum:
+            - per_request
+            - cached_seconds
+            - cached_minutes
+            - batch
+            - event_driven
+        max_staleness_seconds:
+          type: integer
+          minimum: 0
+        required_for_decision:
+          type: boolean
+        failure_behavior:
+          type: string
+          enum:
+            - block
+            - require_approval
+            - allow_with_partial_evidence
+            - use_cached
+            - mark_inferred
+        policy_use:
+          type: array
+          items:
+            type: string
+            enum:
+              - allow_condition
+              - block_condition
+              - require_approval_condition
+              - risk_score_input
+              - redaction_condition
+              - evidence_only
+  evidence_mapping:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - evidence_field
+        - source
+        - capture_mode
+        - completeness_impact
+        - integrity_control
+        - retention_sensitivity
+      properties:
+        evidence_field:
+          type: string
+          examples:
+            - identity_source
+            - data_label_source
+            - action_hash
+            - policy_version
+            - approval_reason
+            - trace_reference
+            - connector_health
+        source:
+          type: object
+          additionalProperties: false
+          required:
+            - connector_id
+            - source_kind
+          properties:
+            connector_id:
+              type: string
+            source_kind:
+              type: string
+              enum:
+                - endpoint
+                - event
+                - request_envelope
+                - decision_engine
+                - approval_workflow
+                - trace_context
+                - local_runtime
+            endpoint_id:
+              type: string
+            field_path:
+              type: string
+        capture_mode:
+          type: string
+          enum:
+            - store_plaintext
+            - store_hash
+            - store_hmac
+            - store_reference
+            - store_redacted
+            - store_boolean_presence
+        redaction_required:
+          type: boolean
+        store_plaintext_justification:
+          type: string
+          description: "只有 capture_mode=store_plaintext 時允許填寫；regulated/high sensitivity evidence 預設不得使用 plaintext。"
+        completeness_impact:
+          type: string
+          enum:
+            - complete
+            - partial
+            - missing
+            - inferred
+        integrity_control:
+          type: string
+          enum:
+            - hmac
+            - hash_chain
+            - signed_reference
+            - append_only_log
+            - none
+        retention_sensitivity:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+            - regulated
+        retention_policy:
+          type: object
+          additionalProperties: false
+          properties:
+            duration_days:
+              type: integer
+              minimum: 0
+            legal_hold_supported:
+              type: boolean
+            purge_on_subject_request:
+              type: boolean
+            jurisdiction_restriction:
+              type: string
+        redaction_record:
+          type: object
+          additionalProperties: false
+          properties:
+            redaction_policy_version:
+              type: string
+            redaction_reason:
+              type: string
+            pre_redaction_hash_required:
+              type: boolean
+  health_signals:
+    type: array
+    minItems: 1
+    description: "Production connector 至少需提供 heartbeat 與 latency_probe；若缺任一項，不得進 production connector pack。"
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - signal_name
+        - check_type
+        - decision_impact
+      properties:
+        signal_name:
+          type: string
+        check_type:
+          type: string
+          enum:
+            - heartbeat
+            - auth_check
+            - latency_probe
+            - rate_limit_probe
+            - stale_cache_check
+            - write_confirmation
+        healthy_threshold:
+          type: string
+        degraded_threshold:
+          type: string
+        decision_impact:
+          type: string
+          enum:
+            - no_impact
+            - mark_partial_evidence
+            - require_approval
+            - block_high_risk_actions
+            - block_all_actions
+  failure_behavior:
+    type: object
+    additionalProperties: false
+    required:
+      - default_decision
+      - evidence_completeness_when_unavailable
+      - siem_event_required
+    properties:
+      default_decision:
+        type: string
+        enum:
+          - block
+          - require_approval
+          - allow_low_risk_only
+          - use_cached_context
+      evidence_completeness_when_unavailable:
+        type: string
+        enum:
+          - partial
+          - missing
+          - inferred
+      siem_event_required:
+        type: boolean
+      reviewer_message:
+        type: string
+      per_action_class:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - action_class
+            - default_decision
+          properties:
+            action_class:
+              type: string
+            default_decision:
+              type: string
+              enum:
+                - block
+                - require_approval
+                - allow_low_risk_only
+                - use_cached_context
+  connector_gaps:
+    type: array
+    description: "Crawl4AI 或人工 review 發現的 connector 文件/API 缺口。即使沒有缺口，也需以空陣列明示。"
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - gap_id
+        - impact
+        - mitigation
+      properties:
+        gap_id:
+          type: string
+        impact:
+          type: string
+          enum:
+            - policy_accuracy
+            - latency
+            - evidence_completeness
+            - security
+            - compliance
+            - docs_freshness
+        mitigation:
+          type: string
+        review_owner:
+          type: string
+        status:
+          type: string
+          enum:
+            - open
+            - accepted_risk
+            - mitigated
+            - rejected
+  product_boundary:
+    type: object
+    additionalProperties: false
+    properties:
+      supports_runtime_action_decision:
+        type: boolean
+      supports_local_policy_enforcement:
+        type: boolean
+      supports_decision_evidence_reconstructability:
+        type: boolean
+      replaces_existing_system:
+        type: boolean
+      boundary_notes:
+        type: string

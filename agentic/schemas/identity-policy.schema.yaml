@@ -1,0 +1,54 @@
+schema_version: 1
+purpose: Public-safe schema contract for agentic identity and authorization policy.
+policy_file: agentic/identity-policy.yaml
+required_fields:
+  - version
+  - purpose
+  - identity_authority
+  - defaults.actor
+  - defaults.role
+  - roles
+  - actors
+  - actions
+  - separation_of_duty
+identity_authorities:
+  - repo_local_asserted_actor
+required_role_fields:
+  - id
+  - purpose
+required_actor_fields:
+  - id
+  - roles
+  - default_role
+required_action_fields:
+  - roles
+  - default_actor
+  - default_role
+validation_rules:
+  - role ids must be unique and non-empty
+  - actor ids must be unique and non-empty
+  - actor roles must reference declared roles
+  - actor default_role must be one of actor roles
+  - defaults.actor must reference a declared actor
+  - defaults.role must be allowed by defaults.actor
+  - action roles must reference declared roles
+  - action default_actor must reference a declared actor
+  - action default_role must be allowed by action default_actor
+  - action default_role must be one of action roles
+  - separation_of_duty action must reference a declared action
+audit_fields:
+  required_when_recording_mutation:
+    - actor
+    - actor_role
+    - authorization.action
+    - authorization.policy
+    - authorization.identity_authority
+  optional_context:
+    - authorization.reason
+    - authorization.separation_of_duty
+deferred_integrations:
+  - external_sso
+  - oidc_workload_identity
+  - github_team_mapping
+  - signed_commits
+  - signed_artifacts

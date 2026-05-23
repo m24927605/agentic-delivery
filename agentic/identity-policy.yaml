@@ -1,0 +1,199 @@
+version: 1
+purpose: Repo-local actor and authorization policy for the Agentic Delivery System scaffold.
+identity_authority: repo_local_asserted_actor
+authority_notes:
+  - Actor identity is asserted through repo-local command inputs or environment variables.
+  - This policy is a local enforcement boundary, not cryptographic identity proof.
+  - External SSO, OIDC, signed commits, and GitHub team bindings remain integration points.
+
+defaults:
+  actor: local-operator
+  role: operator
+
+roles:
+  - id: operator
+    purpose: Runs local delivery commands and records non-approval state.
+  - id: approver
+    purpose: Makes explicit artifact decisions for implementation consumption.
+  - id: document_builder
+    purpose: Drafts public-safe planning artifacts.
+  - id: implementation_worker
+    purpose: Executes bounded implementation tasks.
+  - id: code_reviewer
+    purpose: Reviews implementation output without directly applying changes.
+  - id: staff_board
+    purpose: Resolves exhausted review loops and documented residual risks.
+  - id: hermes_operator
+    purpose: Executes Hermes-mapped repo-local actions.
+  - id: validator
+    purpose: Runs validation and records validation evidence.
+
+actors:
+  - id: local-operator
+    display_name: Local Operator
+    roles:
+      - operator
+      - approver
+      - staff_board
+      - hermes_operator
+      - validator
+    default_role: operator
+  - id: document_builder
+    display_name: Document Builder Agent
+    roles:
+      - document_builder
+    default_role: document_builder
+  - id: artifact_generator
+    display_name: Artifact Generator Agent
+    roles:
+      - document_builder
+    default_role: document_builder
+  - id: implementation_agent
+    display_name: Implementation Agent
+    roles:
+      - implementation_worker
+    default_role: implementation_worker
+  - id: claude_code_cli
+    display_name: Claude Code CLI Reviewer
+    roles:
+      - code_reviewer
+    default_role: code_reviewer
+  - id: hermes
+    display_name: Hermes Orchestrator
+    roles:
+      - hermes_operator
+    default_role: hermes_operator
+  - id: staff_engineer
+    display_name: Staff Engineer
+    roles:
+      - implementation_worker
+      - code_reviewer
+      - staff_board
+    default_role: staff_board
+
+actions:
+  planning.run.initialize:
+    roles:
+      - operator
+      - hermes_operator
+    default_actor: local-operator
+    default_role: operator
+  run.state.update:
+    roles:
+      - operator
+      - staff_board
+      - hermes_operator
+    default_actor: local-operator
+    default_role: operator
+  artifact.status.update:
+    roles:
+      - operator
+      - approver
+      - staff_board
+    default_actor: local-operator
+    default_role: operator
+  artifact.approve:
+    roles:
+      - approver
+      - staff_board
+    default_actor: local-operator
+    default_role: approver
+  artifact.generate:
+    roles:
+      - document_builder
+      - operator
+      - hermes_operator
+    default_actor: artifact_generator
+    default_role: document_builder
+  artifact.review.record:
+    roles:
+      - code_reviewer
+      - staff_board
+      - hermes_operator
+    default_actor: claude_code_cli
+    default_role: code_reviewer
+  artifact.revision.create:
+    roles:
+      - operator
+      - document_builder
+      - staff_board
+      - hermes_operator
+    default_actor: local-operator
+    default_role: operator
+  agency.review.run:
+    roles:
+      - operator
+      - code_reviewer
+      - hermes_operator
+    default_actor: claude_code_cli
+    default_role: code_reviewer
+  review.summary.write:
+    roles:
+      - operator
+      - code_reviewer
+      - hermes_operator
+    default_actor: local-operator
+    default_role: operator
+  implementation.run.initialize:
+    roles:
+      - operator
+      - hermes_operator
+    default_actor: local-operator
+    default_role: operator
+  implementation.task.graph:
+    roles:
+      - operator
+      - implementation_worker
+      - hermes_operator
+    default_actor: local-operator
+    default_role: operator
+  implementation.task.dispatch:
+    roles:
+      - operator
+      - hermes_operator
+    default_actor: local-operator
+    default_role: operator
+  implementation.task.execute:
+    roles:
+      - implementation_worker
+    default_actor: implementation_agent
+    default_role: implementation_worker
+  implementation.review.record:
+    roles:
+      - code_reviewer
+      - staff_board
+    default_actor: claude_code_cli
+    default_role: code_reviewer
+  hermes.action.execute:
+    roles:
+      - hermes_operator
+    default_actor: hermes
+    default_role: hermes_operator
+  validation.run:
+    roles:
+      - operator
+      - validator
+      - hermes_operator
+    default_actor: local-operator
+    default_role: validator
+  validation.record:
+    roles:
+      - operator
+      - validator
+      - hermes_operator
+    default_actor: local-operator
+    default_role: validator
+
+separation_of_duty:
+  - id: artifact_approver_not_owner_agent
+    action: artifact.approve
+    rule: actor_must_differ_from_artifact_owner_agent
+    failure_state: blocked_authorization_failed
+  - id: implementation_reviewer_not_worker
+    action: implementation.review.record
+    rule: actor_must_differ_from_latest_worker_result_actor
+    failure_state: blocked_authorization_failed
+  - id: code_reviewer_is_review_only
+    action: implementation.task.execute
+    rule: code_reviewer_role_cannot_execute_worker_task
+    failure_state: blocked_authorization_failed

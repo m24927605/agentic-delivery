@@ -1,0 +1,141 @@
+schema_version: 1
+purpose: Public-safe field contract for Agentic Delivery planning and implementation manifests.
+compatibility:
+  missing_schema_version: legacy_v0_warn_only_for_ignored_runs
+  unsupported_schema_version: blocked_schema_invalid
+migration_policy:
+  before_version_bump:
+    - add a validator that accepts the old and new version during transition
+    - document required field changes and rollback notes
+    - provide a repo-local migration command or an explicit manual migration procedure
+    - keep legacy ignored run manifests readable until the transition window ends
+  legacy_v0_to_v1:
+    - add schema_version: 1
+    - preserve run, artifacts, approved_inputs, implementation_tasks, review_attempts, worker_dispatches, validation, and release_notes when present
+    - initialize missing worker_results and write_scope_leases to empty arrays for implementation manifests
+planning_manifest:
+  required_fields:
+    - schema_version
+    - run.id
+    - run.state
+    - run.profile
+    - run.profile_path
+    - artifacts
+  artifact_required_fields:
+    - path
+    - status
+    - owner_agent
+    - status_history
+  artifact_statuses:
+    - planned
+    - drafted
+    - reviewed
+    - changes_requested
+    - approved
+    - rejected
+    - deferred
+  optional_fields:
+    - run.goal
+    - run.goal_file
+    - run.state_history
+    - run.updated_at
+    - source_of_truth
+    - decisions
+    - generated_artifacts
+    - agent_generated_artifacts
+    - artifact_revision_tasks
+    - review_attempts
+    - validation
+    - artifacts.kind
+    - artifacts.purpose
+    - artifacts.decision
+    - artifacts.decision_reason
+    - artifacts.generation
+    - artifacts.generation_instructions
+    - artifacts.requested_by
+    - artifacts.revision_tasks
+    - artifacts.review_state
+    - artifacts.strategy_gate_status
+    - artifacts.updated_by_role
+    - artifacts.status_history.actor_role
+    - artifacts.status_history.authorization
+    - decisions.actor_role
+    - decisions.authorization
+implementation_manifest:
+  required_fields:
+    - schema_version
+    - run.id
+    - run.mode
+    - run.state
+    - run.profile
+    - run.profile_path
+    - approved_inputs
+    - implementation_tasks
+    - test_plan
+    - review_attempts
+    - worker_dispatches
+    - worker_results
+    - write_scope_leases
+    - validation
+    - release_notes
+  task_required_fields:
+    - task_id
+    - state
+    - source_artifact
+    - write_scope
+    - acceptance_criteria
+    - validation_command
+    - rollback_notes
+    - ait_review_path
+  optional_fields:
+    - run.parent_planning_run
+    - run.state_history
+    - run.updated_at
+    - source_of_truth
+    - implementation_task_graph
+    - branch_plan
+    - code_ownership
+    - pr_checklist
+    - approved_inputs.role
+    - approved_inputs.approval_reason
+    - implementation_tasks.owner
+    - implementation_tasks.scope
+    - implementation_tasks.files_touched
+    - implementation_tasks.dependencies
+    - implementation_tasks.worker_result
+    - implementation_tasks.updated_at
+    - worker_dispatches.actor
+    - worker_dispatches.actor_role
+    - worker_dispatches.authorization
+    - review_attempts.actor
+    - review_attempts.actor_role
+    - review_attempts.authorization
+    - worker_results.actor
+    - worker_results.actor_role
+    - worker_results.authorization
+    - worker_dispatches.instructions
+    - worker_results.changed_files
+    - worker_results.validation_exit_status
+    - write_scope_leases.identity_proof
+    - release_notes.operator_notes
+  task_states:
+    - planned
+    - dispatched
+    - running
+    - code_changes_ready
+    - tests_running
+    - tests_passed
+    - implementation_review_ready
+    - completed
+    - blocked_tests_failed
+    - blocked_code_review_required
+    - blocked_overlapping_write_scope
+  worker_result_statuses:
+    - succeeded
+    - failed
+    - blocked
+  lease_states:
+    - active
+    - released
+    - stale
+    - blocked
