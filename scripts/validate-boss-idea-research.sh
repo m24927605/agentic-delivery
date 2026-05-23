@@ -41,22 +41,25 @@ claim_required_fields = Array(schema_root["claim_required_fields"])
 claims.each do |claim|
   BossIdea.required_mapping!(claim, "research.claims[]")
   BossIdea.require_fields!(claim, claim_required_fields, "research.claims[]")
-  ids = Array(claim["source_ids"]).map(&:to_s)
-  BossIdea.fail_with("research.claims[].source_ids must not be empty") if ids.empty?
+  ids = BossIdea.require_array!(claim, "source_ids", "research.claims[]").map(&:to_s)
   missing = ids - source_ids
   BossIdea.fail_with("research.claims[] references unknown sources: #{missing.join(", ")}") unless missing.empty?
 end
 
 inference_required_fields = Array(schema_root["inference_required_fields"])
 allowed_inference_labels = Array(schema_root["allowed_inference_labels"]).map(&:to_s)
-Array(frontmatter["inferences"]).each do |inference|
+inferences = if frontmatter.key?("inferences")
+               BossIdea.require_array!(frontmatter, "inferences", "research")
+             else
+               []
+             end
+inferences.each do |inference|
   BossIdea.required_mapping!(inference, "research.inferences[]")
   BossIdea.require_fields!(inference, inference_required_fields, "research.inferences[]")
   unless allowed_inference_labels.include?(inference["label"].to_s)
     BossIdea.fail_with("research.inferences[].label must be inference, unknown, or unsupported")
   end
-  ids = Array(inference["source_ids"]).map(&:to_s)
-  BossIdea.fail_with("research.inferences[].source_ids must not be empty") if ids.empty?
+  ids = BossIdea.require_array!(inference, "source_ids", "research.inferences[]").map(&:to_s)
   missing = ids - source_ids
   BossIdea.fail_with("research.inferences[] references unknown sources: #{missing.join(", ")}") unless missing.empty?
 end

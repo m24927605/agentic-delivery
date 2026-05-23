@@ -139,6 +139,21 @@ grep -q "boss_idea_intake" "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
 ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); abort("expected all artifacts planned") unless m.fetch("artifacts").all? { |a| a["status"] == "planned" }' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
 
 scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/valid-research.md >/dev/null
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-missing-sources.md >/tmp/h20-boss-research-missing-sources.log 2>&1; then
+  echo "expected missing research sources to fail" >&2
+  exit 1
+fi
+grep -q "sources" /tmp/h20-boss-research-missing-sources.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-missing-claims.md >/tmp/h20-boss-research-missing-claims.log 2>&1; then
+  echo "expected missing research claims to fail" >&2
+  exit 1
+fi
+grep -q "claims" /tmp/h20-boss-research-missing-claims.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-sources-not-array.md >/tmp/h20-boss-research-sources-type.log 2>&1; then
+  echo "expected non-array research sources to fail" >&2
+  exit 1
+fi
+grep -q "sources must be a non-empty array" /tmp/h20-boss-research-sources-type.log
 if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-missing-citation.md >/tmp/h20-boss-research.log 2>&1; then
   echo "expected missing research citation to fail" >&2
   exit 1
@@ -164,6 +179,16 @@ if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/in
   exit 1
 fi
 grep -q "label" /tmp/h20-boss-research-inference.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-missing-inference-text.md >/tmp/h20-boss-research-inference-text.log 2>&1; then
+  echo "expected missing inference text to fail" >&2
+  exit 1
+fi
+grep -q "inferences.*text" /tmp/h20-boss-research-inference-text.log
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-missing-inference-source-ids.md >/tmp/h20-boss-research-inference-sources.log 2>&1; then
+  echo "expected missing inference source ids to fail" >&2
+  exit 1
+fi
+grep -q "inferences.*source_ids" /tmp/h20-boss-research-inference-sources.log
 if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-duplicate-source.md >/tmp/h20-boss-research-duplicate.log 2>&1; then
   echo "expected duplicate source id to fail" >&2
   exit 1
