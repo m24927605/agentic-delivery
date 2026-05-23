@@ -297,12 +297,74 @@ if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-r
 fi
 grep -q "cannot approve implementation" /tmp/h20-boss-score-artifact-status-padding.log
 
+scripts/generate-boss-decision-memo.sh --output "agentic/runs/$BOSS_IDEA_RUN/generated-memo.md" "$BOSS_IDEA_RUN" >/dev/null
+scripts/validate-boss-decision-memo.sh "agentic/runs/$BOSS_IDEA_RUN/generated-memo.md" >/dev/null
+scripts/generate-boss-decision-memo.sh --recommendation mvp --output "agentic/runs/$BOSS_IDEA_RUN/generated-mvp-memo.md" "$BOSS_IDEA_RUN" >/dev/null
+scripts/validate-boss-decision-memo.sh "agentic/runs/$BOSS_IDEA_RUN/generated-mvp-memo.md" >/dev/null
+if scripts/generate-boss-decision-memo.sh --output "agentic/runs/$BOSS_IDEA_RUN/missing-run-memo.md" "${BOSS_IDEA_RUN}-missing" >/tmp/h20-boss-memo-missing-run.log 2>&1; then
+  echo "expected decision memo generation for missing run to fail" >&2
+  exit 1
+fi
+grep -q "blocked_missing_source" /tmp/h20-boss-memo-missing-run.log
+if scripts/generate-boss-decision-memo.sh --output ../bad-memo.md "$BOSS_IDEA_RUN" >/tmp/h20-boss-memo-output-path.log 2>&1; then
+  echo "expected bad decision memo output path to fail" >&2
+  exit 1
+fi
+grep -q "invalid output path" /tmp/h20-boss-memo-output-path.log
+if scripts/generate-boss-decision-memo.sh --recommendation ship_now --output "agentic/runs/$BOSS_IDEA_RUN/bad-band-memo.md" "$BOSS_IDEA_RUN" >/tmp/h20-boss-memo-bad-band.log 2>&1; then
+  echo "expected bad decision memo recommendation generation to fail" >&2
+  exit 1
+fi
+grep -q "invalid recommendation" /tmp/h20-boss-memo-bad-band.log
+
 scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/valid-memo.md >/dev/null
+scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/valid-mvp-memo.md >/dev/null
+scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/valid-memo-negated-approval.md >/dev/null
 if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-missing-options.md >/tmp/h20-boss-memo.log 2>&1; then
   echo "expected memo missing options to fail" >&2
   exit 1
 fi
 grep -q "Options Considered" /tmp/h20-boss-memo.log
+if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-invalid-recommendation.md >/tmp/h20-boss-memo-recommendation.log 2>&1; then
+  echo "expected memo invalid recommendation to fail" >&2
+  exit 1
+fi
+grep -q "recommendation is invalid" /tmp/h20-boss-memo-recommendation.log
+if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-missing-timebox.md >/tmp/h20-boss-memo-timebox.log 2>&1; then
+  echo "expected memo missing timebox to fail" >&2
+  exit 1
+fi
+grep -q "requires Timebox" /tmp/h20-boss-memo-timebox.log
+if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-missing-staffing.md >/tmp/h20-boss-memo-staffing.log 2>&1; then
+  echo "expected memo missing staffing to fail" >&2
+  exit 1
+fi
+grep -q "requires Staffing" /tmp/h20-boss-memo-staffing.log
+if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-approval-claim-unapproved.md >/tmp/h20-boss-memo-approval.log 2>&1; then
+  echo "expected memo approval claim without approved status to fail" >&2
+  exit 1
+fi
+grep -q "cannot claim approval" /tmp/h20-boss-memo-approval.log
+if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-recommendation-mismatch.md >/tmp/h20-boss-memo-mismatch.log 2>&1; then
+  echo "expected memo recommendation mismatch to fail" >&2
+  exit 1
+fi
+grep -q "recommendation mismatch" /tmp/h20-boss-memo-mismatch.log
+if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-bad-artifact-status.md >/tmp/h20-boss-memo-status.log 2>&1; then
+  echo "expected memo bad artifact status to fail" >&2
+  exit 1
+fi
+grep -q "artifact_status is invalid" /tmp/h20-boss-memo-status.log
+if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-missing-frontmatter.md >/tmp/h20-boss-memo-frontmatter.log 2>&1; then
+  echo "expected memo missing frontmatter to fail" >&2
+  exit 1
+fi
+grep -q "artifact_status is invalid" /tmp/h20-boss-memo-frontmatter.log
+if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-missing-time-and-staffing.md >/tmp/h20-boss-memo-time-section.log 2>&1; then
+  echo "expected memo missing time and staffing section to fail" >&2
+  exit 1
+fi
+grep -q "Time And Staffing" /tmp/h20-boss-memo-time-section.log
 
 scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/valid-poc-plan.md >/dev/null
 if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-missing-timebox.md >/tmp/h20-boss-poc.log 2>&1; then

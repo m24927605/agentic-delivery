@@ -17,3 +17,9 @@ schema:
     - no_go
     - poc
     - mvp
+  artifact_statuses:
+    - drafted
+    - reviewed
+    - approved
+    - rejected
+  implementation_approval_assertion_pattern: '^Implementation Approval:\s*approved for implementation\s*$'
