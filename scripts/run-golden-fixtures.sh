@@ -41,6 +41,7 @@ cleanup() {
     "agentic/reviews/auto-doc-to-implementation/$PLANNING_RUN"
   rm -f "$REQUESTED_ARTIFACT"
   rm -f /tmp/h20-*.log
+  rm -f /tmp/h20-*.yaml
 }
 
 cleanup
@@ -234,6 +235,50 @@ if find "agentic/runs/$BOSS_IDEA_RUN" -name "*.tmp" -print | grep -q .; then
   echo "expected market research collection failures to clean tmp files" >&2
   exit 1
 fi
+
+echo "fixture: boss idea Crawl4AI market discovery"
+scripts/crawl-boss-idea-market.sh --dry-run "$BOSS_IDEA_RUN" >/tmp/h20-boss-market-crawl-dry.log
+grep -q "competitor_landscape" /tmp/h20-boss-market-crawl-dry.log
+scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider fixture --output "agentic/runs/$BOSS_IDEA_RUN/market-search-results.yaml" >/dev/null
+test -f "agentic/runs/$BOSS_IDEA_RUN/market-search-results.yaml"
+test -f "agentic/runs/$BOSS_IDEA_RUN/market-candidate-urls.yaml"
+test -f "agentic/runs/$BOSS_IDEA_RUN/crawl4ai/crawl-log.yaml"
+test -f "agentic/runs/$BOSS_IDEA_RUN/market-research.md"
+scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
+grep -q "boss_idea_market_crawl" "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+git check-ignore -q "agentic/runs/$BOSS_IDEA_RUN/crawl4ai/raw/competitor-public-workflow.md"
+ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected fixture provider") unless c["provider"] == "fixture"; abort("expected source count") unless c["source_count"].to_i >= 2; abort("market crawl must not approve artifacts") unless m.fetch("artifacts").all? { |a| a["status"] == "planned" }' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+
+if BOSS_IDEA_LIVE_CRAWL=1 scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider fixture --output "agentic/runs/$BOSS_IDEA_RUN/bad-live-fixture-results.yaml" >/tmp/h20-boss-market-crawl-live-fixture.log 2>&1; then
+  echo "expected live fixture crawl to fail" >&2
+  exit 1
+fi
+grep -q "approved live provider" /tmp/h20-boss-market-crawl-live-fixture.log
+
+if BOSS_IDEA_CRAWLER_USER_AGENT=bad scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider fixture --output "agentic/runs/$BOSS_IDEA_RUN/bad-user-agent-results.yaml" >/tmp/h20-boss-market-crawl-user-agent.log 2>&1; then
+  echo "expected bad crawler user-agent to fail" >&2
+  exit 1
+fi
+grep -q "user-agent" /tmp/h20-boss-market-crawl-user-agent.log
+
+cat >"agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-localhost.yaml" <<'YAML'
+candidates:
+  - id: bad-localhost
+    query_id: competitor_landscape
+    url: http://127.0.0.1/internal
+    title: Bad localhost source
+    snippet: Should fail before crawl.
+    provider: fixture
+    source_type: vendor_docs
+    signal: competitor
+    claim: This unsafe local target must not be crawled.
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/competitor-workflow.html
+YAML
+if scripts/crawl-boss-idea-market.sh --force --results-only "$BOSS_IDEA_RUN" --seeds "agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-localhost.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/bad-localhost-results.yaml" >/tmp/h20-boss-market-crawl-localhost.log 2>&1; then
+  echo "expected localhost market crawl seed to fail" >&2
+  exit 1
+fi
+grep -q "blocked IP" /tmp/h20-boss-market-crawl-localhost.log
 
 scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/valid-research.md >/dev/null
 if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-missing-sources.md >/tmp/h20-boss-research-missing-sources.log 2>&1; then

@@ -1,0 +1,41 @@
+candidates:
+  - id: competitor-public-workflow
+    query_id: competitor_landscape
+    url: https://example.com/competitor/workflow
+    title: Example competitor workflow documentation
+    snippet: Public workflow documentation describes how a comparable product handles idea triage.
+    provider: fixture
+    source_type: vendor_docs
+    signal: competitor
+    claim: Comparable tooling already covers executive intake with evidence handoff.
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/competitor-workflow.html
+  - id: mainstream-delivery-report
+    query_id: mainstream_practices
+    url: https://example.com/reports/delivery-practices
+    title: Example mainstream delivery practice report
+    snippet: Public report summarizes common evidence collection and delivery triage practices.
+    provider: fixture
+    source_type: public_report
+    signal: mainstream_practice
+    claim: Common practice favors cited analysis prior to reserving engineering effort.
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/mainstream-practices.html
+  - id: implementation-pattern-docs
+    query_id: implementation_patterns
+    url: https://example.com/docs/implementation-patterns
+    title: Example implementation pattern documentation
+    snippet: Public product documentation outlines bounded discovery and validation patterns.
+    provider: fixture
+    source_type: product_docs
+    signal: implementation_pattern
+    claim: Bounded validation flows separate evidence capture from delivery approval.
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/implementation-patterns.html
+  - id: operator-workflow-note
+    query_id: operator_workflow
+    url: https://example.com/analyst/operator-workflow
+    title: Example operator workflow analysis
+    snippet: Public analysis compares operator expectations for decision support workflows.
+    provider: fixture
+    source_type: analyst_note
+    signal: differentiator
+    claim: Manager value rises when ambiguous requests become reviewable choices quickly.
+    content_path: agentic/fixtures/boss-idea-response/market-crawl-pages/operator-workflow.html

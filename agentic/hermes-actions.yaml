@@ -43,6 +43,7 @@ execute_mode:
     - validate_manifest_schema
     - validate_artifact_templates
     - validate_boss_idea_research
+    - crawl_boss_idea_market
     - score_boss_idea_feasibility
     - generate_boss_decision_memo
     - validate_boss_decision_memo
@@ -616,6 +617,46 @@ actions:
     failure_states:
       - blocked_schema_invalid
       - blocked_missing_source
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: crawl_boss_idea_market
+    purpose: Generate deterministic Crawl4AI-compatible market discovery evidence for a boss idea run.
+    mode: planning
+    authorization:
+      action: artifact.generate
+    command_template: scripts/crawl-boss-idea-market.sh {{run_id}} --from-query-pack --search-provider {{search_provider}} --output {{search_results}}
+    required_inputs:
+      - run_id
+      - search_provider
+      - search_results
+    optional_inputs:
+      - results_only
+      - seeds
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/schemas/boss-idea-market-candidate-urls.schema.yaml
+      - agentic/schemas/boss-idea-market-search.schema.yaml
+      - agentic/schemas/boss-idea-research.schema.yaml
+      - agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml
+    writes:
+      - "{{search_results}}"
+      - agentic/runs/{{run_id}}/market-research-query-pack.yaml
+      - agentic/runs/{{run_id}}/market-candidate-urls.yaml
+      - agentic/runs/{{run_id}}/crawl4ai/crawl-log.yaml
+      - agentic/runs/{{run_id}}/crawl4ai/raw/
+      - agentic/runs/{{run_id}}/market-research.md
+      - agentic/runs/{{run_id}}/manifest.yaml
+    success_signals:
+      - stdout_contains: boss idea market crawl collected
+      - file_exists: "{{search_results}}"
+      - manifest_path: agentic/runs/{{run_id}}/manifest.yaml
+    failure_states:
+      - blocked_schema_invalid
+      - blocked_missing_source
+      - blocked_human_decision_required
     retry_policy:
       retryable: true
       max_attempts: 2

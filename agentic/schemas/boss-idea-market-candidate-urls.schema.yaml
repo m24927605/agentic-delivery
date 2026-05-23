@@ -1,0 +1,15 @@
+schema:
+  id: boss-idea-market-candidate-urls
+  required_fields:
+    - candidates
+  candidate_required_fields:
+    - query_id
+    - url
+    - title
+    - snippet
+    - provider
+    - retrieved_at
+  allowed_providers:
+    - fixture
+    - seed_replay
+  authority_note: Candidate URLs are evidence inputs only. They cannot approve artifacts, budget, roadmap, or implementation.

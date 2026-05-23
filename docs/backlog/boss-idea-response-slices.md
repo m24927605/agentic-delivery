@@ -571,6 +571,19 @@ Staff+ escalation path: if round 5 fails, keep the BIR-09 provider contract and
 decide whether to split URL safety, Crawl4AI execution, and result
 normalization into separate implementation slices.
 
+Implementation sub-slices:
+
+- BIR-10A deterministic adapter foundation: completed. Adds the repo-local
+  command, candidate URL schema, fixture seed provider, URL safety checks,
+  ignored raw evidence, normalized market-search output, Hermes registration,
+  and golden fixture coverage without live internet.
+- BIR-10B live Crawl4AI execution: planned. Adds approved live Crawl4AI runtime
+  execution behind `--live` and `BOSS_IDEA_LIVE_CRAWL=1`, with version pinning,
+  live smoke evidence, and no default golden internet dependency.
+- BIR-10C approved query-to-URL provider: planned. Adds the first Staff
+  Security Engineer and Staff Software Architect approved live search provider
+  using the `BOSS_IDEA_SEARCH_<PROVIDER>_*` credential contract.
+
 ## Review Expectations
 
 Each slice must pass validation and AIT plus Claude Code review before the next

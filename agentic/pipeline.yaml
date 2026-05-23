@@ -212,6 +212,7 @@ validation:
     - scripts/validate-implementation-run.sh
     - scripts/validate-manifest-schema.sh
     - scripts/init-boss-idea-run.sh
+    - scripts/crawl-boss-idea-market.sh
     - scripts/collect-boss-idea-research.sh
     - scripts/validate-boss-idea-research.sh
     - scripts/score-boss-idea-feasibility.sh
@@ -231,6 +232,7 @@ validation:
       - agentic/schemas/identity-policy.schema.yaml
       - agentic/schemas/manifest.schema.yaml
       - agentic/schemas/boss-idea-intake.schema.yaml
+      - agentic/schemas/boss-idea-market-candidate-urls.schema.yaml
       - agentic/schemas/boss-idea-market-search.schema.yaml
       - agentic/schemas/boss-idea-research.schema.yaml
       - agentic/schemas/boss-idea-scorecard.schema.yaml
@@ -270,6 +272,7 @@ validation:
       - scripts/validate-implementation-run.sh
       - scripts/validate-manifest-schema.sh
       - scripts/init-boss-idea-run.sh
+      - scripts/crawl-boss-idea-market.sh
       - scripts/collect-boss-idea-research.sh
       - scripts/validate-boss-idea-research.sh
       - scripts/score-boss-idea-feasibility.sh
