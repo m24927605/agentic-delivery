@@ -60,6 +60,8 @@ async def crawl(args: argparse.Namespace) -> dict[str, object]:
     markdown = markdown_text(getattr(result, "markdown", ""))
     if not markdown.strip():
         fail("Crawl4AI returned no usable markdown", 5)
+    if len(markdown.encode("utf-8")) > args.max_response_bytes:
+        fail("Crawl4AI markdown exceeds max response bytes", 7)
 
     truncated = False
     if len(markdown) > args.max_markdown_chars:
@@ -80,6 +82,7 @@ def main() -> None:
     parser.add_argument("--url", required=True)
     parser.add_argument("--user-agent", required=True)
     parser.add_argument("--timeout-ms", type=int, required=True)
+    parser.add_argument("--max-response-bytes", type=int, required=True)
     parser.add_argument("--max-markdown-chars", type=int, required=True)
     args = parser.parse_args()
 

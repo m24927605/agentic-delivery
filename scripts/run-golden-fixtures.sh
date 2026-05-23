@@ -286,6 +286,60 @@ if BOSS_IDEA_LIVE_CRAWL=1 scripts/crawl-boss-idea-market.sh --live --force --res
 fi
 grep -q "live_approved" /tmp/h20-boss-market-crawl-live-seed.log
 
+cat >"agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-helper.py" <<'PY'
+#!/usr/bin/env python3
+import json
+print(json.dumps({
+    "ok": True,
+    "url": "https://93.184.216.34/live-seed",
+    "crawl4ai_version": "fake-crawl4ai",
+    "markdown": "Remote page content about public research options.",
+    "truncated": False,
+}))
+PY
+chmod +x "agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-helper.py"
+cat >"agentic/runs/$BOSS_IDEA_RUN/valid-market-crawl-live-seed.yaml" <<'YAML'
+candidates:
+  - id: approved-live-seed
+    query_id: competitor_landscape
+    url: https://93.184.216.34/live-seed
+    title: Approved live seed
+    snippet: Uses a fake helper to exercise live_seed metadata without external network.
+    provider: live_seed
+    source_type: vendor_docs
+    signal: competitor
+    claim: Runtime metadata is captured for the approved live crawl.
+    live_approved: true
+YAML
+BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_CRAWL4AI_PYTHON=python3 BOSS_IDEA_CRAWL4AI_HELPER="agentic/runs/$BOSS_IDEA_RUN/fake-crawl4ai-helper.py" scripts/crawl-boss-idea-market.sh --live --force --results-only "$BOSS_IDEA_RUN" --seeds "agentic/runs/$BOSS_IDEA_RUN/valid-market-crawl-live-seed.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/live-seed-results.yaml" >/dev/null
+ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected live_seed mode") unless c["mode"] == "live_seed"; abort("expected fake crawl4ai version") unless c["crawl4ai_version"] == "fake-crawl4ai"' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+
+if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_CRAWL4AI_HELPER=scripts/lib/missing-crawl4ai-helper.py scripts/crawl-boss-idea-market.sh --live --force --results-only "$BOSS_IDEA_RUN" --seeds "agentic/runs/$BOSS_IDEA_RUN/valid-market-crawl-live-seed.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/bad-missing-helper-results.yaml" >/tmp/h20-boss-market-crawl-helper-missing.log 2>&1; then
+  echo "expected missing Crawl4AI helper to fail" >&2
+  exit 1
+fi
+grep -q "helper not found" /tmp/h20-boss-market-crawl-helper-missing.log
+
+cat >"agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-live-redirect.yaml" <<'YAML'
+candidates:
+  - id: live-redirect-private
+    query_id: competitor_landscape
+    url: https://93.184.216.34/live-redirect
+    redirect_url: http://10.0.0.1/private
+    title: Live redirect to private target
+    snippet: Should fail before Crawl4AI runtime is invoked.
+    provider: live_seed
+    source_type: vendor_docs
+    signal: competitor
+    claim: Live seed redirect policy blocks private targets.
+    live_approved: true
+YAML
+if BOSS_IDEA_LIVE_CRAWL=1 scripts/crawl-boss-idea-market.sh --live --force --results-only "$BOSS_IDEA_RUN" --seeds "agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-live-redirect.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/bad-live-redirect-results.yaml" >/tmp/h20-boss-market-crawl-live-redirect.log 2>&1; then
+  echo "expected live redirect-to-private market crawl seed to fail" >&2
+  exit 1
+fi
+grep -q "blocked IP" /tmp/h20-boss-market-crawl-live-redirect.log
+
 if scripts/crawl-boss-idea-market.sh --force --results-only "$BOSS_IDEA_RUN" --search-provider exotic --seeds agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml --output "agentic/runs/$BOSS_IDEA_RUN/bad-provider-results.yaml" >/tmp/h20-boss-market-crawl-provider.log 2>&1; then
   echo "expected exotic seed provider to fail" >&2
   exit 1

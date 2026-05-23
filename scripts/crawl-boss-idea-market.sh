@@ -239,10 +239,11 @@ end
 
 def blocked_ip?(value)
   ip = IPAddr.new(value.to_s)
+  multicast = IPAddr.new("224.0.0.0/4").include?(ip) || IPAddr.new("ff00::/8").include?(ip)
   ip.loopback? ||
     ip.private? ||
     ip.link_local? ||
-    ip.multicast? ||
+    multicast ||
     ip.to_s.start_with?("169.254.")
 rescue IPAddr::InvalidAddressError
   false
@@ -379,11 +380,13 @@ def crawl4ai_markdown(candidate, user_agent)
     "--url", candidate["url"].to_s,
     "--user-agent", user_agent,
     "--timeout-ms", (POLICY.fetch("page_timeout_seconds") * 1000).to_s,
+    "--max-response-bytes", POLICY.fetch("max_response_bytes").to_s,
     "--max-markdown-chars", POLICY.fetch("max_markdown_chars").to_s
   )
   unless status.success?
     begin
-      error_payload = JSON.parse(stderr.lines.last.to_s)
+      error_line = stderr.lines.reverse.find { |line| line.include?('"ok"') && line.include?('"error"') }
+      error_payload = JSON.parse(error_line.to_s)
       raise ArgumentError, error_payload["error"].to_s
     rescue JSON::ParserError
       raise ArgumentError, stderr.to_s.strip.empty? ? "Crawl4AI helper failed" : stderr.to_s.strip
@@ -486,7 +489,7 @@ crawl_log = {
   "schema_version" => 1,
   "run_id" => run_id,
   "provider" => search_provider,
-  "mode" => search_provider == "fixture" ? "fixture" : "seed_replay",
+  "mode" => search_provider,
   "user_agent" => ua,
   "policy" => POLICY,
   "entries" => []
@@ -634,7 +637,7 @@ end
 manifest = load_manifest(MANIFEST_PATH)
 manifest["boss_idea_market_crawl"] = {
   "provider" => search_provider,
-  "mode" => search_provider == "fixture" ? "fixture" : "seed_replay",
+  "mode" => search_provider,
   "crawl4ai_version" => crawl_log.fetch("entries").map { |entry| entry["crawl4ai_version"] }.compact.first || "not-used-fixture",
   "candidate_urls_path" => CANDIDATE_URLS_PATH,
   "results_path" => output_path,
