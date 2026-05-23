@@ -1,0 +1,6 @@
+decision: go
+reason: Go without approved artifacts should fail.
+evidence_artifacts:
+  - docs/architecture/boss-idea-modules/go-no-go-decision.md
+metric_result: metric passed
+implementation_artifacts_approved: false

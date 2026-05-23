@@ -1,0 +1,19 @@
+schema:
+  id: boss-decision-memo
+  required_sections:
+    - Recommendation
+    - Decision Needed
+    - Context
+    - Evidence Summary
+    - Options Considered
+    - Recommended Path
+    - Time And Staffing
+    - Risks And Unknowns
+    - Success Metrics
+    - Next Step
+  allowed_recommendations:
+    - do
+    - defer
+    - no_go
+    - poc
+    - mvp

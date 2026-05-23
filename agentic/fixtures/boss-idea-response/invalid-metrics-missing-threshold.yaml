@@ -1,0 +1,9 @@
+plan_timebox_days: 5
+metrics:
+  - name: reviewed decision memo
+    method: inspect tracked memo artifact
+    owner_role: Staff QA Architect
+    decision_mapping: supports go or no_go decision
+    evidence_path: agentic/reviews/boss-idea-response/metrics/result.md
+    timebox_days: 5
+    auto_decision: false

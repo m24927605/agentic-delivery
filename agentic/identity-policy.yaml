@@ -183,6 +183,14 @@ actions:
       - hermes_operator
     default_actor: local-operator
     default_role: validator
+  boss_idea.decision.record:
+    roles:
+      - operator
+      - approver
+      - staff_board
+      - hermes_operator
+    default_actor: local-operator
+    default_role: operator
 
 separation_of_duty:
   - id: artifact_approver_not_owner_agent

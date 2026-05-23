@@ -43,7 +43,7 @@ Every slice must include:
 
 ## BIR-00: Documentation And Profile Baseline
 
-Status: planned.
+Status: completed.
 
 Owner role: Staff Software Architect.
 
@@ -94,7 +94,7 @@ module docs, reduce scope, or accept a documented documentation risk.
 
 ## BIR-01: Idea Intake Command
 
-Status: planned.
+Status: completed.
 
 Owner role: Staff Platform Engineer.
 
@@ -136,7 +136,7 @@ manifest initialization.
 
 ## BIR-02: Market Research Evidence Validator
 
-Status: planned.
+Status: completed.
 
 Owner role: Market Research Lead.
 
@@ -176,7 +176,7 @@ mapping, or defer automated validation.
 
 ## BIR-03: Feasibility Scorecard Validator
 
-Status: planned.
+Status: completed.
 
 Owner role: Staff QA Architect.
 
@@ -216,7 +216,7 @@ from recommendation mapping.
 
 ## BIR-04: Decision Memo Generator And Validator
 
-Status: planned.
+Status: completed.
 
 Owner role: Staff Technical Writer.
 
@@ -256,7 +256,7 @@ template.
 
 ## BIR-05: POC/MVP Timebox Planner
 
-Status: planned.
+Status: completed.
 
 Owner role: Engineering Manager.
 
@@ -295,7 +295,7 @@ generation.
 
 ## BIR-06: Success Metrics Validator
 
-Status: planned.
+Status: completed.
 
 Owner role: Staff QA Architect.
 
@@ -333,7 +333,7 @@ manifest integration.
 
 ## BIR-07: Go/No-Go Decision Recorder
 
-Status: planned.
+Status: completed.
 
 Owner role: Product Strategy Lead.
 
@@ -374,7 +374,7 @@ decision recording manual through `update-artifact-status.sh`.
 
 ## BIR-08: Integrated Golden Fixture
 
-Status: planned.
+Status: completed.
 
 Owner role: Staff Platform Engineer.
 

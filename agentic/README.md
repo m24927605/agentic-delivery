@@ -258,6 +258,39 @@ Every generated task records scope, files touched, write scope, acceptance
 criteria, validation command, rollback notes, AIT review path, and dependency
 metadata. Task descriptions must stay public-safe and repo-local.
 
+## Boss Idea Response
+
+The `boss-idea-response` profile handles urgent or ambiguous executive ideas
+without turning raw ideas directly into implementation work.
+
+Initialize and validate a structured idea intake:
+
+```bash
+scripts/init-boss-idea-run.sh --dry-run agentic/fixtures/boss-idea-response/valid-idea.md
+RUN_ID=<run-id> scripts/init-boss-idea-run.sh agentic/fixtures/boss-idea-response/valid-idea.md
+```
+
+Validate each downstream artifact independently:
+
+```bash
+scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/valid-research.md
+scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/valid-scorecard.yaml
+scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/valid-memo.md
+scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/valid-poc-plan.md
+scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/valid-metrics.yaml
+scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-decision.yaml
+```
+
+Decision recording is authorized and manifest-backed:
+
+```bash
+scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-decision.yaml --run-id <run-id>
+```
+
+Boss idea commands preserve the same delivery boundary as the base scaffold:
+research is evidence only, scoring is advisory only, go/no-go does not bypass
+artifact approval, and implementation still requires approved artifacts.
+
 Dispatch one task:
 
 ```bash

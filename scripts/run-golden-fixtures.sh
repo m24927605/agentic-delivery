@@ -9,6 +9,8 @@ PLANNING_RUN="${RUN_PREFIX}-planning"
 NO_APPROVED_RUN="${RUN_PREFIX}-no-approved"
 IMPLEMENTATION_RUN="${RUN_PREFIX}-implementation"
 BAD_SCHEMA_RUN="${RUN_PREFIX}-bad-schema"
+BOSS_IDEA_RUN="${RUN_PREFIX}-boss-idea"
+BOSS_DECISION_RUN="${RUN_PREFIX}-boss-decision"
 REQUESTED_ARTIFACT="docs/architecture/example-requested-artifact.md"
 
 cleanup() {
@@ -17,6 +19,8 @@ cleanup() {
     "agentic/runs/$NO_APPROVED_RUN" \
     "agentic/runs/$IMPLEMENTATION_RUN" \
     "agentic/runs/$BAD_SCHEMA_RUN" \
+    "agentic/runs/$BOSS_IDEA_RUN" \
+    "agentic/runs/$BOSS_DECISION_RUN" \
     "agentic/reviews/auto-doc-to-implementation/h16/$IMPLEMENTATION_RUN" \
     "agentic/reviews/auto-doc-to-implementation/h18/$IMPLEMENTATION_RUN" \
     "agentic/reviews/auto-doc-to-implementation/$PLANNING_RUN"
@@ -100,5 +104,79 @@ if scripts/run-implementation-review-loop.sh "$IMPLEMENTATION_RUN" impl-001 --re
   exit 1
 fi
 grep -q "implementation must change before another review round" /tmp/h20-repeat-review.log
+
+echo "fixture: boss idea response validators"
+scripts/init-boss-idea-run.sh --dry-run agentic/fixtures/boss-idea-response/valid-idea.md >/dev/null
+if scripts/init-boss-idea-run.sh --dry-run agentic/fixtures/boss-idea-response/invalid-idea-missing-owner.md >/tmp/h20-boss-idea-owner.log 2>&1; then
+  echo "expected missing boss idea owner to fail" >&2
+  exit 1
+fi
+grep -q "decision_owner" /tmp/h20-boss-idea-owner.log
+if scripts/init-boss-idea-run.sh --dry-run agentic/fixtures/boss-idea-response/invalid-idea-missing-response-time.md >/tmp/h20-boss-idea-time.log 2>&1; then
+  echo "expected missing boss idea response time to fail" >&2
+  exit 1
+fi
+grep -q "requested_response_time" /tmp/h20-boss-idea-time.log
+if scripts/init-boss-idea-run.sh --dry-run agentic/fixtures/boss-idea-response/invalid-idea-missing-response-class.md >/tmp/h20-boss-idea-response-class.log 2>&1; then
+  echo "expected missing boss idea response class to fail" >&2
+  exit 1
+fi
+grep -q "response_class" /tmp/h20-boss-idea-response-class.log
+
+RUN_ID="$BOSS_IDEA_RUN" scripts/init-boss-idea-run.sh agentic/fixtures/boss-idea-response/valid-idea.md >/dev/null
+scripts/validate-manifest-schema.sh "$BOSS_IDEA_RUN" >/dev/null
+grep -q "boss_idea_intake" "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+
+scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/valid-research.md >/dev/null
+if scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/invalid-research-missing-citation.md >/tmp/h20-boss-research.log 2>&1; then
+  echo "expected missing research citation to fail" >&2
+  exit 1
+fi
+grep -q "source_ids" /tmp/h20-boss-research.log
+
+scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/valid-scorecard.yaml >/dev/null
+if scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/invalid-scorecard-high-risk-no-mitigation.yaml >/tmp/h20-boss-score.log 2>&1; then
+  echo "expected high risk without mitigation to fail" >&2
+  exit 1
+fi
+grep -q "mitigations" /tmp/h20-boss-score.log
+
+scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/valid-memo.md >/dev/null
+if scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/invalid-memo-missing-options.md >/tmp/h20-boss-memo.log 2>&1; then
+  echo "expected memo missing options to fail" >&2
+  exit 1
+fi
+grep -q "Options Considered" /tmp/h20-boss-memo.log
+
+scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/valid-poc-plan.md >/dev/null
+if scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/invalid-poc-plan-missing-timebox.md >/tmp/h20-boss-poc.log 2>&1; then
+  echo "expected missing POC timebox to fail" >&2
+  exit 1
+fi
+grep -q "timebox_days" /tmp/h20-boss-poc.log
+
+scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/valid-metrics.yaml >/dev/null
+if scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/invalid-metrics-missing-threshold.yaml >/tmp/h20-boss-metrics.log 2>&1; then
+  echo "expected missing metric threshold to fail" >&2
+  exit 1
+fi
+grep -q "threshold" /tmp/h20-boss-metrics.log
+
+scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-decision.yaml >/dev/null
+scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-no-go-decision.yaml >/dev/null
+if scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/invalid-decision-unknown.yaml >/tmp/h20-boss-decision-unknown.log 2>&1; then
+  echo "expected unknown decision value to fail" >&2
+  exit 1
+fi
+grep -q "invalid" /tmp/h20-boss-decision-unknown.log
+if scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/invalid-decision-unapproved-go.yaml >/tmp/h20-boss-decision-unapproved.log 2>&1; then
+  echo "expected unapproved go decision to fail" >&2
+  exit 1
+fi
+grep -q "approved artifacts" /tmp/h20-boss-decision-unapproved.log
+
+RUN_ID="$BOSS_DECISION_RUN" scripts/init-boss-idea-run.sh agentic/fixtures/boss-idea-response/valid-idea.md >/dev/null
+scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-decision.yaml --run-id "$BOSS_DECISION_RUN" >/dev/null
+grep -q "boss_idea_decisions" "agentic/runs/$BOSS_DECISION_RUN/manifest.yaml"
 
 echo "golden fixtures ok"

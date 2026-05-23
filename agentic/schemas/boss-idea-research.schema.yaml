@@ -1,0 +1,13 @@
+schema:
+  id: boss-idea-research
+  required_fields:
+    - sources
+    - claims
+  source_required_fields:
+    - id
+    - title
+    - source_type
+    - access_date
+  claim_required_fields:
+    - text
+    - source_ids

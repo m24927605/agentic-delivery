@@ -1,0 +1,10 @@
+schema:
+  id: boss-idea-success-metrics
+  metric_required_fields:
+    - name
+    - method
+    - threshold
+    - owner_role
+    - decision_mapping
+    - evidence_path
+    - timebox_days

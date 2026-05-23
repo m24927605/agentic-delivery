@@ -71,6 +71,28 @@ core_files=(
   scripts/validate-identity-policy.sh
   scripts/validate-implementation-run.sh
   scripts/validate-manifest-schema.sh
+  scripts/init-boss-idea-run.sh
+  scripts/validate-boss-idea-research.sh
+  scripts/score-boss-idea-feasibility.sh
+  scripts/generate-boss-decision-memo.sh
+  scripts/validate-boss-decision-memo.sh
+  scripts/plan-boss-idea-poc-mvp.sh
+  scripts/validate-boss-idea-poc-mvp.sh
+  scripts/validate-boss-idea-success-metrics.sh
+  scripts/record-boss-idea-decision.sh
+  scripts/validate-boss-idea-decision.sh
+  scripts/lib/boss_idea.rb
+  agentic/schemas/boss-idea-research.schema.yaml
+  agentic/schemas/boss-idea-scorecard.schema.yaml
+  agentic/schemas/boss-decision-memo.schema.yaml
+  agentic/schemas/boss-idea-success-metrics.schema.yaml
+  agentic/fixtures/boss-idea-response/valid-idea.md
+  agentic/fixtures/boss-idea-response/valid-research.md
+  agentic/fixtures/boss-idea-response/valid-scorecard.yaml
+  agentic/fixtures/boss-idea-response/valid-memo.md
+  agentic/fixtures/boss-idea-response/valid-poc-plan.md
+  agentic/fixtures/boss-idea-response/valid-metrics.yaml
+  agentic/fixtures/boss-idea-response/valid-decision.yaml
 )
 
 for file in "${core_files[@]}"; do
@@ -159,13 +181,24 @@ for script in \
   scripts/validate-hermes-actions.sh \
   scripts/validate-identity-policy.sh \
   scripts/validate-implementation-run.sh \
-  scripts/validate-manifest-schema.sh; do
+  scripts/validate-manifest-schema.sh \
+  scripts/init-boss-idea-run.sh \
+  scripts/validate-boss-idea-research.sh \
+  scripts/score-boss-idea-feasibility.sh \
+  scripts/generate-boss-decision-memo.sh \
+  scripts/validate-boss-decision-memo.sh \
+  scripts/plan-boss-idea-poc-mvp.sh \
+  scripts/validate-boss-idea-poc-mvp.sh \
+  scripts/validate-boss-idea-success-metrics.sh \
+  scripts/record-boss-idea-decision.sh \
+  scripts/validate-boss-idea-decision.sh; do
   bash -n "$script"
 done
 
 scripts/privacy-scan-tracked.sh >/dev/null
 scripts/validate-identity-policy.sh >/dev/null
 scripts/validate-manifest-schema.sh --all >/dev/null
+ruby -c scripts/lib/boss_idea.rb >/dev/null
 
 for cmd in ait "$SHELL"; do
   if ! command -v "$cmd" >/dev/null 2>&1; then

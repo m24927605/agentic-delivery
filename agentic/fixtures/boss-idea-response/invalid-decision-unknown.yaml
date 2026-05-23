@@ -1,0 +1,6 @@
+decision: maybe
+reason: Unknown decision value should fail.
+evidence_artifacts:
+  - docs/architecture/boss-idea-modules/go-no-go-decision.md
+metric_result: inconclusive
+implementation_artifacts_approved: false

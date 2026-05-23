@@ -1,0 +1,16 @@
+schema:
+  id: boss-idea-scorecard
+  score_range:
+    min: 1
+    max: 5
+  higher_is_better:
+    - value_score
+    - urgency_score
+    - market_confidence_score
+    - implementation_confidence_score
+    - reversibility_score
+  higher_is_worse:
+    - effort_score
+    - technical_risk_score
+    - security_risk_score
+    - dependency_score

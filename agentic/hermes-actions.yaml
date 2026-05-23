@@ -27,6 +27,7 @@ execute_mode:
   executable_actions:
     - validate_scaffold
     - start_planning_run
+    - start_boss_idea_run
     - update_run_state
     - update_artifact_status
     - generate_artifacts
@@ -41,6 +42,15 @@ execute_mode:
     - validate_implementation_run
     - validate_manifest_schema
     - validate_artifact_templates
+    - validate_boss_idea_research
+    - score_boss_idea_feasibility
+    - generate_boss_decision_memo
+    - validate_boss_decision_memo
+    - plan_boss_idea_poc_mvp
+    - validate_boss_idea_poc_mvp
+    - validate_boss_idea_success_metrics
+    - record_boss_idea_decision
+    - validate_boss_idea_decision
     - privacy_scan_tracked
     - run_golden_fixtures
     - record_validation_evidence
@@ -135,6 +145,36 @@ actions:
     failure_states:
       - blocked_schema_invalid
       - blocked_human_decision_required
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: start_boss_idea_run
+    purpose: Initialize a boss idea response planning run from a structured idea file.
+    mode: planning
+    authorization:
+      action: planning.run.initialize
+    command_template: RUN_ID={{run_id}} scripts/init-boss-idea-run.sh --goal-file {{goal_file}}
+    required_inputs:
+      - goal_file
+      - run_id
+    optional_inputs: []
+    reads:
+      - agentic/pipeline.yaml
+      - agentic/profiles/boss-idea-response.yaml
+      - "{{goal_file}}"
+    writes:
+      - agentic/runs/{{run_id}}/manifest.yaml
+    success_signals:
+      - stdout_contains: boss idea intake initialized
+      - manifest_path: agentic/runs/{{run_id}}/manifest.yaml
+      - manifest_field_equals:
+          path: run.profile
+          value: boss-idea-response
+    failure_states:
+      - blocked_missing_source
+      - blocked_schema_invalid
     retry_policy:
       retryable: false
       max_attempts: 1
@@ -521,6 +561,196 @@ actions:
     writes: []
     success_signals:
       - stdout_contains: artifact templates ok
+    failure_states:
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: validate_boss_idea_research
+    purpose: Validate source-backed market research evidence for a boss idea run.
+    mode: planning
+    command_template: scripts/validate-boss-idea-research.sh {{research_file}}
+    required_inputs:
+      - research_file
+    optional_inputs: []
+    reads:
+      - "{{research_file}}"
+      - agentic/schemas/boss-idea-research.schema.yaml
+    writes: []
+    success_signals:
+      - stdout_contains: boss idea research ok
+    failure_states:
+      - blocked_schema_invalid
+      - blocked_missing_source
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: score_boss_idea_feasibility
+    purpose: Validate and summarize boss idea feasibility scorecard inputs.
+    mode: planning
+    command_template: scripts/score-boss-idea-feasibility.sh --dry-run {{scorecard_file}}
+    required_inputs:
+      - scorecard_file
+    optional_inputs: []
+    reads:
+      - "{{scorecard_file}}"
+      - agentic/schemas/boss-idea-scorecard.schema.yaml
+    writes: []
+    success_signals:
+      - stdout_contains: boss idea feasibility ok
+    failure_states:
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: generate_boss_decision_memo
+    purpose: Generate a public-safe boss decision memo template for a planning run.
+    mode: planning
+    authorization:
+      action: artifact.generate
+    command_template: scripts/generate-boss-decision-memo.sh --output {{memo_file}} {{run_id}}
+    required_inputs:
+      - run_id
+      - memo_file
+    optional_inputs: []
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/schemas/boss-decision-memo.schema.yaml
+    writes:
+      - "{{memo_file}}"
+    success_signals:
+      - stdout_contains: boss decision memo generated
+      - file_exists: "{{memo_file}}"
+    failure_states:
+      - blocked_schema_invalid
+      - blocked_missing_source
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: validate_boss_decision_memo
+    purpose: Validate a boss decision memo contract.
+    mode: planning
+    command_template: scripts/validate-boss-decision-memo.sh {{memo_file}}
+    required_inputs:
+      - memo_file
+    optional_inputs: []
+    reads:
+      - "{{memo_file}}"
+      - agentic/schemas/boss-decision-memo.schema.yaml
+    writes: []
+    success_signals:
+      - stdout_contains: boss decision memo ok
+    failure_states:
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: plan_boss_idea_poc_mvp
+    purpose: Generate a POC or MVP timebox plan template.
+    mode: planning
+    command_template: scripts/plan-boss-idea-poc-mvp.sh {{work_type}}
+    required_inputs:
+      - work_type
+    optional_inputs: []
+    reads:
+      - docs/architecture/boss-idea-modules/poc-mvp-timebox.md
+    writes: []
+    success_signals:
+      - stdout_contains: "work_type:"
+    failure_states:
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: validate_boss_idea_poc_mvp
+    purpose: Validate a POC or MVP timebox plan.
+    mode: planning
+    command_template: scripts/validate-boss-idea-poc-mvp.sh {{plan_file}}
+    required_inputs:
+      - plan_file
+    optional_inputs: []
+    reads:
+      - "{{plan_file}}"
+    writes: []
+    success_signals:
+      - stdout_contains: boss idea poc mvp ok
+    failure_states:
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: validate_boss_idea_success_metrics
+    purpose: Validate boss idea success metrics before decision recording.
+    mode: planning
+    command_template: scripts/validate-boss-idea-success-metrics.sh {{metrics_file}}
+    required_inputs:
+      - metrics_file
+    optional_inputs: []
+    reads:
+      - "{{metrics_file}}"
+      - agentic/schemas/boss-idea-success-metrics.schema.yaml
+    writes: []
+    success_signals:
+      - stdout_contains: boss idea success metrics ok
+    failure_states:
+      - blocked_schema_invalid
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: record_boss_idea_decision
+    purpose: Record an authorized boss idea go/no-go style decision in a planning manifest.
+    mode: planning
+    authorization:
+      action: boss_idea.decision.record
+    command_template: scripts/record-boss-idea-decision.sh {{decision_file}} --run-id {{run_id}}
+    required_inputs:
+      - decision_file
+      - run_id
+    optional_inputs: []
+    reads:
+      - "{{decision_file}}"
+      - agentic/runs/{{run_id}}/manifest.yaml
+    writes:
+      - agentic/runs/{{run_id}}/manifest.yaml
+    success_signals:
+      - stdout_contains: boss idea decision recorded
+      - manifest_path: agentic/runs/{{run_id}}/manifest.yaml
+    failure_states:
+      - blocked_schema_invalid
+      - blocked_authorization_failed
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: validate_boss_idea_decision
+    purpose: Validate a boss idea go/no-go style decision record.
+    mode: planning
+    command_template: scripts/validate-boss-idea-decision.sh {{decision_file}}
+    required_inputs:
+      - decision_file
+    optional_inputs: []
+    reads:
+      - "{{decision_file}}"
+    writes: []
+    success_signals:
+      - stdout_contains: boss idea decision ok
     failure_states:
       - blocked_schema_invalid
     retry_policy:
