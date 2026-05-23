@@ -90,6 +90,9 @@ The BIR-10 implementation must include:
 - search-provider fixture mode;
 - URL safety tests for blocked IP classes, redirects, and DNS rebinding;
 - robots and rate-limit tests;
+- user-agent, redirect-chain DNS rebinding, content-truncation log,
+  markdown-only output, circuit-breaker, and raw-evidence ignored-path tests
+  required by the BIR-10 module validation strategy;
 - generated `market-search-results.yaml` validation;
 - downstream `collect-boss-idea-research.sh` validation;
 - AIT plus Claude Code review.

@@ -494,6 +494,7 @@ Files touched:
 - `agentic/profiles/boss-idea-response.yaml`
 - `docs/backlog/boss-idea-response-slices.md`
 - `scripts/crawl-boss-idea-market.sh`
+- `agentic/schemas/boss-idea-market-candidate-urls.schema.yaml`
 - Crawl4AI adapter helper files and fixtures
 - `agentic/hermes-actions.yaml`
 - `agentic/pipeline.yaml`

@@ -83,6 +83,8 @@ Input artifact:
 URL discovery artifact:
 
 - `agentic/runs/<run-id>/market-candidate-urls.yaml`
+- BIR-10 implementation defines
+  `agentic/schemas/boss-idea-market-candidate-urls.schema.yaml`
 - records `query_id`, `url`, `title`, `snippet`, `provider`, and
   `retrieved_at`
 - may be produced by a live search provider, a local fixture provider, or an
