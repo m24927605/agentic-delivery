@@ -419,6 +419,30 @@ if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_SEARCH_SEARXNG_BASE_URL=http://127.0.0.1:808
 fi
 grep -q "BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES" /tmp/h20-boss-market-crawl-searxng-paid-policy.log
 
+if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_SEARCH_SEARXNG_BASE_URL=https://user:credential@example.com/search BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES=1 scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/bad-searxng-userinfo-results.yaml" >/tmp/h20-boss-market-crawl-searxng-userinfo.log 2>&1; then
+  echo "expected SearXNG base URL userinfo to fail" >&2
+  exit 1
+fi
+grep -q "must not contain userinfo" /tmp/h20-boss-market-crawl-searxng-userinfo.log
+
+SEARXNG_BAD_CONTENT_TYPE_PORT="agentic/runs/$BOSS_IDEA_RUN/searxng-bad-content-type.port"
+ruby -rwebrick -e 'port_file=ARGV.fetch(0); server=WEBrick::HTTPServer.new(Port: 0, BindAddress: "127.0.0.1", Logger: WEBrick::Log.new(File::NULL), AccessLog: []); File.write(port_file, server.config[:Port]); trap("TERM") { server.shutdown }; server.mount_proc("/search") { |_req, res| res["Content-Type"] = "text/html"; res.body = "<html>not json</html>" }; server.start' "$SEARXNG_BAD_CONTENT_TYPE_PORT" &
+SEARXNG_BAD_CONTENT_TYPE_PID=$!
+for _ in 1 2 3 4 5; do
+  test -s "$SEARXNG_BAD_CONTENT_TYPE_PORT" && break
+  sleep 1
+done
+SEARXNG_BAD_CONTENT_TYPE_PORT_VALUE="$(cat "$SEARXNG_BAD_CONTENT_TYPE_PORT")"
+if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_SEARCH_SEARXNG_BASE_URL="http://127.0.0.1:${SEARXNG_BAD_CONTENT_TYPE_PORT_VALUE}/search" BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES=1 scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/bad-searxng-content-type-results.yaml" >/tmp/h20-boss-market-crawl-searxng-content-type.log 2>&1; then
+  echo "expected SearXNG non-JSON content type to fail" >&2
+  kill "$SEARXNG_BAD_CONTENT_TYPE_PID" 2>/dev/null || true
+  wait "$SEARXNG_BAD_CONTENT_TYPE_PID" 2>/dev/null || true
+  exit 1
+fi
+kill "$SEARXNG_BAD_CONTENT_TYPE_PID" 2>/dev/null || true
+wait "$SEARXNG_BAD_CONTENT_TYPE_PID" 2>/dev/null || true
+grep -q "non-JSON content type" /tmp/h20-boss-market-crawl-searxng-content-type.log
+
 BOSS_IDEA_SEARCH_SEARXNG_FIXTURE=agentic/fixtures/boss-idea-response/searxng-search-fixture.json scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/searxng-results.yaml" >/dev/null
 scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
 ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected searxng provider") unless c["provider"] == "searxng"; abort("expected fixture mode") unless c["mode"] == "fixture"; abort("expected no-paid provider") unless c["no_paid_provider"] == true; abort("expected provider priority") unless c["provider_priority"].to_i == 1; abort("expected searxng source count") unless c["source_count"].to_i >= 4' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"

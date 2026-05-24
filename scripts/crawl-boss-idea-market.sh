@@ -606,6 +606,7 @@ def searxng_search_url(base_url, query)
   uri = URI.parse(base_url)
   fail_with("SearXNG search base URL must be http or https") unless %w[http https].include?(uri.scheme)
   fail_with("SearXNG search base URL host is required") if uri.host.to_s.empty?
+  fail_with("SearXNG search base URL must not contain userinfo") unless uri.userinfo.to_s.empty?
 
   params = URI.decode_www_form(uri.query.to_s)
   params.concat([
@@ -650,7 +651,7 @@ def fetch_searxng_results(query)
   end
   fail_with("SearXNG search failed: HTTP #{response.code}", 1) unless response.is_a?(Net::HTTPSuccess)
   content_type = response["content-type"].to_s
-  fail_with("SearXNG search returned non-JSON content type") unless content_type.empty? || content_type.downcase.include?("json")
+  fail_with("SearXNG search returned non-JSON content type") unless content_type.downcase.include?("json")
 
   JSON.parse(response.body)
 rescue JSON::ParserError => e
