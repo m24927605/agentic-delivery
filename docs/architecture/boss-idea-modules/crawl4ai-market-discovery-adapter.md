@@ -160,6 +160,9 @@ boss_idea_market_crawl:
   results_path: agentic/runs/<run-id>/market-search-results.yaml
   raw_evidence_path: agentic/runs/<run-id>/crawl4ai/raw/
   crawl_log_path: agentic/runs/<run-id>/crawl4ai/crawl-log.yaml
+  quality_path: agentic/runs/<run-id>/market-discovery-quality.yaml
+  quality_score: 0-100
+  quality_band: strong | usable | thin | insufficient
   live_smoke_evidence_path: agentic/reviews/boss-idea-response/bir-10/live-smoke-<date>.md
   waiver:
     reviewer: <staff-plus-role-or-user>
@@ -170,6 +173,40 @@ boss_idea_market_crawl:
 
 `waiver` is omitted when crawl/search-sourced evidence exists. A waiver is
 valid only when `reviewer`, `reason`, `scope`, and `expires_at` are present.
+
+Discovery quality artifact shape:
+
+```yaml
+schema_version: 1
+run_id: <run-id>
+provider: searxng | duckduckgo_html | local_browser_search | brave | live_seed | fixture | seed_replay
+mode: searxng | duckduckgo_html | local_browser_search | brave | live_seed | fixture | seed_replay
+score: 0-100
+band: strong | usable | thin | insufficient
+provider_priority: <integer>
+no_paid_provider: true | false
+checks:
+  source_count: <integer>
+  query_coverage_count: <integer>
+  query_count: <integer>
+  required_signals_present: true | false
+  unique_host_count: <integer>
+  duplicate_host_count: <integer>
+  fresh_source_max_age_days: 180
+  stale_source_count: <integer>
+  missing_or_invalid_access_date_count: <integer>
+  lower_trust_fallback_count: <integer>
+evidence_gaps:
+  - <gap-label>
+authority_note: Discovery quality is advisory evidence only. It cannot approve artifacts, roadmap, budget, or implementation.
+```
+
+`market-discovery-quality.yaml` is an advisory review aid for Market Research
+Lead and Staff+ reviewers. It surfaces provider priority, coverage, source
+diversity, duplicate domains, freshness, lower-trust fallback usage, and
+evidence gaps. It cannot approve artifacts, decisions, roadmap, budget, or
+implementation, and downstream go/no-go steps must still use their own
+validators and human decision records.
 
 Search provider contract:
 
@@ -368,6 +405,7 @@ Validation must include:
   copied words, and more than 20 percent token overlap with one raw source;
 - negative tests for missing required signals;
 - validation of generated `market-search-results.yaml`;
+- validation of generated `market-discovery-quality.yaml`;
 - validation of downstream `market-research.md`;
 - validation that raw crawl evidence paths are ignored and not tracked;
 - privacy scan over tracked files;
@@ -388,7 +426,9 @@ Positive tests:
   credentials;
 - generated search results pass `collect-boss-idea-research.sh`;
 - raw markdown evidence stays under ignored run directory;
-- manifest records crawl metadata without approving artifacts.
+- manifest records crawl metadata without approving artifacts;
+- quality artifact records provider priority, diversity, freshness, fallback
+  state, score, band, and advisory-only authority.
 
 Negative tests:
 
@@ -414,7 +454,9 @@ Negative tests:
 - generated result with missing reference fails;
 - generated result with bad source type fails;
 - generated result with missing required signal fails;
-- output outside run directory fails.
+- output outside run directory fails;
+- quality artifact with missing required fields, invalid band, out-of-range
+  score, non-boolean checks, or missing advisory authority wording fails.
 
 ## Acceptance Criteria
 
@@ -435,6 +477,8 @@ Negative tests:
   only when explicitly generated.
 - Validation asserts raw evidence paths remain ignored and that no raw
   Crawl4AI output is accidentally tracked.
+- Discovery quality score and band are recorded for review without approving
+  artifacts, decisions, roadmap, budget, or implementation.
 - No crawl or search output can approve artifacts, decisions, or implementation.
 
 ## Doc Review Standard
@@ -448,6 +492,7 @@ Claude Code review must verify:
 - query-to-URL discovery is in scope, not deferred to an unnamed future slice;
 - the design does not make Brave or any other paid API mandatory;
 - no-paid provider fallback behavior is explicit and reviewable;
+- discovery quality scoring is advisory-only and cannot approve decisions;
 - the adapter feeds the existing BIR-09 collector contract.
 
 ## Code Review Standard
@@ -461,6 +506,8 @@ Implementation review must verify:
 - timeouts, page limits, and content limits are enforced;
 - Crawl4AI errors are recorded without leaking raw output to tracked files;
 - generated results pass `collect-boss-idea-research.sh`;
+- generated quality artifacts pass
+  `scripts/validate-boss-idea-market-discovery-quality.sh`;
 - golden fixtures use local HTML or controlled fixture inputs;
 - live crawl smoke tests are opt-in and clearly labeled.
 - live crawl smoke tests run manually before enabling or upgrading a live

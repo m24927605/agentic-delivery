@@ -646,6 +646,7 @@ actions:
       - agentic/runs/{{run_id}}/manifest.yaml
       - agentic/schemas/boss-idea-market-candidate-urls.schema.yaml
       - agentic/schemas/boss-idea-market-search.schema.yaml
+      - agentic/schemas/boss-idea-market-discovery-quality.schema.yaml
       - agentic/schemas/boss-idea-research.schema.yaml
       - agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml
       - agentic/fixtures/boss-idea-response/searxng-search-fixture.json
@@ -655,6 +656,7 @@ actions:
       - "{{search_results}}"
       - agentic/runs/{{run_id}}/market-research-query-pack.yaml
       - agentic/runs/{{run_id}}/market-candidate-urls.yaml
+      - agentic/runs/{{run_id}}/market-discovery-quality.yaml
       - agentic/runs/{{run_id}}/crawl4ai/crawl-log.yaml
       - agentic/runs/{{run_id}}/crawl4ai/raw/
       - agentic/runs/{{run_id}}/market-research.md
@@ -662,6 +664,7 @@ actions:
     success_signals:
       - stdout_contains: boss idea market crawl collected
       - file_exists: "{{search_results}}"
+      - file_exists: agentic/runs/{{run_id}}/market-discovery-quality.yaml
       - manifest_path: agentic/runs/{{run_id}}/manifest.yaml
     failure_states:
       - blocked_schema_invalid

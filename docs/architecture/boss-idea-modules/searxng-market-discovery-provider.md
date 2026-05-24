@@ -153,12 +153,17 @@ boss_idea_market_crawl:
   results_path: agentic/runs/<run-id>/market-search-results.yaml
   raw_evidence_path: agentic/runs/<run-id>/crawl4ai/raw/
   crawl_log_path: agentic/runs/<run-id>/crawl4ai/crawl-log.yaml
+  quality_path: agentic/runs/<run-id>/market-discovery-quality.yaml
+  quality_score: 0-100
+  quality_band: strong | usable | thin | insufficient
 ```
 
 The Crawl4AI adapter manifest contract still applies. This example shows the
 SearXNG-specific keys and changed values; implementation must preserve common
 fields such as `crawl4ai_version`, `live_smoke_evidence_path` when applicable,
-and any valid Staff+ `waiver`.
+`quality_path`, `quality_score`, `quality_band`, and any valid Staff+
+`waiver`. The quality artifact is advisory evidence only and cannot approve a
+boss decision, artifact, roadmap, budget, or implementation.
 
 The command must fail if `searxng` is selected without both `--live` and
 `BOSS_IDEA_LIVE_CRAWL=1`, except when `BOSS_IDEA_SEARCH_SEARXNG_FIXTURE` is

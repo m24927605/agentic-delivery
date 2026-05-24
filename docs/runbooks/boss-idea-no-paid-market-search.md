@@ -80,6 +80,7 @@ Validate the resulting research:
 
 ```bash
 scripts/validate-boss-idea-research.sh agentic/runs/<run-id>/market-research.md
+scripts/validate-boss-idea-market-discovery-quality.sh agentic/runs/<run-id>/market-discovery-quality.yaml
 ```
 
 ## Evidence To Inspect
@@ -88,6 +89,7 @@ Review these ignored run paths:
 
 - `agentic/runs/<run-id>/market-candidate-urls.yaml`
 - `agentic/runs/<run-id>/market-search-results.yaml`
+- `agentic/runs/<run-id>/market-discovery-quality.yaml`
 - `agentic/runs/<run-id>/crawl4ai/crawl-log.yaml`
 - `agentic/runs/<run-id>/crawl4ai/raw/`
 
@@ -173,11 +175,14 @@ Paid engine detected in SearXNG path:
 Before using the output in a boss decision memo, confirm:
 
 - provider is no-paid unless a paid provider was explicitly approved;
+- `market-discovery-quality.yaml` is present, validates, and is treated as
+  advisory-only evidence;
 - candidate URLs are public and policy-approved;
 - Crawl4AI evidence is stored only in ignored run paths;
 - market-search results include competitor and mainstream-practice signals;
 - source metadata includes provider, query id, rank, retrieval time, access
   date, and fallback state if any;
+- quality evidence gaps are reflected in memo caveats or follow-up actions;
 - market research separates facts, inferences, and unknowns;
 - no search or crawl output is treated as implementation approval.
 

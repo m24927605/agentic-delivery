@@ -246,13 +246,45 @@ grep -q "competitor_landscape" /tmp/h20-boss-market-crawl-dry.log
 scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider fixture --output "agentic/runs/$BOSS_IDEA_RUN/market-search-results.yaml" >/dev/null
 test -f "agentic/runs/$BOSS_IDEA_RUN/market-search-results.yaml"
 test -f "agentic/runs/$BOSS_IDEA_RUN/market-candidate-urls.yaml"
+test -f "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml"
 test -f "agentic/runs/$BOSS_IDEA_RUN/crawl4ai/crawl-log.yaml"
 test -f "agentic/runs/$BOSS_IDEA_RUN/market-research.md"
 scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
+scripts/validate-boss-idea-market-discovery-quality.sh "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml" >/dev/null
 grep -q "boss_idea_market_crawl" "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
 grep -q "boss_idea_market_research" "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
 git check-ignore -q "agentic/runs/$BOSS_IDEA_RUN/crawl4ai/raw/competitor-public-workflow.md"
-ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); r=m.fetch("boss_idea_market_research"); abort("expected fixture provider") unless c["provider"] == "fixture"; abort("expected source count") unless c["source_count"].to_i >= 2; abort("expected research artifact") unless r["artifact_path"].to_s.end_with?("market-research.md"); abort("market crawl must not approve artifacts") unless m.fetch("artifacts").all? { |a| a["status"] == "planned" }' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); q=YAML.load_file(ARGV.fetch(1)); c=m.fetch("boss_idea_market_crawl"); r=m.fetch("boss_idea_market_research"); abort("expected fixture provider") unless c["provider"] == "fixture"; abort("expected source count") unless c["source_count"].to_i >= 2; abort("expected research artifact") unless r["artifact_path"].to_s.end_with?("market-research.md"); abort("expected quality path") unless c["quality_path"] == ARGV.fetch(1); abort("expected quality score") unless c["quality_score"].to_i == q.fetch("score").to_i; abort("expected quality band") unless c["quality_band"].to_s == q.fetch("band").to_s; abort("quality must be advisory") unless q.fetch("authority_note").include?("cannot approve"); abort("market crawl must not approve artifacts") unless m.fetch("artifacts").all? { |a| a["status"] == "planned" }' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml" "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml"
+ruby -ryaml -e 'q=YAML.load_file(ARGV.fetch(0)); q.delete("score"); File.write(ARGV.fetch(1), q.to_yaml)' "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml" "agentic/runs/$BOSS_IDEA_RUN/invalid-quality-missing-score.yaml"
+if scripts/validate-boss-idea-market-discovery-quality.sh "agentic/runs/$BOSS_IDEA_RUN/invalid-quality-missing-score.yaml" >/tmp/h20-boss-market-quality-missing-score.log 2>&1; then
+  echo "expected quality artifact missing score to fail" >&2
+  exit 1
+fi
+grep -q "score is required" /tmp/h20-boss-market-quality-missing-score.log
+ruby -ryaml -e 'q=YAML.load_file(ARGV.fetch(0)); q["score"] = 101; File.write(ARGV.fetch(1), q.to_yaml)' "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml" "agentic/runs/$BOSS_IDEA_RUN/invalid-quality-bad-score.yaml"
+if scripts/validate-boss-idea-market-discovery-quality.sh "agentic/runs/$BOSS_IDEA_RUN/invalid-quality-bad-score.yaml" >/tmp/h20-boss-market-quality-bad-score.log 2>&1; then
+  echo "expected quality artifact bad score to fail" >&2
+  exit 1
+fi
+grep -q "score must be an integer" /tmp/h20-boss-market-quality-bad-score.log
+ruby -ryaml -e 'q=YAML.load_file(ARGV.fetch(0)); q["band"] = "excellent"; File.write(ARGV.fetch(1), q.to_yaml)' "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml" "agentic/runs/$BOSS_IDEA_RUN/invalid-quality-bad-band.yaml"
+if scripts/validate-boss-idea-market-discovery-quality.sh "agentic/runs/$BOSS_IDEA_RUN/invalid-quality-bad-band.yaml" >/tmp/h20-boss-market-quality-bad-band.log 2>&1; then
+  echo "expected quality artifact bad band to fail" >&2
+  exit 1
+fi
+grep -q "band is invalid" /tmp/h20-boss-market-quality-bad-band.log
+ruby -ryaml -e 'q=YAML.load_file(ARGV.fetch(0)); q["no_paid_provider"] = "true"; File.write(ARGV.fetch(1), q.to_yaml)' "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml" "agentic/runs/$BOSS_IDEA_RUN/invalid-quality-bad-boolean.yaml"
+if scripts/validate-boss-idea-market-discovery-quality.sh "agentic/runs/$BOSS_IDEA_RUN/invalid-quality-bad-boolean.yaml" >/tmp/h20-boss-market-quality-bad-boolean.log 2>&1; then
+  echo "expected quality artifact bad boolean to fail" >&2
+  exit 1
+fi
+grep -q "no_paid_provider must be boolean" /tmp/h20-boss-market-quality-bad-boolean.log
+ruby -ryaml -e 'q=YAML.load_file(ARGV.fetch(0)); q["authority_note"] = "Quality score approves implementation."; File.write(ARGV.fetch(1), q.to_yaml)' "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml" "agentic/runs/$BOSS_IDEA_RUN/invalid-quality-authority.yaml"
+if scripts/validate-boss-idea-market-discovery-quality.sh "agentic/runs/$BOSS_IDEA_RUN/invalid-quality-authority.yaml" >/tmp/h20-boss-market-quality-authority.log 2>&1; then
+  echo "expected quality artifact authority note to fail" >&2
+  exit 1
+fi
+grep -q "authority_note must state advisory-only authority" /tmp/h20-boss-market-quality-authority.log
 
 if scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider fixture --output "agentic/runs/$BOSS_IDEA_RUN/bad-live-no-env-results.yaml" >/tmp/h20-boss-market-crawl-live-no-env.log 2>&1; then
   echo "expected --live without env to fail" >&2
@@ -450,7 +482,9 @@ grep -q "non-JSON content type" /tmp/h20-boss-market-crawl-searxng-content-type.
 
 BOSS_IDEA_SEARCH_SEARXNG_FIXTURE=agentic/fixtures/boss-idea-response/searxng-search-fixture.json scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/searxng-results.yaml" >/dev/null
 scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
+scripts/validate-boss-idea-market-discovery-quality.sh "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml" >/dev/null
 ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected searxng provider") unless c["provider"] == "searxng"; abort("expected fixture mode") unless c["mode"] == "fixture"; abort("expected no-paid provider") unless c["no_paid_provider"] == true; abort("expected provider priority") unless c["provider_priority"].to_i == 1; abort("expected searxng source count") unless c["source_count"].to_i >= 4' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+ruby -ryaml -e 'q=YAML.load_file(ARGV.fetch(0)); abort("expected searxng quality") unless q["provider"] == "searxng"; abort("expected searxng quality priority") unless q["provider_priority"].to_i == 1; abort("expected no-paid quality") unless q["no_paid_provider"] == true; abort("expected strong quality") unless q["score"].to_i >= 80 && q["band"] == "strong"; abort("quality must stay advisory") unless q["authority_note"].include?("cannot approve")' "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml"
 ruby -ryaml -e 'c=YAML.load_file(ARGV.fetch(0)); abort("expected searxng provider") unless c["provider"] == "searxng"; abort("expected provider metadata") unless c.fetch("candidates").all? { |x| x["provider_metadata"].is_a?(Hash) && x["provider_metadata"]["provider"] == "searxng" && x["provider_metadata"]["result_rank"].to_i >= 1 }' "agentic/runs/$BOSS_IDEA_RUN/market-candidate-urls.yaml"
 ruby -rjson -e 'source=JSON.parse(File.read(ARGV.fetch(0))); source.fetch("query_results").each_value { |payload| payload["no_paid_engine_policy"] = "unknown" }; File.write(ARGV.fetch(1), JSON.pretty_generate(source))' agentic/fixtures/boss-idea-response/searxng-search-fixture.json "agentic/runs/$BOSS_IDEA_RUN/searxng-unknown-policy-fixture.json"
 BOSS_IDEA_SEARCH_SEARXNG_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/searxng-unknown-policy-fixture.json" scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/searxng-unknown-policy-results.yaml" >/dev/null
@@ -544,7 +578,9 @@ grep -q "public network search/crawl requires" /tmp/h20-boss-market-crawl-duckdu
 
 BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_FIXTURE=agentic/fixtures/boss-idea-response/duckduckgo-html-fixtures scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider duckduckgo_html --output "agentic/runs/$BOSS_IDEA_RUN/duckduckgo-results.yaml" >/dev/null
 scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
+scripts/validate-boss-idea-market-discovery-quality.sh "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml" >/dev/null
 ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected duckduckgo provider") unless c["provider"] == "duckduckgo_html"; abort("expected fixture mode") unless c["mode"] == "fixture"; abort("expected no-paid provider") unless c["no_paid_provider"] == true; abort("expected provider priority") unless c["provider_priority"].to_i == 2' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+ruby -ryaml -e 'q=YAML.load_file(ARGV.fetch(0)); abort("expected duckduckgo quality") unless q["provider"] == "duckduckgo_html"; abort("expected lower-trust quality count") unless q.dig("checks", "lower_trust_fallback_count").to_i.positive?; abort("expected lower-trust gap") unless q.fetch("evidence_gaps").include?("lower_trust_fallback_used")' "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml"
 ruby -ryaml -e 'c=YAML.load_file(ARGV.fetch(0)); abort("expected lower-trust fallback metadata") unless c.fetch("candidates").all? { |x| x.dig("provider_metadata", "lower_trust_fallback") == true && x.dig("provider_metadata", "fallback_from") == "searxng" }' "agentic/runs/$BOSS_IDEA_RUN/market-candidate-urls.yaml"
 
 mkdir -p "agentic/runs/$BOSS_IDEA_RUN/duckduckgo-empty-fixture"
@@ -579,7 +615,9 @@ grep -q "blocked IP" /tmp/h20-boss-market-crawl-local-browser-search-url.log
 
 BOSS_IDEA_SEARCH_LOCAL_BROWSER_FIXTURE=agentic/fixtures/boss-idea-response/local-browser-search-fixture.json scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider local_browser_search --output "agentic/runs/$BOSS_IDEA_RUN/local-browser-results.yaml" >/dev/null
 scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
+scripts/validate-boss-idea-market-discovery-quality.sh "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml" >/dev/null
 ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected local browser provider") unless c["provider"] == "local_browser_search"; abort("expected fixture mode") unless c["mode"] == "fixture"; abort("expected no-paid provider") unless c["no_paid_provider"] == true; abort("expected provider priority") unless c["provider_priority"].to_i == 3' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+ruby -ryaml -e 'q=YAML.load_file(ARGV.fetch(0)); abort("expected local browser quality") unless q["provider"] == "local_browser_search"; abort("expected local browser priority") unless q["provider_priority"].to_i == 3; abort("expected lower-trust quality count") unless q.dig("checks", "lower_trust_fallback_count").to_i.positive?' "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml"
 
 cat >"agentic/runs/$BOSS_IDEA_RUN/local-browser-missing-results-fixture.json" <<'JSON'
 {

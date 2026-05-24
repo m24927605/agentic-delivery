@@ -621,10 +621,12 @@ Implementation sub-slices:
   coverage without public internet, lower-trust metadata, local browser helper
   integration for operator-provided Chrome/Playwright live smoke, and negative
   tests for missing live gates and malformed provider output.
-- BIR-10G provider arbitration and evidence quality scoring: planned. Defines
-  how provider priority, duplicate domains, source diversity, freshness,
-  fallback state, and evidence gaps are surfaced to Market Research Lead and
-  Staff+ reviewers without approving decisions automatically.
+- BIR-10G provider arbitration and evidence quality scoring: completed. Adds
+  `market-discovery-quality.yaml`, manifest quality metadata, validation,
+  golden fixture assertions, Hermes contract updates, and docs so provider
+  priority, duplicate domains, source diversity, freshness, fallback state, and
+  evidence gaps are surfaced to Market Research Lead and Staff+ reviewers
+  without approving decisions automatically.
 
 ## BIR-10D: SearXNG No-Paid Provider Design
 
@@ -887,6 +889,103 @@ Maximum review rounds: 5.
 Staff+ escalation path: if round 5 fails, keep SearXNG as the only no-paid
 production provider and defer fallback providers until the boundary can be
 reviewed safely.
+
+## BIR-10G: Provider Arbitration And Evidence Quality Scoring
+
+Status: completed.
+
+Owner role: Market Research Lead with Staff Platform Engineer implementation.
+
+Dependencies: BIR-10E SearXNG No-Paid Provider Implementation and BIR-10F HTML
+And Local Browser Search Fallback Implementation.
+
+Source artifacts:
+
+- `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
+- `docs/architecture/boss-idea-modules/market-research-evidence.md`
+- `docs/runbooks/boss-idea-no-paid-market-search.md`
+
+Files touched:
+
+- `scripts/crawl-boss-idea-market.sh`
+- `scripts/validate-boss-idea-market-discovery-quality.sh`
+- `scripts/run-golden-fixtures.sh`
+- `scripts/validate-agentic-system.sh`
+- `agentic/schemas/boss-idea-market-discovery-quality.schema.yaml`
+- `agentic/hermes-actions.yaml`
+- `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
+- `docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md`
+- `docs/architecture/boss-idea-modules/market-research-evidence.md`
+- `docs/runbooks/boss-idea-no-paid-market-search.md`
+- `docs/backlog/boss-idea-response-slices.md`
+
+Acceptance criteria:
+
+- `scripts/crawl-boss-idea-market.sh` writes
+  `agentic/runs/<run-id>/market-discovery-quality.yaml` for every successful
+  market discovery run.
+- Manifest metadata records `quality_path`, `quality_score`, and
+  `quality_band` under `boss_idea_market_crawl`.
+- The quality artifact scores provider priority, query coverage, required
+  signals, source count, source diversity, freshness, and lower-trust fallback
+  usage.
+- Evidence gaps surface missing required signals, missing query coverage,
+  lower-trust fallback usage, single-host source sets, duplicate host sources,
+  stale sources, and missing or invalid access dates.
+- `searxng` remains priority 1, `duckduckgo_html` priority 2,
+  `local_browser_search` priority 3, and optional paid `brave` priority 4.
+- Lower-trust fallback providers keep `fallback_from: searxng` and reduce the
+  quality score without blocking artifact generation by themselves.
+- `scripts/validate-boss-idea-market-discovery-quality.sh` validates the quality
+  artifact schema, score range, band, checks, evidence gaps, and advisory-only
+  authority note.
+- Golden fixture coverage verifies quality output for fixture, SearXNG,
+  DuckDuckGo HTML, and local browser providers without public internet or
+  Chrome.
+- Discovery quality remains advisory evidence only and cannot approve
+  artifacts, decisions, roadmap, budget, or implementation.
+
+Validation command:
+
+```bash
+bash -n scripts/crawl-boss-idea-market.sh scripts/run-golden-fixtures.sh scripts/validate-boss-idea-market-discovery-quality.sh
+python3 -m py_compile scripts/lib/boss_idea_crawl4ai.py scripts/lib/boss_idea_local_browser_search.py
+scripts/run-golden-fixtures.sh
+scripts/validate-agentic-system.sh
+PROFILE=boss-idea-response scripts/validate-agentic-system.sh
+scripts/validate-hermes-actions.sh
+scripts/privacy-scan-tracked.sh
+git diff --check
+```
+
+Negative-path tests:
+
+- Quality artifact with missing required fields fails validation.
+- Quality artifact with an invalid provider or band fails validation.
+- Quality artifact with a score outside 0-100 fails validation.
+- Quality artifact with non-boolean `no_paid_provider` or
+  `required_signals_present` fails validation.
+- Quality artifact with malformed check counters fails validation.
+- Quality artifact without advisory-only authority wording fails validation.
+- Fallback quality output must expose `lower_trust_fallback_used` and positive
+  lower-trust fallback count.
+- Quality score and band must not change artifact status from `planned` or
+  record go/no-go approval.
+
+Rollback notes: remove the quality artifact builder, validator, schema, golden
+quality assertions, Hermes quality writes, and docs/backlog quality updates.
+Keep BIR-10D/E/F because no-paid provider discovery and fallback providers
+remain valid without advisory scoring.
+
+AIT review evidence path:
+`agentic/reviews/boss-idea-response/bir-10g/round-<n>.json`.
+
+Maximum review rounds: 5.
+
+Staff+ escalation path: if round 5 fails, keep provider priority ordering and
+fallback metadata from BIR-10E/F, disable `quality_score`/`quality_band`
+manifest fields, and decide whether to ship only the raw quality artifact or
+split freshness/diversity scoring into a later slice.
 
 ## Review Expectations
 

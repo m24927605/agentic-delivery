@@ -82,6 +82,7 @@ core_files=(
   scripts/plan-boss-idea-poc-mvp.sh
   scripts/validate-boss-idea-poc-mvp.sh
   scripts/validate-boss-idea-success-metrics.sh
+  scripts/validate-boss-idea-market-discovery-quality.sh
   scripts/record-boss-idea-decision.sh
   scripts/validate-boss-idea-decision.sh
   scripts/lib/boss_idea.rb
@@ -90,6 +91,7 @@ core_files=(
   agentic/schemas/boss-idea-intake.schema.yaml
   agentic/schemas/boss-idea-market-candidate-urls.schema.yaml
   agentic/schemas/boss-idea-market-search.schema.yaml
+  agentic/schemas/boss-idea-market-discovery-quality.schema.yaml
   agentic/schemas/boss-idea-research.schema.yaml
   agentic/schemas/boss-idea-scorecard.schema.yaml
   agentic/schemas/boss-decision-memo.schema.yaml
@@ -211,6 +213,7 @@ for script in \
   scripts/plan-boss-idea-poc-mvp.sh \
   scripts/validate-boss-idea-poc-mvp.sh \
   scripts/validate-boss-idea-success-metrics.sh \
+  scripts/validate-boss-idea-market-discovery-quality.sh \
   scripts/record-boss-idea-decision.sh \
   scripts/validate-boss-idea-decision.sh; do
   bash -n "$script"

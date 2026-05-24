@@ -1,0 +1,54 @@
+schema:
+  id: boss-idea-market-discovery-quality
+  required_fields:
+    - schema_version
+    - run_id
+    - provider
+    - mode
+    - score
+    - band
+    - provider_priority
+    - no_paid_provider
+    - checks
+    - evidence_gaps
+    - authority_note
+  allowed_bands:
+    - strong
+    - usable
+    - thin
+    - insufficient
+  allowed_providers:
+    - fixture
+    - seed_replay
+    - live_seed
+    - brave
+    - searxng
+    - duckduckgo_html
+    - local_browser_search
+  allowed_modes:
+    - fixture
+    - seed_replay
+    - live_seed
+    - brave
+    - searxng
+    - duckduckgo_html
+    - local_browser_search
+  score:
+    min: 0
+    max: 100
+  checks_required_fields:
+    - source_count
+    - query_coverage_count
+    - query_count
+    - required_signals_present
+    - unique_host_count
+    - duplicate_host_count
+    - fresh_source_max_age_days
+    - stale_source_count
+    - missing_or_invalid_access_date_count
+    - lower_trust_fallback_count
+  authority_policy:
+    advisory_only: true
+    required_phrases:
+      - advisory
+      - cannot approve

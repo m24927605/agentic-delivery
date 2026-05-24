@@ -105,13 +105,17 @@ Contract:
   inventory;
 - records provider metadata that lets reviewers distinguish no-paid SearXNG,
   fallback HTML/browser search, optional paid Brave, and manual seed replay;
+- consumes `market-discovery-quality.yaml` as advisory context for confidence,
+  source diversity, freshness, and fallback gaps;
 - records query metadata in ignored run evidence;
 - writes only summarized public-safe research artifacts;
 - validates the generated artifact with `scripts/validate-boss-idea-research.sh`;
 - records artifact and evidence paths in the planning manifest;
 - refuses to collect research if required citation fields, required market
   signals, or source dates are missing;
-- does not approve artifacts or implementation.
+- does not approve artifacts or implementation;
+- does not treat market discovery quality scores as artifact, budget, roadmap,
+  or implementation approval.
 
 ## Failure Behavior
 

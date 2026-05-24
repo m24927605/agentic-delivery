@@ -137,6 +137,7 @@ QUERY_PACK_PATH = File.join(RUN_DIR, "market-research-query-pack.yaml")
 CANDIDATE_URLS_PATH = File.join(RUN_DIR, "market-candidate-urls.yaml")
 RAW_DIR = File.join(RUN_DIR, "crawl4ai/raw")
 CRAWL_LOG_PATH = File.join(RUN_DIR, "crawl4ai/crawl-log.yaml")
+QUALITY_PATH = File.join(RUN_DIR, "market-discovery-quality.yaml")
 DEFAULT_FIXTURE_SEEDS = "agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml"
 DEFAULT_USER_AGENT = "agentic-delivery-boss-idea-crawler/0.1.0 (+mailto:agentic-delivery@example.invalid)"
 ALLOWED_PROVIDERS = %w[fixture seed_replay live_seed brave searxng duckduckgo_html local_browser_search].freeze
@@ -159,6 +160,7 @@ POLICY = {
   "max_consecutive_policy_blocks" => 5,
   "max_total_failures" => 10
 }.freeze
+QUALITY_FRESH_SOURCE_MAX_AGE_DAYS = 180
 
 def fail_with(message, code = 1)
   warn message
@@ -1009,6 +1011,105 @@ def discover_local_browser_candidates(query_pack)
   candidates
 end
 
+def provider_priority(provider)
+  {
+    "searxng" => 1,
+    "duckduckgo_html" => 2,
+    "local_browser_search" => 3,
+    "brave" => 4,
+    "live_seed" => 5,
+    "fixture" => 9,
+    "seed_replay" => 9
+  }.fetch(provider.to_s, 99)
+end
+
+def no_paid_provider?(provider)
+  %w[searxng duckduckgo_html local_browser_search live_seed fixture seed_replay].include?(provider.to_s)
+end
+
+def result_host(result)
+  URI.parse(result["url"].to_s).host.to_s.downcase
+rescue URI::InvalidURIError
+  ""
+end
+
+def result_access_dates(results)
+  results.map do |result|
+    Date.iso8601(result["access_date"].to_s)
+  rescue ArgumentError
+    nil
+  end.compact
+end
+
+def quality_band(score)
+  return "strong" if score >= 80
+  return "usable" if score >= 60
+  return "thin" if score >= 40
+
+  "insufficient"
+end
+
+def build_discovery_quality(run_id, provider, mode, query_ids, required_signals, results, candidates)
+  result_query_ids = results.map { |result| result["query_id"].to_s }.uniq
+  result_signals = results.map { |result| result["signal"].to_s }.uniq
+  hosts = results.map { |result| result_host(result) }.reject(&:empty?).uniq
+  host_counts = results.each_with_object(Hash.new(0)) do |result, counts|
+    host = result_host(result)
+    counts[host] += 1 unless host.empty?
+  end
+  duplicate_host_count = host_counts.values.reduce(0) { |total, count| count > 1 ? total + count - 1 : total }
+  access_dates = result_access_dates(results)
+  missing_or_invalid_date_count = results.length - access_dates.length
+  stale_source_count = access_dates.count { |date| (Date.today - date).to_i > QUALITY_FRESH_SOURCE_MAX_AGE_DAYS }
+  lower_trust_count = candidates.count { |candidate| candidate.dig("provider_metadata", "lower_trust_fallback") == true }
+  missing_required_signals = required_signals - result_signals
+  missing_queries = query_ids - result_query_ids
+  provider_score = [25 - ((provider_priority(provider) - 1) * 4), 5].max
+  coverage_score = ((result_query_ids.length.to_f / [query_ids.length, 1].max) * 20).round
+  signal_score = missing_required_signals.empty? ? 20 : 5
+  source_count_score = (([results.length, 4].min.to_f / 4) * 15).round
+  diversity_score = (([hosts.length, 3].min.to_f / 3) * 10).round
+  freshness_penalty = [stale_source_count * 2 + missing_or_invalid_date_count * 5, 10].min
+  freshness_score = 10 - freshness_penalty
+  fallback_penalty = [lower_trust_count * 5, 15].min
+  score = [[provider_score + coverage_score + signal_score + source_count_score + diversity_score + freshness_score - fallback_penalty, 0].max, 100].min
+  evidence_gaps = []
+  evidence_gaps << "missing_required_signals: #{missing_required_signals.join(", ")}" unless missing_required_signals.empty?
+  evidence_gaps << "missing_query_coverage: #{missing_queries.join(", ")}" unless missing_queries.empty?
+  evidence_gaps << "lower_trust_fallback_used" if lower_trust_count.positive?
+  evidence_gaps << "single_host_source_set" if hosts.length < 2
+  evidence_gaps << "duplicate_host_sources: #{duplicate_host_count}" if duplicate_host_count.positive?
+  evidence_gaps << "stale_sources_over_#{QUALITY_FRESH_SOURCE_MAX_AGE_DAYS}_days: #{stale_source_count}" if stale_source_count.positive?
+  evidence_gaps << "missing_or_invalid_access_dates: #{missing_or_invalid_date_count}" if missing_or_invalid_date_count.positive?
+
+  {
+    "schema_version" => 1,
+    "run_id" => run_id,
+    "provider" => provider,
+    "mode" => mode,
+    "score" => score,
+    "band" => quality_band(score),
+    "provider_priority" => provider_priority(provider),
+    "no_paid_provider" => no_paid_provider?(provider),
+    "checks" => {
+      "source_count" => results.length,
+      "query_coverage_count" => result_query_ids.length,
+      "query_count" => query_ids.length,
+      "required_signals_present" => missing_required_signals.empty?,
+      "unique_host_count" => hosts.length,
+      "duplicate_host_count" => duplicate_host_count,
+      "fresh_source_max_age_days" => QUALITY_FRESH_SOURCE_MAX_AGE_DAYS,
+      "stale_source_count" => stale_source_count,
+      "missing_or_invalid_access_date_count" => missing_or_invalid_date_count,
+      "oldest_access_date" => access_dates.min&.iso8601,
+      "latest_access_date" => access_dates.max&.iso8601,
+      "lower_trust_fallback_count" => lower_trust_count
+    },
+    "evidence_gaps" => evidence_gaps,
+    "authority_note" => "Discovery quality is advisory evidence only. It cannot approve artifacts, roadmap, budget, or implementation."
+  }
+end
+
 manifest = load_manifest(MANIFEST_PATH)
 run = manifest["run"].is_a?(Hash) ? manifest["run"] : {}
 fail_with("run.id must equal #{run_id}") unless run["id"].to_s == run_id
@@ -1074,6 +1175,7 @@ fail_with("crawler user-agent is invalid") unless valid_user_agent?(ua)
 market_schema = BossIdea.load_yaml("agentic/schemas/boss-idea-market-search.schema.yaml").fetch("schema")
 research_schema = BossIdea.load_yaml("agentic/schemas/boss-idea-research.schema.yaml").fetch("schema")
 allowed_signals = Array(market_schema["allowed_signals"]).map(&:to_s)
+required_signals = Array(market_schema["required_signals"]).map(&:to_s)
 allowed_source_types = Array(research_schema["allowed_source_types"]).map(&:to_s)
 candidates = if from_query_pack && search_provider == "brave"
   discover_brave_candidates(query_pack)
@@ -1094,10 +1196,10 @@ end.uniq
 
 fail_with("candidate URL count exceeds policy") if candidates.length > POLICY.fetch("max_crawled_pages_per_run")
 if force
-  [output_path, CANDIDATE_URLS_PATH, CRAWL_LOG_PATH].each { |path| FileUtils.rm_f(path) }
+  [output_path, CANDIDATE_URLS_PATH, CRAWL_LOG_PATH, QUALITY_PATH].each { |path| FileUtils.rm_f(path) }
   FileUtils.rm_rf(RAW_DIR)
 else
-  [output_path, CANDIDATE_URLS_PATH, CRAWL_LOG_PATH].each do |path|
+  [output_path, CANDIDATE_URLS_PATH, CRAWL_LOG_PATH, QUALITY_PATH].each do |path|
     fail_with("crawl artifact already exists: #{path}; use --force to overwrite") if File.exist?(path)
   end
   if Dir.exist?(RAW_DIR) && Dir.children(RAW_DIR).any?
@@ -1275,6 +1377,8 @@ File.write(CANDIDATE_URLS_PATH, {
 }.to_yaml)
 File.write(CRAWL_LOG_PATH, crawl_log.to_yaml)
 File.write(output_path, { "results" => results }.to_yaml)
+quality = build_discovery_quality(run_id, search_provider, crawl_mode, query_ids, required_signals, results, candidate_records)
+File.write(QUALITY_PATH, quality.to_yaml)
 
 unless results_only
   research_output = File.join(RUN_DIR, "market-research.md")
@@ -1292,6 +1396,9 @@ manifest["boss_idea_market_crawl"] = {
   "results_path" => output_path,
   "raw_evidence_path" => RAW_DIR,
   "crawl_log_path" => CRAWL_LOG_PATH,
+  "quality_path" => QUALITY_PATH,
+  "quality_score" => quality["score"],
+  "quality_band" => quality["band"],
   "policy" => POLICY,
   "source_count" => results.length,
   "generated_at" => Time.now.utc.iso8601,
