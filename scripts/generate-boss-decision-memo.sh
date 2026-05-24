@@ -68,6 +68,21 @@ BossIdea.fail_with("blocked_schema_invalid: manifest run.id does not match #{run
 BossIdea.fail_with("blocked_schema_invalid: manifest profile must be boss-idea-response") unless run["profile"].to_s == "boss-idea-response"
 BossIdea.require_array!(manifest, "artifacts", "planning manifest")
 
+market_crawl = manifest["boss_idea_market_crawl"]
+if market_crawl.is_a?(Hash) && market_crawl["provider"].to_s == "searxng"
+  candidate_path = market_crawl["candidate_urls_path"].to_s
+  if !candidate_path.empty? && File.file?(candidate_path)
+    candidates_doc = YAML.safe_load(File.read(candidate_path), permitted_classes: [Date], aliases: true) || {}
+    Array(candidates_doc["candidates"]).each do |candidate|
+      metadata = candidate.is_a?(Hash) ? candidate["provider_metadata"] : nil
+      next unless metadata.is_a?(Hash)
+      if metadata["no_paid_engine_policy"].to_s == "unknown"
+        BossIdea.fail_with("blocked_unknown_no_paid_engine_policy: SearXNG fixture evidence cannot support a boss decision memo")
+      end
+    end
+  end
+end
+
 timebox = recommendation == "mvp" ? "10 business days" : "5 business days"
 staffing = recommendation == "mvp" ? "one implementation owner, one reviewer, and one product owner" : "one implementation owner and one reviewer"
 recommended_path = case recommendation

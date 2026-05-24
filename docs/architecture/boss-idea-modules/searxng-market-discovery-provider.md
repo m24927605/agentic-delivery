@@ -132,7 +132,7 @@ Environment variables:
   manifests and candidate metadata.
 - `BOSS_IDEA_SEARCH_SEARXNG_TIMEOUT_SECONDS`: optional, default 10, hard cap 30.
 - `BOSS_IDEA_SEARCH_SEARXNG_RESULTS_PER_QUERY`: optional, default 5, hard cap
-  10.
+  5 to match the BIR-10 per-query crawl cap.
 - `BOSS_IDEA_SEARCH_SEARXNG_LOCALE`: optional locale parameter.
 - `BOSS_IDEA_SEARCH_SEARXNG_CATEGORY`: optional category parameter.
 - `BOSS_IDEA_SEARCH_SEARXNG_FIXTURE`: deterministic fixture JSON path for

@@ -423,6 +423,13 @@ BOSS_IDEA_SEARCH_SEARXNG_FIXTURE=agentic/fixtures/boss-idea-response/searxng-sea
 scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
 ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected searxng provider") unless c["provider"] == "searxng"; abort("expected fixture mode") unless c["mode"] == "fixture"; abort("expected no-paid provider") unless c["no_paid_provider"] == true; abort("expected provider priority") unless c["provider_priority"].to_i == 1; abort("expected searxng source count") unless c["source_count"].to_i >= 4' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
 ruby -ryaml -e 'c=YAML.load_file(ARGV.fetch(0)); abort("expected searxng provider") unless c["provider"] == "searxng"; abort("expected provider metadata") unless c.fetch("candidates").all? { |x| x["provider_metadata"].is_a?(Hash) && x["provider_metadata"]["provider"] == "searxng" && x["provider_metadata"]["result_rank"].to_i >= 1 }' "agentic/runs/$BOSS_IDEA_RUN/market-candidate-urls.yaml"
+ruby -rjson -e 'source=JSON.parse(File.read(ARGV.fetch(0))); source.fetch("query_results").each_value { |payload| payload["no_paid_engine_policy"] = "unknown" }; File.write(ARGV.fetch(1), JSON.pretty_generate(source))' agentic/fixtures/boss-idea-response/searxng-search-fixture.json "agentic/runs/$BOSS_IDEA_RUN/searxng-unknown-policy-fixture.json"
+BOSS_IDEA_SEARCH_SEARXNG_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/searxng-unknown-policy-fixture.json" scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/searxng-unknown-policy-results.yaml" >/dev/null
+if scripts/generate-boss-decision-memo.sh --output "agentic/runs/$BOSS_IDEA_RUN/bad-searxng-unknown-policy-memo.md" "$BOSS_IDEA_RUN" >/tmp/h20-boss-market-crawl-searxng-unknown-memo.log 2>&1; then
+  echo "expected SearXNG unknown no-paid policy evidence to block decision memo" >&2
+  exit 1
+fi
+grep -q "blocked_unknown_no_paid_engine_policy" /tmp/h20-boss-market-crawl-searxng-unknown-memo.log
 
 cat >"agentic/runs/$BOSS_IDEA_RUN/searxng-malformed-fixture.json" <<'JSON'
 {"query_results":
@@ -494,7 +501,7 @@ cat >"agentic/runs/$BOSS_IDEA_RUN/searxng-private-fixture.json" <<'JSON'
   }
 }
 JSON
-if BOSS_IDEA_SEARCH_SEARXNG_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/searxng-private-fixture.json" scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/bad-searxng-private-results.yaml" >/tmp/h20-boss-market-crawl-searxng-private.log 2>&1; then
+if BOSS_IDEA_SEARCH_SEARXNG_BASE_URL=http://127.0.0.1:8080/search BOSS_IDEA_SEARCH_SEARXNG_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/searxng-private-fixture.json" scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/bad-searxng-private-results.yaml" >/tmp/h20-boss-market-crawl-searxng-private.log 2>&1; then
   echo "expected SearXNG private-IP candidates to fail" >&2
   exit 1
 fi

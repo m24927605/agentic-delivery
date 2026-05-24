@@ -635,6 +635,18 @@ actions:
     optional_inputs:
       - results_only
       - seeds
+    input_contract:
+      run_id: "Boss Idea planning run id."
+      search_provider: "One of fixture, seed_replay, live_seed, searxng, or brave. SearXNG is the default no-paid live provider when its environment is present."
+      search_results: "Output YAML path under agentic/runs/<run-id>/."
+      results_only: "Optional debug flag that skips downstream market research generation."
+      seeds: "Optional deterministic candidate URL seed file for seed replay."
+      env:
+        - "BOSS_IDEA_SEARCH_SEARXNG_BASE_URL is required for live searxng unless BOSS_IDEA_SEARCH_SEARXNG_FIXTURE is set."
+        - "BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES must be 1 for production live searxng runs."
+        - "BOSS_IDEA_SEARCH_SEARXNG_FIXTURE is an optional deterministic no-network SearXNG JSON fixture."
+        - "BOSS_IDEA_SEARCH_SEARXNG_ENDPOINT_LABEL is an optional public-safe endpoint label for manifest metadata."
+        - "BOSS_IDEA_SEARCH_SEARXNG_API_KEY is optional gateway authentication only and never enables paid SearXNG engines."
     reads:
       - agentic/runs/{{run_id}}/manifest.yaml
       - agentic/schemas/boss-idea-market-candidate-urls.schema.yaml

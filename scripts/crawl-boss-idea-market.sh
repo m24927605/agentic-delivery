@@ -572,7 +572,7 @@ def searxng_fixture_mode?
 end
 
 def searxng_results_per_query
-  parse_positive_integer_env("BOSS_IDEA_SEARCH_SEARXNG_RESULTS_PER_QUERY", 5, POLICY.fetch("max_candidate_urls_per_query"))
+  parse_positive_integer_env("BOSS_IDEA_SEARCH_SEARXNG_RESULTS_PER_QUERY", 5, POLICY.fetch("max_crawled_pages_per_query"))
 end
 
 def searxng_timeout
@@ -622,6 +622,15 @@ rescue URI::InvalidURIError
   fail_with("invalid SearXNG search base URL")
 end
 
+def searxng_metadata_search_url(base_url, query)
+  uri = searxng_search_url(base_url, query)
+  params = URI.decode_www_form(uri.query.to_s).map do |key, value|
+    key == "q" ? [key, "<query-recorded-separately>"] : [key, value]
+  end
+  uri.query = URI.encode_www_form(params)
+  uri.to_s
+end
+
 def fetch_searxng_results(query)
   fixture = searxng_fixture_path
   return load_provider_fixture(fixture, "SearXNG", query.fetch("id")) unless fixture.empty?
@@ -640,6 +649,8 @@ def fetch_searxng_results(query)
     http.request(request)
   end
   fail_with("SearXNG search failed: HTTP #{response.code}", 1) unless response.is_a?(Net::HTTPSuccess)
+  content_type = response["content-type"].to_s
+  fail_with("SearXNG search returned non-JSON content type") unless content_type.empty? || content_type.downcase.include?("json")
 
   JSON.parse(response.body)
 rescue JSON::ParserError => e
@@ -677,8 +688,8 @@ def discover_searxng_candidates(query_pack)
       metadata = {
         "provider" => "searxng",
         "endpoint_label" => searxng_endpoint_label,
-        "query" => query.fetch("query"),
-        "search_url" => fixture_mode ? "fixture://#{query.fetch("id")}" : searxng_search_url(ENV.fetch("BOSS_IDEA_SEARCH_SEARXNG_BASE_URL"), query).to_s,
+        "query" => compact_query(query.fetch("query")),
+        "search_url" => fixture_mode ? "fixture://#{query.fetch("id")}" : searxng_metadata_search_url(ENV.fetch("BOSS_IDEA_SEARCH_SEARXNG_BASE_URL"), query),
         "locale" => ENV["BOSS_IDEA_SEARCH_SEARXNG_LOCALE"].to_s.empty? ? "default" : ENV.fetch("BOSS_IDEA_SEARCH_SEARXNG_LOCALE"),
         "category" => ENV["BOSS_IDEA_SEARCH_SEARXNG_CATEGORY"].to_s.empty? ? "general" : ENV.fetch("BOSS_IDEA_SEARCH_SEARXNG_CATEGORY"),
         "engine_names" => searxng_result_engines(result),
