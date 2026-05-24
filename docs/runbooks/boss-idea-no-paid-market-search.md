@@ -96,14 +96,16 @@ content or raw provider JSON into tracked docs.
 
 ## Fallback Handling
 
-Use `duckduckgo_html` only when:
+`duckduckgo_html` is design-deferred to BIR-10F and is not available until that
+slice ships. Once available, use it only when:
 
 - SearXNG is unavailable;
 - operator policy allows public non-JavaScript search result extraction;
 - the run records `fallback_from: searxng`;
 - artifacts label the provider as lower reproducibility than SearXNG.
 
-Use `local_browser_search` only when:
+`local_browser_search` is design-deferred to BIR-10F and is not available until
+that slice ships. Once available, use it only when:
 
 - SearXNG and HTML search are insufficient;
 - the browser runs in an isolated no-login profile;

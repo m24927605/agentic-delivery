@@ -687,6 +687,10 @@ Negative-path tests required for BIR-10E implementation:
 - missing `results` array fails;
 - paid engine marker in the no-paid path fails unless a Staff+ waiver selects a
   paid provider;
+- local SearXNG base-URL IP exceptions do not extend to candidate URLs passed
+  to Crawl4AI;
+- `no_paid_engine_policy: unknown` in evidence used for a boss decision memo
+  fails;
 - empty result set fails with an actionable provider error;
 - private, localhost, link-local, metadata-service, non-http(s), or malformed
   result URLs fail before Crawl4AI;

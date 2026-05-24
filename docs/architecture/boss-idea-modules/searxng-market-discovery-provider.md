@@ -123,7 +123,8 @@ Environment variables:
 - `BOSS_IDEA_SEARCH_SEARXNG_BASE_URL`: required for live SearXNG runs.
 - `BOSS_IDEA_SEARCH_SEARXNG_API_KEY`: optional only when an operator-approved
   self-hosted gateway requires a private access token; never required by this
-  repository and never written to tracked files.
+  repository and never written to tracked files. This token is for gateway
+  authentication only and must not be used to enable paid SearXNG engines.
 - `BOSS_IDEA_SEARCH_SEARXNG_ENDPOINT_LABEL`: public-safe label recorded in
   manifests and candidate metadata.
 - `BOSS_IDEA_SEARCH_SEARXNG_TIMEOUT_SECONDS`: optional, default 10, hard cap 30.
@@ -152,9 +153,18 @@ boss_idea_market_crawl:
   crawl_log_path: agentic/runs/<run-id>/crawl4ai/crawl-log.yaml
 ```
 
+The Crawl4AI adapter manifest contract still applies. This example shows the
+SearXNG-specific keys and changed values; implementation must preserve common
+fields such as `crawl4ai_version`, `live_smoke_evidence_path` when applicable,
+and any valid Staff+ `waiver`.
+
 The command must fail if `searxng` is selected without both `--live` and
 `BOSS_IDEA_LIVE_CRAWL=1`, except when `BOSS_IDEA_SEARCH_SEARXNG_FIXTURE` is
 used by deterministic validation.
+
+The deterministic fixture path records `provider: searxng`, `mode: fixture`,
+and `no_paid_provider: true`. It is validation evidence only and does not
+satisfy production-grade live discovery.
 
 Default-provider rule for BIR-10E implementation: if `--from-query-pack` and
 `--live` are set and `--search-provider` is omitted, the command may resolve to
@@ -247,6 +257,8 @@ Negative tests:
 - more than the hard cap of results fails;
 - missing query id fails;
 - tracked raw provider response fails privacy validation.
+- `no_paid_engine_policy: unknown` appears in evidence used for a boss decision
+  memo.
 
 ## Acceptance Criteria
 
@@ -271,6 +283,10 @@ Implementation review must verify endpoint validation, fixture coverage,
 candidate schema mapping, URL safety before Crawl4AI, manifest metadata, no
 credential leakage, no-network golden tests, no-paid engine confirmation, and
 negative paths for malformed provider output.
+
+Implementation review must also require a boundary test proving that any
+local-IP exception for the SearXNG base URL does not extend to candidate URLs
+passed to Crawl4AI.
 
 ## Rollback
 
