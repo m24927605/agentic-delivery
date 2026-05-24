@@ -187,6 +187,7 @@ Block provider completion when:
   explicit local operator endpoint used only to reach the self-hosted search
   service, not as a crawl candidate;
 - provider response is not valid JSON;
+- provider response content type is not JSON;
 - response does not contain a results array;
 - response or operator metadata indicates a paid engine is being used as the
   default no-paid provider path;

@@ -20,6 +20,10 @@ BOSS_IMPLEMENTATION_RUN="${RUN_PREFIX}-boss-implementation"
 REQUESTED_ARTIFACT="docs/architecture/example-requested-artifact.md"
 
 cleanup() {
+  if [[ -n "${SEARXNG_BAD_CONTENT_TYPE_PID:-}" ]]; then
+    kill "$SEARXNG_BAD_CONTENT_TYPE_PID" 2>/dev/null || true
+    wait "$SEARXNG_BAD_CONTENT_TYPE_PID" 2>/dev/null || true
+  fi
   rm -rf \
     "agentic/runs/$PLANNING_RUN" \
     "agentic/runs/$NO_APPROVED_RUN" \
@@ -441,6 +445,7 @@ if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_SEARCH_SEARXNG_BASE_URL="http://127.0.0.1:${
 fi
 kill "$SEARXNG_BAD_CONTENT_TYPE_PID" 2>/dev/null || true
 wait "$SEARXNG_BAD_CONTENT_TYPE_PID" 2>/dev/null || true
+unset SEARXNG_BAD_CONTENT_TYPE_PID
 grep -q "non-JSON content type" /tmp/h20-boss-market-crawl-searxng-content-type.log
 
 BOSS_IDEA_SEARCH_SEARXNG_FIXTURE=agentic/fixtures/boss-idea-response/searxng-search-fixture.json scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/searxng-results.yaml" >/dev/null
