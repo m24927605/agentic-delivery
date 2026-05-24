@@ -285,6 +285,10 @@ if scripts/validate-boss-idea-market-discovery-quality.sh "agentic/runs/$BOSS_ID
   exit 1
 fi
 grep -q "authority_note must state advisory-only authority" /tmp/h20-boss-market-quality-authority.log
+ruby -ryaml -ruri -e 'seeds=YAML.load_file(ARGV.fetch(0)); hosts=%w[example.com example.org example.net iana.org]; seeds.fetch("candidates").each_with_index { |candidate, index| uri=URI.parse(candidate.fetch("url")); candidate["url"] = "https://#{hosts.fetch(index)}#{uri.path}" }; File.write(ARGV.fetch(1), seeds.to_yaml)' agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml "agentic/runs/$BOSS_IDEA_RUN/clean-quality-seeds.yaml"
+scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --seeds "agentic/runs/$BOSS_IDEA_RUN/clean-quality-seeds.yaml" --output "agentic/runs/$BOSS_IDEA_RUN/clean-quality-results.yaml" >/dev/null
+scripts/validate-boss-idea-market-discovery-quality.sh "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml" >/dev/null
+ruby -ryaml -e 'q=YAML.load_file(ARGV.fetch(0)); abort("expected empty evidence gaps to validate") unless q.fetch("evidence_gaps") == []; abort("expected diversified hosts") unless q.dig("checks", "unique_host_count").to_i >= 3' "agentic/runs/$BOSS_IDEA_RUN/market-discovery-quality.yaml"
 
 if scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider fixture --output "agentic/runs/$BOSS_IDEA_RUN/bad-live-no-env-results.yaml" >/tmp/h20-boss-market-crawl-live-no-env.log 2>&1; then
   echo "expected --live without env to fail" >&2

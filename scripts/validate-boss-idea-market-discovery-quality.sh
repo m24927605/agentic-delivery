@@ -71,9 +71,17 @@ if checks["duplicate_host_count"] > checks["source_count"]
   BossIdea.fail_with("market_discovery_quality.checks.duplicate_host_count cannot exceed source_count")
 end
 
+BossIdea.fail_with("market_discovery_quality.evidence_gaps is required") unless quality.key?("evidence_gaps")
 evidence_gaps = quality["evidence_gaps"]
 unless evidence_gaps.is_a?(Array) && evidence_gaps.all? { |gap| gap.is_a?(String) }
   BossIdea.fail_with("market_discovery_quality.evidence_gaps must be an array of strings")
+end
+
+Array(schema["checks_optional_date_fields"]).each do |field|
+  value = checks[field]
+  next if value.nil? || value.to_s.empty?
+
+  BossIdea.fail_with("market_discovery_quality.checks.#{field} must be YYYY-MM-DD") unless BossIdea.valid_date?(value)
 end
 
 authority_note = quality["authority_note"].to_s.downcase

@@ -1049,7 +1049,8 @@ def quality_band(score)
   "insufficient"
 end
 
-def build_discovery_quality(run_id, provider, mode, query_ids, required_signals, results, candidates)
+def build_discovery_quality(run_id, provider, mode, query_ids, required_signals, results, candidates, reference_date)
+  scoring_date = reference_date.is_a?(Date) ? reference_date : Date.iso8601(reference_date.to_s)
   result_query_ids = results.map { |result| result["query_id"].to_s }.uniq
   result_signals = results.map { |result| result["signal"].to_s }.uniq
   hosts = results.map { |result| result_host(result) }.reject(&:empty?).uniq
@@ -1060,7 +1061,7 @@ def build_discovery_quality(run_id, provider, mode, query_ids, required_signals,
   duplicate_host_count = host_counts.values.reduce(0) { |total, count| count > 1 ? total + count - 1 : total }
   access_dates = result_access_dates(results)
   missing_or_invalid_date_count = results.length - access_dates.length
-  stale_source_count = access_dates.count { |date| (Date.today - date).to_i > QUALITY_FRESH_SOURCE_MAX_AGE_DAYS }
+  stale_source_count = access_dates.count { |date| (scoring_date - date).to_i > QUALITY_FRESH_SOURCE_MAX_AGE_DAYS }
   lower_trust_count = candidates.count { |candidate| candidate.dig("provider_metadata", "lower_trust_fallback") == true }
   missing_required_signals = required_signals - result_signals
   missing_queries = query_ids - result_query_ids
@@ -1377,7 +1378,7 @@ File.write(CANDIDATE_URLS_PATH, {
 }.to_yaml)
 File.write(CRAWL_LOG_PATH, crawl_log.to_yaml)
 File.write(output_path, { "results" => results }.to_yaml)
-quality = build_discovery_quality(run_id, search_provider, crawl_mode, query_ids, required_signals, results, candidate_records)
+quality = build_discovery_quality(run_id, search_provider, crawl_mode, query_ids, required_signals, results, candidate_records, Date.iso8601(today))
 File.write(QUALITY_PATH, quality.to_yaml)
 
 unless results_only

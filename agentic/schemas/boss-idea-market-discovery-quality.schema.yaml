@@ -10,7 +10,6 @@ schema:
     - provider_priority
     - no_paid_provider
     - checks
-    - evidence_gaps
     - authority_note
   allowed_bands:
     - strong
@@ -47,6 +46,9 @@ schema:
     - stale_source_count
     - missing_or_invalid_access_date_count
     - lower_trust_fallback_count
+  checks_optional_date_fields:
+    - oldest_access_date
+    - latest_access_date
   authority_policy:
     advisory_only: true
     required_phrases:

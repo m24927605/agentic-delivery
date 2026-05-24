@@ -206,7 +206,8 @@ Lead and Staff+ reviewers. It surfaces provider priority, coverage, source
 diversity, duplicate domains, freshness, lower-trust fallback usage, and
 evidence gaps. It cannot approve artifacts, decisions, roadmap, budget, or
 implementation, and downstream go/no-go steps must still use their own
-validators and human decision records.
+validators and human decision records. `evidence_gaps` must be present but may
+be an empty array when the run has no quality gaps.
 
 Search provider contract:
 
