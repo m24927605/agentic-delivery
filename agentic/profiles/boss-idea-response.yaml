@@ -12,15 +12,18 @@ source_of_truth:
   - docs/architecture/boss-idea-response-system.md
   - docs/adr/006-boss-idea-crawl4ai-market-discovery.md
   - docs/adr/007-boss-idea-no-paid-search-provider.md
+  - docs/architecture/boss-idea-productionization-roadmap.md
   - docs/standards/agentic-delivery-quality-standard.md
   - docs/standards/boss-idea-response-quality-standard.md
   - docs/backlog/boss-idea-response-slices.md
+  - docs/backlog/boss-idea-productionization-slices.md
 
 required_artifacts:
   strategy:
     - docs/architecture/boss-idea-response-system.md
   deliverables:
     - docs/architecture/boss-idea-response-system.md
+    - docs/architecture/boss-idea-productionization-roadmap.md
     - docs/architecture/boss-idea-modules/idea-intake.md
     - docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md
     - docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md
@@ -31,6 +34,7 @@ required_artifacts:
     - docs/architecture/boss-idea-modules/success-metrics.md
     - docs/architecture/boss-idea-modules/go-no-go-decision.md
     - docs/backlog/boss-idea-response-slices.md
+    - docs/backlog/boss-idea-productionization-slices.md
     - docs/standards/boss-idea-response-quality-standard.md
     - docs/runbooks/boss-idea-no-paid-market-search.md
 
@@ -83,6 +87,7 @@ domain:
 review_prompt:
   required_files:
     - docs/architecture/boss-idea-response-system.md
+    - docs/architecture/boss-idea-productionization-roadmap.md
     - docs/architecture/boss-idea-modules/idea-intake.md
     - docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md
     - docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md
@@ -93,6 +98,7 @@ review_prompt:
     - docs/architecture/boss-idea-modules/success-metrics.md
     - docs/architecture/boss-idea-modules/go-no-go-decision.md
     - docs/backlog/boss-idea-response-slices.md
+    - docs/backlog/boss-idea-productionization-slices.md
     - docs/standards/boss-idea-response-quality-standard.md
     - docs/standards/agentic-delivery-quality-standard.md
     - docs/adr/007-boss-idea-no-paid-search-provider.md

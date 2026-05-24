@@ -247,7 +247,7 @@ Approved provider roles:
 | `fixture` | no network | Deterministic golden validation only. |
 | `seed_replay` | no network by default | Emergency replay or manually approved candidate URLs. |
 | `live_seed` | no paid search | Direct approved live crawl of explicit candidate URLs. |
-| `searxng` | no paid API | Default query-to-URL provider through an operator-approved SearXNG endpoint. |
+| `searxng` | no paid API | Default query-to-URL provider through a self-hosted SearXNG endpoint. |
 | `duckduckgo_html` | no paid API | Lower-trust fallback for non-JavaScript HTML search extraction. |
 | `local_browser_search` | no paid API | Lower-trust fallback using isolated local Chrome/Chromium automation. |
 | `brave` | paid API | Optional paid provider only. |

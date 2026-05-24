@@ -101,6 +101,7 @@ public-safe tracked artifact.
 | Idea Intake | `docs/architecture/boss-idea-modules/idea-intake.md` | Structured idea brief |
 | Crawl4AI Market Discovery Adapter | `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md` | Public-source URL discovery and crawl evidence |
 | SearXNG Market Discovery Provider | `docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md` | No-paid query-to-URL discovery |
+| Boss Idea Productionization Roadmap | `docs/architecture/boss-idea-productionization-roadmap.md` | Remaining live smoke, orchestration, brief, hardening, and operations work |
 | Market Research Evidence | `docs/architecture/boss-idea-modules/market-research-evidence.md` | Source-backed market scan |
 | Feasibility Scoring | `docs/architecture/boss-idea-modules/feasibility-scoring.md` | Scored feasibility record |
 | Boss Decision Memo | `docs/architecture/boss-idea-modules/boss-decision-memo.md` | Executive recommendation |
@@ -121,6 +122,7 @@ The profile-backed deliverables are:
 - `docs/architecture/boss-idea-modules/idea-intake.md`
 - `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
 - `docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md`
+- `docs/architecture/boss-idea-productionization-roadmap.md`
 - `docs/architecture/boss-idea-modules/market-research-evidence.md`
 - `docs/architecture/boss-idea-modules/feasibility-scoring.md`
 - `docs/architecture/boss-idea-modules/boss-decision-memo.md`

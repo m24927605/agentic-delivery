@@ -3,14 +3,14 @@
 ## Purpose
 
 This runbook explains how to run Boss Idea market discovery without paid search
-APIs. The preferred path is SearXNG for query-to-URL discovery and Crawl4AI for
-approved page crawling.
+APIs. The preferred path is a self-hosted SearXNG endpoint for query-to-URL
+discovery and Crawl4AI for approved page crawling.
 
 ## Provider Priority
 
 Use providers in this order:
 
-1. `searxng`: default no-paid provider.
+1. `searxng`: default no-paid provider through a self-hosted endpoint.
 2. `duckduckgo_html`: no-paid fallback when SearXNG is unavailable and policy
    allows HTML result extraction.
 3. `local_browser_search`: no-paid fallback using isolated local Chrome or
@@ -22,7 +22,7 @@ Use providers in this order:
 
 Operator responsibilities:
 
-- provide a SearXNG endpoint that supports JSON output;
+- provide a self-hosted SearXNG endpoint that supports JSON output;
 - confirm the endpoint uses no-paid engines by default;
 - keep the endpoint URL in environment variables, not tracked files;
 - configure SearXNG engines and rate limits outside this repository;
@@ -30,7 +30,22 @@ Operator responsibilities:
   `team-searxng`;
 - verify that the endpoint is intended for internal research automation.
 
-This repository does not host or manage SearXNG.
+This repository does not run the SearXNG service. The operating standard is
+self-hosted SearXNG, either on the operator workstation at `127.0.0.1` or on a
+team-owned internal host. Public SearXNG instances are not the production
+default because their enabled formats, engines, rate limits, and availability
+are outside team control.
+
+The self-hosted instance must satisfy these checks before live Boss Idea runs:
+
+- `/search` accepts `q=<query>` and `format=json`;
+- JSON output is enabled in SearXNG `settings.yml` under the `search` section;
+- default engines are no-paid engines approved by Staff Security Engineer and
+  Market Research Lead;
+- limiter, rate, and outbound policy are configured outside this repository;
+- endpoint logs do not persist sensitive boss idea text beyond the team's
+  approved retention policy;
+- endpoint is reachable only from approved operator or internal team networks.
 
 ## Environment
 
@@ -191,3 +206,5 @@ Before using the output in a boss decision memo, confirm:
 - No-paid search ADR: `docs/adr/007-boss-idea-no-paid-search-provider.md`
 - SearXNG provider design: `docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md`
 - Crawl4AI adapter design: `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
+- SearXNG container installation: https://docs.searxng.org/admin/installation-docker.html
+- SearXNG Search API: https://docs.searxng.org/dev/search_api.html

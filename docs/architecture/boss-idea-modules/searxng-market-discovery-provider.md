@@ -15,8 +15,8 @@ SearXNG result snippets are discovery hints, not page-content evidence.
 Active scope:
 
 - consume `agentic/runs/<run-id>/market-research-query-pack.yaml`;
-- query an operator-approved SearXNG endpoint that supports JSON output;
-- require the operator-approved endpoint to use no-paid engines by default;
+- query a self-hosted SearXNG endpoint that supports JSON output;
+- require the self-hosted endpoint to use no-paid engines by default;
 - map SearXNG results into the BIR-10 candidate URL schema;
 - record provider, endpoint label, query string, result rank, locale, category,
   fallback state, and retrieval time;
@@ -123,7 +123,7 @@ scripts/crawl-boss-idea-market.sh <run-id> \
 Environment variables:
 
 - `BOSS_IDEA_SEARCH_SEARXNG_BASE_URL`: required for live SearXNG runs.
-- `BOSS_IDEA_SEARCH_SEARXNG_API_KEY`: optional only when an operator-approved
+- `BOSS_IDEA_SEARCH_SEARXNG_API_KEY`: optional only when an operator-managed
   self-hosted gateway requires a private access token; never required by this
   repository and never written to tracked files. This token is for gateway
   authentication only and must not be used to enable paid SearXNG engines.
@@ -164,6 +164,11 @@ fields such as `crawl4ai_version`, `live_smoke_evidence_path` when applicable,
 `quality_path`, `quality_score`, `quality_band`, and any valid Staff+
 `waiver`. The quality artifact is advisory evidence only and cannot approve a
 boss decision, artifact, roadmap, budget, or implementation.
+
+The production endpoint must be self-hosted by the team. Local loopback
+endpoints are acceptable for an individual operator live smoke. Team endpoints
+must be internal, labeled, rate-limited, and configured to expose JSON output.
+Public SearXNG instances are not the default production path.
 
 The command must fail if `searxng` is selected without both `--live` and
 `BOSS_IDEA_LIVE_CRAWL=1`, except when `BOSS_IDEA_SEARCH_SEARXNG_FIXTURE` is

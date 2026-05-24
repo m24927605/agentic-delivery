@@ -27,8 +27,8 @@ search API.
 
 Provider priority:
 
-1. `searxng`: default no-paid provider through a self-hosted or operator
-   approved SearXNG endpoint with JSON output.
+1. `searxng`: default no-paid provider through a self-hosted SearXNG endpoint
+   with JSON output.
 2. `duckduckgo_html`: no-paid fallback through the public non-JavaScript HTML
    search surface when SearXNG is unavailable and operator policy allows it.
 3. `local_browser_search`: no-paid fallback that uses an isolated local
@@ -59,7 +59,7 @@ stable, external search API, but it cannot be the only live provider.
 
 The no-paid path introduces operational responsibilities:
 
-- the team must run or approve a SearXNG instance;
+- the team must run a self-hosted SearXNG instance;
 - the approved SearXNG instance must use no-paid engines by default;
 - the endpoint must be configured through environment variables, not tracked
   files;
@@ -70,6 +70,11 @@ The no-paid path introduces operational responsibilities:
 - live smoke tests must remain opt-in with `--live` and
   `BOSS_IDEA_LIVE_CRAWL=1`;
 - fallback providers must be lower-trust and visibly labeled in artifacts.
+
+Public SearXNG instances are not the default production dependency. They may be
+used only as an explicitly labeled emergency fallback with Staff+ approval
+because JSON formats, enabled engines, rate limits, and retention behavior are
+not controlled by the team.
 
 The Staff Security Engineer and Staff Platform Engineer must approve every
 provider before release. Approval covers the provider adapter, not arbitrary

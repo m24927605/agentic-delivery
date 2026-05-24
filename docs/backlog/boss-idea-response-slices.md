@@ -480,7 +480,8 @@ artifact generation.
 
 ## BIR-10: Crawl4AI Market Discovery Adapter
 
-Status: planned.
+Status: completed through BIR-10A to BIR-10G. Remaining productionization work
+continues in `docs/backlog/boss-idea-productionization-slices.md`.
 
 Owner role: Market Research Lead.
 
@@ -604,12 +605,10 @@ Implementation sub-slices:
   Brave candidates are `live_approved` at the provider level after the provider
   itself is approved; future providers must document whether approval is
   provider-level or per-URL.
-- BIR-10D SearXNG no-paid provider design: completed for documentation.
+- BIR-10D SearXNG no-paid provider design: completed.
   Adds ADR 007, the SearXNG provider design, the no-paid market search runbook,
   and updates the Boss Idea adapter/profile/research contracts so Brave is not
-  the required live search path. Implementation remains a separate slice that
-  must add fixture JSON, provider parsing, candidate schema validation,
-  manifest metadata, Hermes/pipeline coverage, validation, and AIT review.
+  the required live search path. Implementation was delivered in BIR-10E.
 - BIR-10E SearXNG no-paid provider implementation: completed. Adds
   `--search-provider searxng` to `scripts/crawl-boss-idea-market.sh`, supports
   `BOSS_IDEA_SEARCH_SEARXNG_*` environment variables, maps JSON results to
@@ -630,7 +629,7 @@ Implementation sub-slices:
 
 ## BIR-10D: SearXNG No-Paid Provider Design
 
-Status: documentation completed, implementation planned in BIR-10E.
+Status: completed. Implementation was delivered in BIR-10E.
 
 Owner role: Market Research Lead.
 
