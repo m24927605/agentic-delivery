@@ -16,7 +16,8 @@ slice, deferral, or alternate implementation path.
 
 ## BIR-11: Self-Hosted SearXNG Live Smoke
 
-Status: completed by the productionization documentation update.
+Status: planning completed by the productionization documentation update;
+implementation slices BIR-11B through BIR-11D remain planned.
 
 Owner role: Staff Platform Engineer.
 
@@ -135,7 +136,7 @@ AIT review path:
 
 ## BIR-12: One-Command Boss Idea Workflow
 
-Status: planned.
+Status: completed by the productionization documentation update.
 
 Owner role: Engineering Manager.
 

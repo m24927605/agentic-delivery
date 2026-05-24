@@ -130,6 +130,7 @@ The profile-backed deliverables are:
 - `docs/architecture/boss-idea-modules/success-metrics.md`
 - `docs/architecture/boss-idea-modules/go-no-go-decision.md`
 - `docs/backlog/boss-idea-response-slices.md`
+- `docs/backlog/boss-idea-productionization-slices.md`
 - `docs/standards/boss-idea-response-quality-standard.md`
 - `docs/runbooks/boss-idea-no-paid-market-search.md`
 
