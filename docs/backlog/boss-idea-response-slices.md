@@ -610,10 +610,12 @@ Implementation sub-slices:
   the required live search path. Implementation remains a separate slice that
   must add fixture JSON, provider parsing, candidate schema validation,
   manifest metadata, Hermes/pipeline coverage, validation, and AIT review.
-- BIR-10E SearXNG no-paid provider implementation: planned. Adds
+- BIR-10E SearXNG no-paid provider implementation: completed. Adds
   `--search-provider searxng` to `scripts/crawl-boss-idea-market.sh`, supports
   `BOSS_IDEA_SEARCH_SEARXNG_*` environment variables, maps JSON results to
-  candidate URLs, and runs Crawl4AI through the existing live crawl path.
+  candidate URLs, supports deterministic fixture JSON without public internet,
+  records no-paid manifest metadata, and runs Crawl4AI through the existing
+  live crawl path for live candidates.
 - BIR-10F local browser and HTML search fallback design: planned. Defines
   `duckduckgo_html` and `local_browser_search` fallback contracts, captcha
   handling, isolated browser profile rules, reproducibility metadata, and
@@ -712,6 +714,91 @@ Staff+ escalation path: if round 5 fails, keep Brave optional, defer SearXNG
 implementation, and record whether the default no-paid requirement is satisfied
 through `duckduckgo_html`, `local_browser_search`, self-hosted SearXNG, or a
 temporary Staff+ waiver.
+
+## BIR-10E: SearXNG No-Paid Provider Implementation
+
+Status: completed.
+
+Owner role: Staff Platform Engineer.
+
+Dependencies: BIR-10D SearXNG No-Paid Provider Design.
+
+Source artifacts:
+
+- `docs/adr/007-boss-idea-no-paid-search-provider.md`
+- `docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md`
+- `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
+
+Files touched:
+
+- `scripts/crawl-boss-idea-market.sh`
+- `scripts/run-golden-fixtures.sh`
+- `scripts/validate-agentic-system.sh`
+- `agentic/schemas/boss-idea-market-candidate-urls.schema.yaml`
+- `agentic/fixtures/boss-idea-response/searxng-search-fixture.json`
+- `agentic/hermes-actions.yaml`
+- `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
+- `docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md`
+- `docs/backlog/boss-idea-response-slices.md`
+
+Acceptance criteria:
+
+- `scripts/crawl-boss-idea-market.sh` accepts `--search-provider searxng`.
+- SearXNG fixture JSON can convert query pack entries into candidate URLs
+  without live internet.
+- Live SearXNG runs require `--live`, `BOSS_IDEA_LIVE_CRAWL=1`,
+  `BOSS_IDEA_SEARCH_SEARXNG_BASE_URL`, and
+  `BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES=1`.
+- `--live --from-query-pack` can default to `searxng` when the required
+  SearXNG environment is present.
+- SearXNG candidates preserve provider metadata: endpoint label, query, public
+  search URL or fixture marker, locale, category, engine names, fallback state,
+  rank, and no-paid engine policy.
+- Candidate URLs still pass BIR-10 URL safety before Crawl4AI or fixture crawl.
+- Deterministic golden fixtures do not call public internet.
+- Manifest metadata records `provider: searxng`, `no_paid_provider: true`,
+  `provider_priority: 1`, endpoint label, source count, and evidence paths.
+- Optional gateway auth token is never written to tracked files.
+- Brave remains optional paid fallback.
+
+Validation command:
+
+```bash
+bash -n scripts/crawl-boss-idea-market.sh scripts/run-golden-fixtures.sh
+ruby -rjson -e 'JSON.parse(File.read("agentic/fixtures/boss-idea-response/searxng-search-fixture.json"))'
+scripts/run-golden-fixtures.sh
+scripts/validate-agentic-system.sh
+PROFILE=boss-idea-response scripts/validate-agentic-system.sh
+scripts/validate-hermes-actions.sh
+scripts/privacy-scan-tracked.sh
+git diff --check
+```
+
+Negative-path tests:
+
+- SearXNG without live flags or fixture fails before public network search.
+- Live SearXNG without base URL fails.
+- Live SearXNG without no-paid engine confirmation fails.
+- Malformed SearXNG fixture JSON fails.
+- Missing `results` array fails.
+- Paid engine marker fails in the no-paid provider path.
+- Private, metadata-service, localhost, non-http(s), and malformed result URLs
+  are filtered before Crawl4AI; a fully filtered result set fails.
+- SearXNG fixture candidates retain metadata and do not satisfy production
+  live discovery.
+
+Rollback notes: remove the `searxng` provider branch, fixture JSON, schema
+provider entry, golden fixture coverage, Hermes fixture reference, and BIR-10E
+contract updates. Keep BIR-10D because the no-paid decision remains valid.
+
+AIT review evidence path:
+`agentic/reviews/boss-idea-response/bir-10e/round-<n>.json`.
+
+Maximum review rounds: 5.
+
+Staff+ escalation path: if round 5 fails, keep BIR-10D as design authority,
+leave Brave optional, and choose whether to retry SearXNG implementation,
+advance BIR-10F fallback design, or record a temporary Staff+ waiver.
 
 ## Review Expectations
 

@@ -25,8 +25,7 @@ Active scope:
 - consume `agentic/runs/<run-id>/market-research-query-pack.yaml`;
 - discover candidate public URLs for each query through an approved search
   provider adapter;
-- use `searxng` as the default no-paid live search provider once BIR-10D is
-  implemented;
+- use `searxng` as the default no-paid live search provider;
 - crawl only public, policy-approved URLs through Crawl4AI or a strictly safer
   compatible crawler;
 - normalize Crawl4AI markdown output into the existing
@@ -189,7 +188,7 @@ Search provider contract:
 - provider output is stored under ignored run evidence;
 - default deterministic provider is `fixture`;
 - the only pre-approved provider for deterministic validation is `fixture`;
-- default no-paid live provider is `searxng` after BIR-10D implementation;
+- default no-paid live provider is `searxng`;
 - `brave` is optional paid fallback, not a required production dependency;
 - any new live provider requires Staff Security Engineer and Staff Software
   Architect approval before it can ship;
@@ -198,9 +197,10 @@ Search provider contract:
   search/crawl and use fixture/local inputs only.
 - `fixture` and `--seeds` must not be combined with
   `BOSS_IDEA_LIVE_CRAWL=1`; live runs must use an approved live provider.
-- current implementation requires an explicit `--search-provider`; BIR-10E may
-  add `searxng` as the default only for `--live --from-query-pack` runs where
-  the required `BOSS_IDEA_SEARCH_SEARXNG_*` environment is present.
+- current implementation accepts explicit `--search-provider searxng`; when
+  `--live --from-query-pack` is used and `--search-provider` is omitted, the
+  command resolves to `searxng` only if the required
+  `BOSS_IDEA_SEARCH_SEARXNG_*` environment is present.
 
 Approved provider roles:
 
@@ -340,8 +340,7 @@ Validation must include:
 - bash syntax for wrapper scripts;
 - Python unit tests for URL policy and result normalization;
 - fixture crawl using local HTML or `raw://` input, not the public internet;
-- fixture SearXNG JSON coverage for the no-paid provider path once BIR-10D is
-  implemented;
+- fixture SearXNG JSON coverage for the no-paid provider path;
 - negative tests for SSRF targets:
   - `http://localhost`
   - `http://127.0.0.1`

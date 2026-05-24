@@ -401,6 +401,105 @@ if env BOSS_IDEA_LIVE_CRAWL=1 "$BRAVE_KEY_ENV=fake" BOSS_IDEA_SEARCH_BRAVE_FIXTU
 fi
 grep -q "missing web.results" /tmp/h20-boss-market-crawl-brave-missing-results.log
 
+if scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/bad-searxng-no-live-results.yaml" >/tmp/h20-boss-market-crawl-searxng-no-live.log 2>&1; then
+  echo "expected SearXNG provider without live flags or fixture to fail" >&2
+  exit 1
+fi
+grep -q "public network search/crawl requires" /tmp/h20-boss-market-crawl-searxng-no-live.log
+
+if BOSS_IDEA_LIVE_CRAWL=1 scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/bad-searxng-missing-base-results.yaml" >/tmp/h20-boss-market-crawl-searxng-base.log 2>&1; then
+  echo "expected SearXNG provider without base URL to fail" >&2
+  exit 1
+fi
+grep -q "BOSS_IDEA_SEARCH_SEARXNG_BASE_URL" /tmp/h20-boss-market-crawl-searxng-base.log
+
+if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_SEARCH_SEARXNG_BASE_URL=http://127.0.0.1:8080/search scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/bad-searxng-paid-policy-results.yaml" >/tmp/h20-boss-market-crawl-searxng-paid-policy.log 2>&1; then
+  echo "expected SearXNG provider without no-paid policy to fail" >&2
+  exit 1
+fi
+grep -q "BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES" /tmp/h20-boss-market-crawl-searxng-paid-policy.log
+
+BOSS_IDEA_SEARCH_SEARXNG_FIXTURE=agentic/fixtures/boss-idea-response/searxng-search-fixture.json scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/searxng-results.yaml" >/dev/null
+scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
+ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected searxng provider") unless c["provider"] == "searxng"; abort("expected fixture mode") unless c["mode"] == "fixture"; abort("expected no-paid provider") unless c["no_paid_provider"] == true; abort("expected provider priority") unless c["provider_priority"].to_i == 1; abort("expected searxng source count") unless c["source_count"].to_i >= 4' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+ruby -ryaml -e 'c=YAML.load_file(ARGV.fetch(0)); abort("expected searxng provider") unless c["provider"] == "searxng"; abort("expected provider metadata") unless c.fetch("candidates").all? { |x| x["provider_metadata"].is_a?(Hash) && x["provider_metadata"]["provider"] == "searxng" && x["provider_metadata"]["result_rank"].to_i >= 1 }' "agentic/runs/$BOSS_IDEA_RUN/market-candidate-urls.yaml"
+
+cat >"agentic/runs/$BOSS_IDEA_RUN/searxng-malformed-fixture.json" <<'JSON'
+{"query_results":
+JSON
+if BOSS_IDEA_SEARCH_SEARXNG_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/searxng-malformed-fixture.json" scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/bad-searxng-malformed-results.yaml" >/tmp/h20-boss-market-crawl-searxng-malformed.log 2>&1; then
+  echo "expected malformed SearXNG fixture to fail" >&2
+  exit 1
+fi
+grep -q "invalid SearXNG fixture JSON" /tmp/h20-boss-market-crawl-searxng-malformed.log
+
+cat >"agentic/runs/$BOSS_IDEA_RUN/searxng-missing-results-fixture.json" <<'JSON'
+{
+  "query_results": {
+    "competitor_landscape": {}
+  }
+}
+JSON
+if BOSS_IDEA_SEARCH_SEARXNG_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/searxng-missing-results-fixture.json" scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/bad-searxng-missing-results.yaml" >/tmp/h20-boss-market-crawl-searxng-missing-results.log 2>&1; then
+  echo "expected SearXNG missing results fixture to fail" >&2
+  exit 1
+fi
+grep -q "missing results" /tmp/h20-boss-market-crawl-searxng-missing-results.log
+
+cat >"agentic/runs/$BOSS_IDEA_RUN/searxng-paid-fixture.json" <<'JSON'
+{
+  "query_results": {
+    "competitor_landscape": {
+      "no_paid_engine_policy": "operator-confirmed",
+      "results": [
+        {"url": "https://93.184.216.34/paid", "title": "Paid result", "content": "Should be blocked.", "engine_cost": "paid"}
+      ]
+    }
+  }
+}
+JSON
+if BOSS_IDEA_SEARCH_SEARXNG_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/searxng-paid-fixture.json" scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/bad-searxng-paid-results.yaml" >/tmp/h20-boss-market-crawl-searxng-paid.log 2>&1; then
+  echo "expected SearXNG paid engine fixture to fail" >&2
+  exit 1
+fi
+grep -q "paid engine" /tmp/h20-boss-market-crawl-searxng-paid.log
+
+cat >"agentic/runs/$BOSS_IDEA_RUN/searxng-private-fixture.json" <<'JSON'
+{
+  "query_results": {
+    "competitor_landscape": {
+      "no_paid_engine_policy": "operator-confirmed",
+      "results": [
+        {"url": "http://10.0.0.1/private", "title": "Private result", "content": "Should be filtered."}
+      ]
+    },
+    "mainstream_practices": {
+      "no_paid_engine_policy": "operator-confirmed",
+      "results": [
+        {"url": "http://169.254.169.254/latest/meta-data", "title": "Metadata result", "content": "Should be filtered."}
+      ]
+    },
+    "implementation_patterns": {
+      "no_paid_engine_policy": "operator-confirmed",
+      "results": [
+        {"url": "http://127.0.0.1/private", "title": "Loopback result", "content": "Should be filtered."}
+      ]
+    },
+    "operator_workflow": {
+      "no_paid_engine_policy": "operator-confirmed",
+      "results": [
+        {"url": "ftp://example.com/not-http", "title": "Scheme result", "content": "Should be filtered."}
+      ]
+    }
+  }
+}
+JSON
+if BOSS_IDEA_SEARCH_SEARXNG_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/searxng-private-fixture.json" scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider searxng --output "agentic/runs/$BOSS_IDEA_RUN/bad-searxng-private-results.yaml" >/tmp/h20-boss-market-crawl-searxng-private.log 2>&1; then
+  echo "expected SearXNG private-IP candidates to fail" >&2
+  exit 1
+fi
+grep -q "SearXNG search returned no candidate URLs" /tmp/h20-boss-market-crawl-searxng-private.log
+
 cat >"agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-live-redirect.yaml" <<'YAML'
 candidates:
   - id: live-redirect-private

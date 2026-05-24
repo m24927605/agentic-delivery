@@ -9,13 +9,14 @@ usage() {
 usage:
   scripts/crawl-boss-idea-market.sh --dry-run <run-id>
   scripts/crawl-boss-idea-market.sh [--force] [--results-only] <run-id> --from-query-pack --search-provider fixture --output <results.yaml>
+  scripts/crawl-boss-idea-market.sh [--force] [--results-only] <run-id> --from-query-pack --search-provider searxng --output <results.yaml>
   scripts/crawl-boss-idea-market.sh [--force] [--results-only] <run-id> --seeds <seeds.yaml> --output <results.yaml>
 
 The command turns a Boss Idea market query pack into deterministic public-source
 crawl/search results for the BIR-09 market research collector. Default fixture
 paths never use the public internet. Live provider mode is guarded by both
---live and BOSS_IDEA_LIVE_CRAWL=1 and is reserved for a later approved provider
-slice.
+--live and BOSS_IDEA_LIVE_CRAWL=1. SearXNG can also use
+BOSS_IDEA_SEARCH_SEARXNG_FIXTURE for deterministic no-network validation.
 USAGE
 }
 
@@ -138,7 +139,8 @@ RAW_DIR = File.join(RUN_DIR, "crawl4ai/raw")
 CRAWL_LOG_PATH = File.join(RUN_DIR, "crawl4ai/crawl-log.yaml")
 DEFAULT_FIXTURE_SEEDS = "agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml"
 DEFAULT_USER_AGENT = "agentic-delivery-boss-idea-crawler/0.1.0 (+mailto:agentic-delivery@example.invalid)"
-ALLOWED_PROVIDERS = %w[fixture seed_replay live_seed brave].freeze
+ALLOWED_PROVIDERS = %w[fixture seed_replay live_seed brave searxng].freeze
+LIVE_CRAWL_PROVIDERS = %w[live_seed brave searxng].freeze
 STOP_WORDS = %w[
   a an and are as at be by for from has have in into is it its of on or that
   the this to with without
@@ -421,10 +423,10 @@ QUERY_SOURCE_TYPES = {
 }.freeze
 
 QUERY_CLAIMS = {
-  "competitor_landscape" => "A public search result may identify adjacent or competing solution evidence.",
-  "mainstream_practices" => "A public search result may describe mainstream practice evidence.",
-  "implementation_patterns" => "A public search result may describe relevant implementation pattern evidence.",
-  "operator_workflow" => "A public search result may clarify operator workflow expectations."
+  "competitor_landscape" => "Comparable options should be reviewed before committing delivery scope.",
+  "mainstream_practices" => "External patterns should inform timing assumptions.",
+  "implementation_patterns" => "Candidate sources can inform a bounded technical validation plan.",
+  "operator_workflow" => "Human handoff needs should guide reviewer-facing choices."
 }.freeze
 
 def signal_for_query(query_id)
@@ -453,6 +455,33 @@ rescue JSON::ParserError => e
   fail_with("invalid Brave fixture JSON: #{e.message}")
 rescue KeyError
   fail_with("Brave fixture missing query result: #{query_id}")
+end
+
+def parse_positive_integer_env(name, default, hard_cap)
+  value = ENV[name].to_s
+  value = default.to_s if value.empty?
+  parsed = Integer(value)
+  raise ArgumentError, "invalid #{name}" unless parsed.positive? && parsed <= hard_cap
+
+  parsed
+rescue ArgumentError
+  fail_with("invalid #{name}")
+end
+
+def load_provider_fixture(path, provider, query_id)
+  fail_with("invalid #{provider} fixture path: #{path}") unless BossIdea.repo_local_path?(path)
+  fail_with("#{provider} fixture not found: #{path}") unless File.file?(path)
+
+  payload = JSON.parse(File.read(path))
+  if payload["query_results"].is_a?(Hash)
+    payload.fetch("query_results").fetch(query_id)
+  else
+    payload
+  end
+rescue JSON::ParserError => e
+  fail_with("invalid #{provider} fixture JSON: #{e.message}")
+rescue KeyError
+  fail_with("#{provider} fixture missing query result: #{query_id}")
 end
 
 def fetch_brave_results(query)
@@ -534,6 +563,154 @@ def discover_brave_candidates(query_pack)
   candidates
 end
 
+def searxng_fixture_path
+  ENV["BOSS_IDEA_SEARCH_SEARXNG_FIXTURE"].to_s
+end
+
+def searxng_fixture_mode?
+  !searxng_fixture_path.empty?
+end
+
+def searxng_results_per_query
+  parse_positive_integer_env("BOSS_IDEA_SEARCH_SEARXNG_RESULTS_PER_QUERY", 5, POLICY.fetch("max_candidate_urls_per_query"))
+end
+
+def searxng_timeout
+  parse_positive_integer_env("BOSS_IDEA_SEARCH_SEARXNG_TIMEOUT_SECONDS", 10, 30)
+end
+
+def searxng_endpoint_label
+  label = ENV["BOSS_IDEA_SEARCH_SEARXNG_ENDPOINT_LABEL"].to_s
+  label.empty? ? "searxng" : label.gsub(/[^A-Za-z0-9._-]+/, "-")[0, 80]
+end
+
+def validate_searxng_no_paid_engine!(payload, fixture_mode)
+  policy = payload["no_paid_engine_policy"].to_s
+  if fixture_mode
+    return if policy.empty? || %w[operator-confirmed unknown].include?(policy)
+
+    fail_with("invalid SearXNG no_paid_engine_policy")
+  end
+
+  fail_with("missing BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES", 2) unless ENV["BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES"].to_s == "1"
+  fail_with("SearXNG no-paid engine policy is not confirmed") if policy == "unknown"
+end
+
+def paid_searxng_engine?(result)
+  return true if result["paid"] == true || result["engine_cost"].to_s == "paid"
+
+  Array(result["engines"]).any? { |engine| engine.is_a?(Hash) && (engine["paid"] == true || engine["cost"].to_s == "paid") }
+end
+
+def searxng_search_url(base_url, query)
+  uri = URI.parse(base_url)
+  fail_with("SearXNG search base URL must be http or https") unless %w[http https].include?(uri.scheme)
+  fail_with("SearXNG search base URL host is required") if uri.host.to_s.empty?
+
+  params = URI.decode_www_form(uri.query.to_s)
+  params.concat([
+    ["q", query.fetch("query")],
+    ["format", "json"]
+  ])
+  locale = ENV["BOSS_IDEA_SEARCH_SEARXNG_LOCALE"].to_s
+  category = ENV["BOSS_IDEA_SEARCH_SEARXNG_CATEGORY"].to_s
+  params << ["language", locale] unless locale.empty?
+  params << ["categories", category] unless category.empty?
+  uri.query = URI.encode_www_form(params)
+  uri
+rescue URI::InvalidURIError
+  fail_with("invalid SearXNG search base URL")
+end
+
+def fetch_searxng_results(query)
+  fixture = searxng_fixture_path
+  return load_provider_fixture(fixture, "SearXNG", query.fetch("id")) unless fixture.empty?
+
+  base_url = ENV["BOSS_IDEA_SEARCH_SEARXNG_BASE_URL"].to_s
+  fail_with("missing BOSS_IDEA_SEARCH_SEARXNG_BASE_URL", 2) if base_url.empty?
+  fail_with("missing BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES", 2) unless ENV["BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES"].to_s == "1"
+
+  uri = searxng_search_url(base_url, query)
+  request = Net::HTTP::Get.new(uri)
+  request["Accept"] = "application/json"
+  gateway_token = ENV["BOSS_IDEA_SEARCH_SEARXNG_API_KEY"].to_s
+  request["Authorization"] = "Bearer #{gateway_token}" unless gateway_token.empty?
+  timeout = searxng_timeout
+  response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: timeout, read_timeout: timeout) do |http|
+    http.request(request)
+  end
+  fail_with("SearXNG search failed: HTTP #{response.code}", 1) unless response.is_a?(Net::HTTPSuccess)
+
+  JSON.parse(response.body)
+rescue JSON::ParserError => e
+  fail_with("invalid SearXNG search JSON: #{e.message}")
+end
+
+def searxng_result_engines(result)
+  engines = []
+  engines.concat(Array(result["engines"]).map { |engine| engine.is_a?(Hash) ? engine["name"] : engine })
+  engines << result["engine"]
+  engines.compact.map(&:to_s).reject(&:empty?).uniq
+end
+
+def discover_searxng_candidates(query_pack)
+  fixture_mode = searxng_fixture_mode?
+  candidates = []
+  per_query_limit = searxng_results_per_query
+  Array(query_pack.fetch("queries")).each do |query|
+    payload = fetch_searxng_results(query)
+    validate_searxng_no_paid_engine!(payload, fixture_mode)
+    results = payload["results"]
+    fail_with("SearXNG search result missing results") unless results.is_a?(Array)
+    results.first(per_query_limit).each_with_index do |result, index|
+      next unless result.is_a?(Hash)
+      fail_with("SearXNG paid engine result is not allowed in no-paid provider path") if paid_searxng_engine?(result)
+
+      url = result["url"].to_s
+      title = result["title"].to_s.empty? ? "SearXNG search result #{index + 1}" : result["title"].to_s
+      next if url.empty?
+      begin
+        parse_http_url!(url, "SearXNG result url")
+      rescue ArgumentError
+        next
+      end
+      metadata = {
+        "provider" => "searxng",
+        "endpoint_label" => searxng_endpoint_label,
+        "query" => query.fetch("query"),
+        "search_url" => fixture_mode ? "fixture://#{query.fetch("id")}" : searxng_search_url(ENV.fetch("BOSS_IDEA_SEARCH_SEARXNG_BASE_URL"), query).to_s,
+        "locale" => ENV["BOSS_IDEA_SEARCH_SEARXNG_LOCALE"].to_s.empty? ? "default" : ENV.fetch("BOSS_IDEA_SEARCH_SEARXNG_LOCALE"),
+        "category" => ENV["BOSS_IDEA_SEARCH_SEARXNG_CATEGORY"].to_s.empty? ? "general" : ENV.fetch("BOSS_IDEA_SEARCH_SEARXNG_CATEGORY"),
+        "engine_names" => searxng_result_engines(result),
+        "fallback_from" => result["fallback_from"].to_s,
+        "result_rank" => index + 1,
+        "no_paid_engine_policy" => payload["no_paid_engine_policy"].to_s.empty? ? (fixture_mode ? "unknown" : "operator-confirmed") : payload["no_paid_engine_policy"].to_s
+      }
+      candidates << {
+        "id" => safe_slug("#{query.fetch("id")}-#{title}"),
+        "query_id" => query.fetch("id"),
+        "url" => url,
+        "title" => title,
+        "snippet" => (result["content"] || result["snippet"] || "").to_s[0, 240],
+        "provider" => "searxng",
+        "source_type" => source_type_for_query(query.fetch("id")),
+        "signal" => signal_for_query(query.fetch("id")),
+        "claim" => claim_for_query(query.fetch("id")),
+        "rank" => index + 1,
+        "retrieved_at" => Time.now.utc.iso8601,
+        "provider_metadata" => metadata,
+        "live_approved" => true
+      }.tap do |candidate|
+        content_path = result["content_path"].to_s
+        candidate["content_path"] = content_path unless content_path.empty?
+      end
+    end
+  end
+  fail_with("SearXNG search returned no candidate URLs") if candidates.empty?
+
+  candidates
+end
+
 manifest = load_manifest(MANIFEST_PATH)
 run = manifest["run"].is_a?(Hash) ? manifest["run"] : {}
 fail_with("run.id must equal #{run_id}") unless run["id"].to_s == run_id
@@ -564,6 +741,9 @@ fail_with("crawl results already exist: #{output_path}; use --force to overwrite
 if live || live_env
   fail_with("live crawl requires both --live and BOSS_IDEA_LIVE_CRAWL=1", 2) unless live && live_env
 end
+if from_query_pack && search_provider.empty? && live && live_env && !ENV["BOSS_IDEA_SEARCH_SEARXNG_BASE_URL"].to_s.empty?
+  search_provider = "searxng"
+end
 live_seed_mode = live && live_env && !seeds_path.empty?
 if live_seed_mode
   if !search_provider.empty? && search_provider != "live_seed"
@@ -575,9 +755,9 @@ elsif live_env && search_provider == "fixture"
 end
 if from_query_pack
   fail_with("missing --search-provider", 2) if search_provider.empty?
-  if search_provider != "fixture"
+  if search_provider != "fixture" && !(search_provider == "searxng" && searxng_fixture_mode?)
     fail_with("public network search/crawl requires --live and BOSS_IDEA_LIVE_CRAWL=1", 2) unless live && live_env
-    fail_with("live search provider is not implemented in this slice: #{search_provider}", 2) unless search_provider == "brave"
+    fail_with("live search provider is not implemented in this slice: #{search_provider}", 2) unless %w[brave searxng].include?(search_provider)
   end
   seeds_path = DEFAULT_FIXTURE_SEEDS
 end
@@ -594,7 +774,13 @@ market_schema = BossIdea.load_yaml("agentic/schemas/boss-idea-market-search.sche
 research_schema = BossIdea.load_yaml("agentic/schemas/boss-idea-research.schema.yaml").fetch("schema")
 allowed_signals = Array(market_schema["allowed_signals"]).map(&:to_s)
 allowed_source_types = Array(research_schema["allowed_source_types"]).map(&:to_s)
-candidates = from_query_pack && search_provider == "brave" ? discover_brave_candidates(query_pack) : load_candidates(seeds_path)
+candidates = if from_query_pack && search_provider == "brave"
+  discover_brave_candidates(query_pack)
+elsif from_query_pack && search_provider == "searxng"
+  discover_searxng_candidates(query_pack)
+else
+  load_candidates(seeds_path)
+end
 allow_hosts = candidates.each_with_object([]) do |candidate, hosts|
   hosts << parse_http_url!(candidate["url"], "candidate.url").host.downcase
 rescue ArgumentError
@@ -617,11 +803,12 @@ end
 per_query_counts = Hash.new(0)
 candidate_records = []
 results = []
+crawl_mode = search_provider == "searxng" && searxng_fixture_mode? ? "fixture" : search_provider
 crawl_log = {
   "schema_version" => 1,
   "run_id" => run_id,
   "provider" => search_provider,
-  "mode" => search_provider,
+  "mode" => crawl_mode,
   "user_agent" => ua,
   "policy" => POLICY,
   "entries" => []
@@ -654,7 +841,7 @@ candidates.each_with_index do |candidate, index|
     raise ArgumentError, "Crawl4AI output must be markdown-only" unless extraction_type == "markdown"
 
     crawl4ai_version = "not-used-fixture"
-    if %w[live_seed brave].include?(search_provider)
+    if live && live_env && LIVE_CRAWL_PROVIDERS.include?(search_provider) && candidate["content_path"].to_s.empty?
       raise ArgumentError, "live seed candidate requires live_approved: true" unless candidate["live_approved"] == true
       before_ips = resolve_public_host!(uri.host, "candidate.url")
       markdown, truncated, crawl4ai_version = crawl4ai_markdown(candidate, ua)
@@ -697,8 +884,12 @@ candidates.each_with_index do |candidate, index|
       "title" => candidate["title"].to_s,
       "snippet" => candidate["snippet"].to_s,
       "provider" => search_provider,
-      "retrieved_at" => Time.now.utc.iso8601
-    }
+      "retrieved_at" => candidate["retrieved_at"].to_s.empty? ? Time.now.utc.iso8601 : candidate["retrieved_at"].to_s
+    }.tap do |record|
+      record["rank"] = candidate["rank"] if candidate.key?("rank")
+      record["provider_metadata"] = candidate["provider_metadata"] if candidate["provider_metadata"].is_a?(Hash)
+      record["fallback_from"] = candidate.dig("provider_metadata", "fallback_from") if candidate.dig("provider_metadata", "fallback_from").to_s.length.positive?
+    end
     result = {
       "id" => source_id,
       "query_id" => query_id,
@@ -754,6 +945,7 @@ File.write(CANDIDATE_URLS_PATH, {
   "schema_version" => 1,
   "run_id" => run_id,
   "provider" => search_provider,
+  "mode" => crawl_mode,
   "candidates" => candidate_records
 }.to_yaml)
 File.write(CRAWL_LOG_PATH, crawl_log.to_yaml)
@@ -769,7 +961,7 @@ end
 manifest = load_manifest(MANIFEST_PATH)
 manifest["boss_idea_market_crawl"] = {
   "provider" => search_provider,
-  "mode" => search_provider,
+  "mode" => crawl_mode,
   "crawl4ai_version" => crawl_log.fetch("entries").map { |entry| entry["crawl4ai_version"] }.compact.first || "not-used-fixture",
   "candidate_urls_path" => CANDIDATE_URLS_PATH,
   "results_path" => output_path,
@@ -779,7 +971,17 @@ manifest["boss_idea_market_crawl"] = {
   "source_count" => results.length,
   "generated_at" => Time.now.utc.iso8601,
   "authority_note" => "Crawl/search output is evidence only and cannot approve artifacts or implementation."
-}
+}.tap do |metadata|
+  if search_provider == "searxng"
+    metadata["no_paid_provider"] = true
+    metadata["provider_priority"] = 1
+    metadata["provider_endpoint_label"] = searxng_endpoint_label
+    metadata["fixture_mode"] = searxng_fixture_mode?
+  elsif search_provider == "brave"
+    metadata["no_paid_provider"] = false
+    metadata["provider_priority"] = 4
+  end
+end
 manifest["run"]["updated_at"] = Time.now.utc.iso8601 if manifest["run"].is_a?(Hash)
 tmp_path = "#{MANIFEST_PATH}.tmp"
 File.write(tmp_path, manifest.to_yaml)

@@ -169,11 +169,10 @@ The deterministic fixture path records `provider: searxng`, `mode: fixture`,
 and `no_paid_provider: true`. It is validation evidence only and does not
 satisfy production-grade live discovery.
 
-Default-provider rule for BIR-10E implementation: if `--from-query-pack` and
-`--live` are set and `--search-provider` is omitted, the command may resolve to
-`searxng` only when the required `BOSS_IDEA_SEARCH_SEARXNG_*` environment is
-present. Until that implementation ships, omitted `--search-provider` continues
-to fail.
+Default-provider rule: if `--from-query-pack` and `--live` are set and
+`--search-provider` is omitted, the command resolves to `searxng` only when the
+required `BOSS_IDEA_SEARCH_SEARXNG_*` environment is present. Omitted
+`--search-provider` still fails when the SearXNG environment is absent.
 
 ## Failure Behavior
 
@@ -303,3 +302,4 @@ and optional Brave behavior remain valid.
 - SearXNG search API: https://docs.searxng.org/dev/search_api.html
 - Boss Idea Crawl4AI adapter: `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
 - No-paid provider ADR: `docs/adr/007-boss-idea-no-paid-search-provider.md`
+- Fixture JSON: `agentic/fixtures/boss-idea-response/searxng-search-fixture.json`

@@ -641,6 +641,7 @@ actions:
       - agentic/schemas/boss-idea-market-search.schema.yaml
       - agentic/schemas/boss-idea-research.schema.yaml
       - agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml
+      - agentic/fixtures/boss-idea-response/searxng-search-fixture.json
     writes:
       - "{{search_results}}"
       - agentic/runs/{{run_id}}/market-research-query-pack.yaml

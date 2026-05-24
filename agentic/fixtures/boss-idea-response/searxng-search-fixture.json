@@ -1,0 +1,52 @@
+{
+  "query_results": {
+    "competitor_landscape": {
+      "no_paid_engine_policy": "operator-confirmed",
+      "results": [
+        {
+          "url": "https://93.184.216.34/searxng-competitor-workflow",
+          "title": "SearXNG fixture competitor workflow",
+          "content": "Public result for competitor landscape research.",
+          "engine": "fixture-engine",
+          "content_path": "agentic/fixtures/boss-idea-response/market-crawl-pages/competitor-workflow.html"
+        }
+      ]
+    },
+    "mainstream_practices": {
+      "no_paid_engine_policy": "operator-confirmed",
+      "results": [
+        {
+          "url": "https://93.184.216.34/searxng-mainstream-practices",
+          "title": "SearXNG fixture mainstream practices",
+          "content": "Public result for mainstream practice research.",
+          "engine": "fixture-engine",
+          "content_path": "agentic/fixtures/boss-idea-response/market-crawl-pages/mainstream-practices.html"
+        }
+      ]
+    },
+    "implementation_patterns": {
+      "no_paid_engine_policy": "operator-confirmed",
+      "results": [
+        {
+          "url": "https://93.184.216.34/searxng-implementation-patterns",
+          "title": "SearXNG fixture implementation patterns",
+          "content": "Public result for implementation pattern research.",
+          "engine": "fixture-engine",
+          "content_path": "agentic/fixtures/boss-idea-response/market-crawl-pages/implementation-patterns.html"
+        }
+      ]
+    },
+    "operator_workflow": {
+      "no_paid_engine_policy": "operator-confirmed",
+      "results": [
+        {
+          "url": "https://93.184.216.34/searxng-operator-workflow",
+          "title": "SearXNG fixture operator workflow",
+          "content": "Public result for operator workflow research.",
+          "engine": "fixture-engine",
+          "content_path": "agentic/fixtures/boss-idea-response/market-crawl-pages/operator-workflow.html"
+        }
+      ]
+    }
+  }
+}
