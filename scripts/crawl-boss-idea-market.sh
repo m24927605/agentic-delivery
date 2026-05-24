@@ -423,7 +423,7 @@ def capture_stdout_capped(command, max_bytes)
       end
       raise ArgumentError, "local browser helper stdout exceeds max response bytes"
     end
-      stderr = err.read(65_536).to_s
+    stderr = err.read(65_536).to_s
     status = wait_thr.value
   end
   [stdout, stderr, status]
@@ -1150,6 +1150,11 @@ candidates.each_with_index do |candidate, index|
       raise ArgumentError, "fallback candidate requires provider_metadata" unless metadata.is_a?(Hash)
       %w[fallback_from lower_trust_fallback no_paid_engine_policy result_rank].each do |field|
         raise ArgumentError, "fallback candidate provider_metadata.#{field} is required" if metadata[field].to_s.empty?
+      end
+      begin
+        raise ArgumentError unless Integer(metadata["result_rank"]).positive?
+      rescue ArgumentError
+        raise ArgumentError, "fallback candidate provider_metadata.result_rank must be positive"
       end
       raise ArgumentError, "fallback candidate must set lower_trust_fallback: true" unless metadata["lower_trust_fallback"] == true
     end
