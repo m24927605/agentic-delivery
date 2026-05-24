@@ -866,8 +866,12 @@ Negative-path tests:
 
 - `duckduckgo_html` without live flags or fixture fails.
 - Empty DuckDuckGo HTML fixture fails with no parseable results.
+- DuckDuckGo HTML challenge markers fail instead of being bypassed.
 - `local_browser_search` without live flags or fixture fails.
+- Local browser custom search URL pointing at private or loopback hosts fails
+  before the browser helper starts.
 - Local browser fixture missing `results` fails.
+- Oversized local browser helper stdout fails before parsing.
 - Fallback provider candidate metadata must label lower trust and fallback
   source.
 

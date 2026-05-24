@@ -25,6 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-results", type=int, default=5)
     parser.add_argument("--timeout-ms", type=int, default=20000)
     parser.add_argument("--channel", default="chrome")
+    parser.add_argument("--locale", default="en-US")
     return parser.parse_args()
 
 
@@ -38,9 +39,12 @@ def main() -> int:
     results = []
     with sync_playwright() as runtime:
         browser = runtime.chromium.launch(channel=args.channel, headless=True)
-        context = browser.new_context(locale="en-US")
+        context = browser.new_context(locale=args.locale)
         page = context.new_page()
         page.goto(args.search_url, wait_until="domcontentloaded", timeout=args.timeout_ms)
+        body_text = page.locator("body").inner_text(timeout=args.timeout_ms).lower()
+        if any(marker in body_text for marker in ("captcha", "are you human", "verify you are human", "unusual traffic", "bot detection", "robot check")):
+            fail("local browser search challenge detected", 4)
         anchors = page.locator("a").evaluate_all(
             """els => els.map((el) => ({
               url: el.href || "",

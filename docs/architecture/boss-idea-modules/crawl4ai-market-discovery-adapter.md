@@ -223,7 +223,8 @@ content-size, raw-evidence, or manifest-authority policy.
 `duckduckgo_html` and `local_browser_search` are lower-trust fallbacks. Their
 candidate metadata must record `fallback_from: searxng` and
 `lower_trust_fallback: true`; captcha or bot-detection must stop the run rather
-than be bypassed.
+than be bypassed. Fallback search responses and helper stdout must respect the
+same max response byte policy used by the Crawl4AI adapter.
 
 Hermes action:
 

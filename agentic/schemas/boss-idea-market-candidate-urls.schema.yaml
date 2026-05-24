@@ -17,4 +17,13 @@ schema:
     - searxng
     - duckduckgo_html
     - local_browser_search
+  fallback_provider_metadata_required_fields:
+    providers:
+      - duckduckgo_html
+      - local_browser_search
+    fields:
+      - fallback_from
+      - lower_trust_fallback
+      - no_paid_engine_policy
+      - result_rank
   authority_note: Candidate URLs are evidence inputs only. They cannot approve artifacts, budget, roadmap, or implementation.

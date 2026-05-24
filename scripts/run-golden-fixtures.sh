@@ -556,12 +556,26 @@ if BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/duckduc
   exit 1
 fi
 grep -q "no parseable results" /tmp/h20-boss-market-crawl-duckduckgo-empty.log
+mkdir -p "agentic/runs/$BOSS_IDEA_RUN/duckduckgo-challenge-fixture"
+cat >"agentic/runs/$BOSS_IDEA_RUN/duckduckgo-challenge-fixture/competitor_landscape.html" <<'HTML'
+<!doctype html><html><body><h1>Are you human?</h1><p>captcha challenge</p></body></html>
+HTML
+if BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/duckduckgo-challenge-fixture" scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider duckduckgo_html --output "agentic/runs/$BOSS_IDEA_RUN/bad-duckduckgo-challenge-results.yaml" >/tmp/h20-boss-market-crawl-duckduckgo-challenge.log 2>&1; then
+  echo "expected DuckDuckGo HTML challenge fixture to fail" >&2
+  exit 1
+fi
+grep -q "challenge detected" /tmp/h20-boss-market-crawl-duckduckgo-challenge.log
 
 if scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider local_browser_search --output "agentic/runs/$BOSS_IDEA_RUN/bad-local-browser-no-live-results.yaml" >/tmp/h20-boss-market-crawl-local-browser-no-live.log 2>&1; then
   echo "expected local browser provider without live flags or fixture to fail" >&2
   exit 1
 fi
 grep -q "public network search/crawl requires" /tmp/h20-boss-market-crawl-local-browser-no-live.log
+if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_SEARCH_LOCAL_BROWSER_SEARCH_URL=http://127.0.0.1/search scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider local_browser_search --output "agentic/runs/$BOSS_IDEA_RUN/bad-local-browser-search-url-results.yaml" >/tmp/h20-boss-market-crawl-local-browser-search-url.log 2>&1; then
+  echo "expected local browser private search URL to fail" >&2
+  exit 1
+fi
+grep -q "blocked IP" /tmp/h20-boss-market-crawl-local-browser-search-url.log
 
 BOSS_IDEA_SEARCH_LOCAL_BROWSER_FIXTURE=agentic/fixtures/boss-idea-response/local-browser-search-fixture.json scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider local_browser_search --output "agentic/runs/$BOSS_IDEA_RUN/local-browser-results.yaml" >/dev/null
 scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
@@ -579,6 +593,17 @@ if BOSS_IDEA_SEARCH_LOCAL_BROWSER_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/local-bro
   exit 1
 fi
 grep -q "missing results" /tmp/h20-boss-market-crawl-local-browser-missing-results.log
+
+cat >"agentic/runs/$BOSS_IDEA_RUN/local-browser-huge-helper.py" <<'PY'
+#!/usr/bin/env python3
+print("x" * (2 * 1024 * 1024 + 2))
+PY
+chmod +x "agentic/runs/$BOSS_IDEA_RUN/local-browser-huge-helper.py"
+if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_SEARCH_LOCAL_BROWSER_SEARCH_URL=https://93.184.216.34/search BOSS_IDEA_SEARCH_LOCAL_BROWSER_HELPER="agentic/runs/$BOSS_IDEA_RUN/local-browser-huge-helper.py" scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider local_browser_search --output "agentic/runs/$BOSS_IDEA_RUN/bad-local-browser-huge-results.yaml" >/tmp/h20-boss-market-crawl-local-browser-huge.log 2>&1; then
+  echo "expected oversized local browser helper stdout to fail" >&2
+  exit 1
+fi
+grep -q "stdout exceeds max response bytes" /tmp/h20-boss-market-crawl-local-browser-huge.log
 
 cat >"agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-live-redirect.yaml" <<'YAML'
 candidates:

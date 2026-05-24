@@ -408,6 +408,31 @@ rescue JSON::ParserError => e
   raise ArgumentError, "Crawl4AI helper returned invalid JSON: #{e.message}"
 end
 
+def capture_stdout_capped(command, max_bytes)
+  stdout = +""
+  stderr = +""
+  status = nil
+  Open3.popen3(*command) do |stdin, out, err, wait_thr|
+    stdin.close
+    stdout = out.read(max_bytes + 1).to_s
+    if stdout.bytesize > max_bytes
+      begin
+        Process.kill("TERM", wait_thr.pid)
+      rescue Errno::ESRCH
+        nil
+      end
+      raise ArgumentError, "local browser helper stdout exceeds max response bytes"
+    end
+    stderr = err.read(8192).to_s
+    status = wait_thr.value
+  end
+  [stdout, stderr, status]
+end
+
+def challenge_page?(content)
+  content.to_s.downcase.match?(/captcha|are you human|verify you are human|unusual traffic|bot detection|robot check/)
+end
+
 QUERY_SIGNALS = {
   "competitor_landscape" => "competitor",
   "mainstream_practices" => "mainstream_practice",
@@ -860,13 +885,17 @@ def fetch_duckduckgo_html(query)
   fail_with("DuckDuckGo HTML search failed: HTTP #{response.code}") unless response.is_a?(Net::HTTPSuccess)
   content_type = response["content-type"].to_s
   fail_with("DuckDuckGo HTML search returned non-HTML content type") unless content_type.empty? || content_type.downcase.include?("html")
-  response.body
+  body = response.body.to_s
+  fail_with("DuckDuckGo HTML response exceeds max response bytes") if body.bytesize > POLICY.fetch("max_response_bytes")
+  fail_with("DuckDuckGo HTML search challenge detected") if challenge_page?(body)
+  body
 end
 
 def discover_duckduckgo_html_candidates(query_pack)
   candidates = []
   Array(query_pack.fetch("queries")).each do |query|
     html = fetch_duckduckgo_html(query)
+    fail_with("DuckDuckGo HTML search challenge detected") if challenge_page?(html)
     results = parse_duckduckgo_html_results(html)
     fail_with("DuckDuckGo HTML search returned no parseable results") if results.empty?
     results.first(duckduckgo_results_per_query).each_with_index do |result, index|
@@ -910,14 +939,19 @@ def fetch_local_browser_results(query)
   fail_with("local browser helper not found: #{helper}") unless File.file?(helper)
   python = ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_PYTHON"].to_s.empty? ? "python3" : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_PYTHON")
   search_url = ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_SEARCH_URL"].to_s.empty? ? duckduckgo_search_url(query).to_s : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_SEARCH_URL")
-  stdout, stderr, status = Open3.capture3(
+  search_uri = parse_http_url!(search_url, "local browser search URL")
+  raise ArgumentError, "local browser search URL must not contain userinfo" unless search_uri.userinfo.to_s.empty?
+  resolve_public_host!(search_uri.host, "local browser search URL")
+  locale = ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_LOCALE"].to_s.empty? ? "en-US" : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_LOCALE")
+  stdout, stderr, status = capture_stdout_capped([
     python,
     helper,
     "--query", query.fetch("query"),
     "--search-url", search_url,
     "--max-results", local_browser_results_per_query.to_s,
-    "--timeout-ms", (POLICY.fetch("page_timeout_seconds") * 1000).to_s
-  )
+    "--timeout-ms", (POLICY.fetch("page_timeout_seconds") * 1000).to_s,
+    "--locale", locale
+  ], POLICY.fetch("max_response_bytes"))
   raise ArgumentError, stderr.to_s.strip.empty? ? "local browser helper failed" : stderr.to_s.strip unless status.success?
 
   JSON.parse(stdout)
@@ -943,6 +977,7 @@ def discover_local_browser_candidates(query_pack)
           index,
           "endpoint_label" => ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_ENDPOINT_LABEL"].to_s.empty? ? "local-browser" : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_ENDPOINT_LABEL"),
           "search_url" => local_browser_fixture_mode? ? "fixture://#{query.fetch("id")}" : "<local-browser-search-url>",
+          "locale" => ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_LOCALE"].to_s.empty? ? "en-US" : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_LOCALE"),
           "engine_names" => ["local_chrome"]
         )
         candidates << fallback_candidate("local_browser_search", query, result, index, metadata)
@@ -1067,6 +1102,7 @@ crawl_log = {
   "run_id" => run_id,
   "provider" => search_provider,
   "mode" => crawl_mode,
+  "fixture_overrides_live" => live && live_env && crawl_mode == "fixture",
   "user_agent" => ua,
   "policy" => POLICY,
   "entries" => []
@@ -1230,6 +1266,7 @@ manifest["boss_idea_market_crawl"] = {
   "generated_at" => Time.now.utc.iso8601,
   "authority_note" => "Crawl/search output is evidence only and cannot approve artifacts or implementation."
 }.tap do |metadata|
+  metadata["fixture_overrides_live"] = true if live && live_env && crawl_mode == "fixture"
   if search_provider == "searxng"
     metadata["no_paid_provider"] = true
     metadata["provider_priority"] = 1
