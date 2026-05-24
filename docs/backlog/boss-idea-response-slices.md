@@ -616,10 +616,11 @@ Implementation sub-slices:
   candidate URLs, supports deterministic fixture JSON without public internet,
   records no-paid manifest metadata, and runs Crawl4AI through the existing
   live crawl path for live candidates.
-- BIR-10F local browser and HTML search fallback design: planned. Defines
-  `duckduckgo_html` and `local_browser_search` fallback contracts, captcha
-  handling, isolated browser profile rules, reproducibility metadata, and
-  lower-trust labeling before any fallback implementation.
+- BIR-10F local browser and HTML search fallback implementation: completed.
+  Adds `duckduckgo_html` and `local_browser_search` fallback providers, fixture
+  coverage without public internet, lower-trust metadata, local browser helper
+  integration for operator-provided Chrome/Playwright live smoke, and negative
+  tests for missing live gates and malformed provider output.
 - BIR-10G provider arbitration and evidence quality scoring: planned. Defines
   how provider priority, duplicate domains, source diversity, freshness,
   fallback state, and evidence gaps are surfaced to Market Research Lead and
@@ -799,6 +800,89 @@ Maximum review rounds: 5.
 Staff+ escalation path: if round 5 fails, keep BIR-10D as design authority,
 leave Brave optional, and choose whether to retry SearXNG implementation,
 advance BIR-10F fallback design, or record a temporary Staff+ waiver.
+
+## BIR-10F: HTML And Local Browser Search Fallback Implementation
+
+Status: completed.
+
+Owner role: Staff Platform Engineer.
+
+Dependencies: BIR-10E SearXNG No-Paid Provider Implementation.
+
+Source artifacts:
+
+- `docs/adr/007-boss-idea-no-paid-search-provider.md`
+- `docs/runbooks/boss-idea-no-paid-market-search.md`
+- `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
+
+Files touched:
+
+- `scripts/crawl-boss-idea-market.sh`
+- `scripts/lib/boss_idea_local_browser_search.py`
+- `scripts/run-golden-fixtures.sh`
+- `scripts/validate-agentic-system.sh`
+- `agentic/schemas/boss-idea-market-candidate-urls.schema.yaml`
+- `agentic/fixtures/boss-idea-response/duckduckgo-html-fixtures/`
+- `agentic/fixtures/boss-idea-response/local-browser-search-fixture.json`
+- `agentic/hermes-actions.yaml`
+- `docs/runbooks/boss-idea-no-paid-market-search.md`
+- `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
+- `docs/backlog/boss-idea-response-slices.md`
+
+Acceptance criteria:
+
+- `scripts/crawl-boss-idea-market.sh` accepts `--search-provider
+  duckduckgo_html` and `--search-provider local_browser_search`.
+- Both providers require `--live` and `BOSS_IDEA_LIVE_CRAWL=1` unless a
+  deterministic fixture is supplied.
+- DuckDuckGo HTML fixture pages parse result anchors into candidate URLs
+  without public internet.
+- Local browser fixture JSON can produce candidate URLs without launching
+  Chrome.
+- Live local browser search is delegated to
+  `scripts/lib/boss_idea_local_browser_search.py`, which uses an isolated
+  Playwright browser context when the operator provides a compatible runtime.
+- Both providers write lower-trust provider metadata with
+  `fallback_from: searxng` and `lower_trust_fallback: true`.
+- Candidate URLs still pass BIR-10 URL safety before Crawl4AI or fixture crawl.
+- Captcha or bot-detection is not bypassed; the run must stop or use another
+  approved provider.
+- Default golden fixtures remain no-network and no-Chrome.
+
+Validation command:
+
+```bash
+bash -n scripts/crawl-boss-idea-market.sh scripts/run-golden-fixtures.sh
+python3 -m py_compile scripts/lib/boss_idea_local_browser_search.py
+scripts/run-golden-fixtures.sh
+scripts/validate-agentic-system.sh
+PROFILE=boss-idea-response scripts/validate-agentic-system.sh
+scripts/validate-hermes-actions.sh
+scripts/privacy-scan-tracked.sh
+git diff --check
+```
+
+Negative-path tests:
+
+- `duckduckgo_html` without live flags or fixture fails.
+- Empty DuckDuckGo HTML fixture fails with no parseable results.
+- `local_browser_search` without live flags or fixture fails.
+- Local browser fixture missing `results` fails.
+- Fallback provider candidate metadata must label lower trust and fallback
+  source.
+
+Rollback notes: remove the two fallback providers, helper script, fixtures,
+schema provider entries, golden tests, and runbook/backlog updates. Keep
+BIR-10E because SearXNG remains the default no-paid provider.
+
+AIT review evidence path:
+`agentic/reviews/boss-idea-response/bir-10f/round-<n>.json`.
+
+Maximum review rounds: 5.
+
+Staff+ escalation path: if round 5 fails, keep SearXNG as the only no-paid
+production provider and defer fallback providers until the boundary can be
+reviewed safely.
 
 ## Review Expectations
 

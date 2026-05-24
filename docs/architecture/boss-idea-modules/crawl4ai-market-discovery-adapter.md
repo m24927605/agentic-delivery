@@ -220,6 +220,10 @@ The no-paid provider decision is recorded in
 `docs/adr/007-boss-idea-no-paid-search-provider.md`.
 Adding `searxng` does not relax Crawl4AI URL, robots, TLS, redirect, rate,
 content-size, raw-evidence, or manifest-authority policy.
+`duckduckgo_html` and `local_browser_search` are lower-trust fallbacks. Their
+candidate metadata must record `fallback_from: searxng` and
+`lower_trust_fallback: true`; captcha or bot-detection must stop the run rather
+than be bypassed.
 
 Hermes action:
 

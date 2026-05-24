@@ -86,6 +86,7 @@ core_files=(
   scripts/validate-boss-idea-decision.sh
   scripts/lib/boss_idea.rb
   scripts/lib/boss_idea_crawl4ai.py
+  scripts/lib/boss_idea_local_browser_search.py
   agentic/schemas/boss-idea-intake.schema.yaml
   agentic/schemas/boss-idea-market-candidate-urls.schema.yaml
   agentic/schemas/boss-idea-market-search.schema.yaml
@@ -99,6 +100,11 @@ core_files=(
   agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml
   agentic/fixtures/boss-idea-response/brave-search-fixture.json
   agentic/fixtures/boss-idea-response/searxng-search-fixture.json
+  agentic/fixtures/boss-idea-response/local-browser-search-fixture.json
+  agentic/fixtures/boss-idea-response/duckduckgo-html-fixtures/competitor_landscape.html
+  agentic/fixtures/boss-idea-response/duckduckgo-html-fixtures/mainstream_practices.html
+  agentic/fixtures/boss-idea-response/duckduckgo-html-fixtures/implementation_patterns.html
+  agentic/fixtures/boss-idea-response/duckduckgo-html-fixtures/operator_workflow.html
   agentic/fixtures/boss-idea-response/valid-market-search-results.yaml
   agentic/fixtures/boss-idea-response/valid-research.md
   agentic/fixtures/boss-idea-response/valid-scorecard.yaml
@@ -214,7 +220,7 @@ scripts/privacy-scan-tracked.sh >/dev/null
 scripts/validate-identity-policy.sh >/dev/null
 scripts/validate-manifest-schema.sh --all >/dev/null
 ruby -c scripts/lib/boss_idea.rb >/dev/null
-python3 -m py_compile scripts/lib/boss_idea_crawl4ai.py
+python3 -m py_compile scripts/lib/boss_idea_crawl4ai.py scripts/lib/boss_idea_local_browser_search.py
 
 for cmd in ait "$SHELL"; do
   if ! command -v "$cmd" >/dev/null 2>&1; then

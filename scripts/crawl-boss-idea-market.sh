@@ -139,8 +139,8 @@ RAW_DIR = File.join(RUN_DIR, "crawl4ai/raw")
 CRAWL_LOG_PATH = File.join(RUN_DIR, "crawl4ai/crawl-log.yaml")
 DEFAULT_FIXTURE_SEEDS = "agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml"
 DEFAULT_USER_AGENT = "agentic-delivery-boss-idea-crawler/0.1.0 (+mailto:agentic-delivery@example.invalid)"
-ALLOWED_PROVIDERS = %w[fixture seed_replay live_seed brave searxng].freeze
-LIVE_CRAWL_PROVIDERS = %w[live_seed brave searxng].freeze
+ALLOWED_PROVIDERS = %w[fixture seed_replay live_seed brave searxng duckduckgo_html local_browser_search].freeze
+LIVE_CRAWL_PROVIDERS = %w[live_seed brave searxng duckduckgo_html local_browser_search].freeze
 STOP_WORDS = %w[
   a an and are as at be by for from has have in into is it its of on or that
   the this to with without
@@ -723,6 +723,239 @@ def discover_searxng_candidates(query_pack)
   candidates
 end
 
+def fallback_result_metadata(provider, query, index, extra = {})
+  {
+    "provider" => provider,
+    "endpoint_label" => extra.fetch("endpoint_label", provider),
+    "query" => compact_query(query.fetch("query")),
+    "search_url" => extra.fetch("search_url", "fixture://#{query.fetch("id")}"),
+    "locale" => extra.fetch("locale", ENV["BOSS_IDEA_SEARCH_LOCALE"].to_s.empty? ? "default" : ENV.fetch("BOSS_IDEA_SEARCH_LOCALE")),
+    "category" => extra.fetch("category", "general"),
+    "engine_names" => extra.fetch("engine_names", [provider]),
+    "fallback_from" => extra.fetch("fallback_from", "searxng"),
+    "result_rank" => index + 1,
+    "no_paid_engine_policy" => "operator-confirmed",
+    "lower_trust_fallback" => true
+  }
+end
+
+def fallback_candidate(provider, query, result, index, metadata)
+  url = result["url"].to_s
+  title = result["title"].to_s.empty? ? "#{provider} search result #{index + 1}" : result["title"].to_s
+  parse_http_url!(url, "#{provider} result url")
+  {
+    "id" => safe_slug("#{query.fetch("id")}-#{title}"),
+    "query_id" => query.fetch("id"),
+    "url" => url,
+    "title" => title,
+    "snippet" => (result["content"] || result["snippet"] || result["description"] || "").to_s[0, 240],
+    "provider" => provider,
+    "source_type" => source_type_for_query(query.fetch("id")),
+    "signal" => signal_for_query(query.fetch("id")),
+    "claim" => claim_for_query(query.fetch("id")),
+    "rank" => index + 1,
+    "retrieved_at" => Time.now.utc.iso8601,
+    "provider_metadata" => metadata,
+    "live_approved" => true
+  }.tap do |candidate|
+    content_path = result["content_path"].to_s
+    candidate["content_path"] = content_path unless content_path.empty?
+  end
+end
+
+def duckduckgo_fixture_path
+  ENV["BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_FIXTURE"].to_s
+end
+
+def duckduckgo_fixture_mode?
+  !duckduckgo_fixture_path.empty?
+end
+
+def duckduckgo_results_per_query
+  parse_positive_integer_env("BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_RESULTS_PER_QUERY", 5, POLICY.fetch("max_crawled_pages_per_query"))
+end
+
+def duckduckgo_base_url
+  ENV["BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_BASE_URL"].to_s.empty? ? "https://html.duckduckgo.com/html/" : ENV.fetch("BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_BASE_URL")
+end
+
+def duckduckgo_search_url(query)
+  uri = URI.parse(duckduckgo_base_url)
+  fail_with("DuckDuckGo HTML search base URL must be http or https") unless %w[http https].include?(uri.scheme)
+  fail_with("DuckDuckGo HTML search base URL must not contain userinfo") unless uri.userinfo.to_s.empty?
+  unless uri.host == "html.duckduckgo.com" || ENV["BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_ALLOW_CUSTOM_ENDPOINT"].to_s == "1"
+    fail_with("DuckDuckGo HTML custom endpoint requires BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_ALLOW_CUSTOM_ENDPOINT=1")
+  end
+  params = URI.decode_www_form(uri.query.to_s)
+  params << ["q", query.fetch("query")]
+  uri.query = URI.encode_www_form(params)
+  uri
+rescue URI::InvalidURIError
+  fail_with("invalid DuckDuckGo HTML search base URL")
+end
+
+def duckduckgo_metadata_url(query)
+  uri = duckduckgo_search_url(query)
+  params = URI.decode_www_form(uri.query.to_s).map { |key, value| key == "q" ? [key, "<query-recorded-separately>"] : [key, value] }
+  uri.query = URI.encode_www_form(params)
+  uri.to_s
+end
+
+def load_duckduckgo_html_fixture(path, query_id)
+  fail_with("invalid DuckDuckGo HTML fixture path: #{path}") unless BossIdea.repo_local_path?(path)
+  if File.directory?(path)
+    file = File.join(path, "#{query_id}.html")
+    fail_with("DuckDuckGo HTML fixture not found: #{file}") unless File.file?(file)
+    return File.read(file)
+  end
+  fail_with("DuckDuckGo HTML fixture not found: #{path}") unless File.file?(path)
+
+  File.read(path)
+end
+
+def duckduckgo_result_url(raw)
+  value = CGI.unescapeHTML(raw.to_s)
+  if value.start_with?("//")
+    value = "https:#{value}"
+  elsif value.start_with?("/")
+    uri = URI.parse(value)
+    params = CGI.parse(uri.query.to_s)
+    value = params.fetch("uddg", [value]).first
+  end
+  CGI.unescape(value.to_s)
+rescue URI::InvalidURIError
+  raw.to_s
+end
+
+def parse_duckduckgo_html_results(html)
+  results = []
+  html.to_s.scan(/<a\b([^>]*class=["'][^"']*result__a[^"']*["'][^>]*)>(.*?)<\/a>/mi).each do |attrs, title_html|
+    href = attrs[/\bhref=["']([^"']+)["']/i, 1].to_s
+    next if href.empty?
+    content_path = attrs[/\bdata-content-path=["']([^"']+)["']/i, 1].to_s
+    snippet = attrs[/\bdata-snippet=["']([^"']+)["']/i, 1].to_s
+    title = html_to_markdown(title_html)
+    result = {
+      "url" => duckduckgo_result_url(href),
+      "title" => title,
+      "content" => CGI.unescapeHTML(snippet)
+    }
+    result["content_path"] = content_path unless content_path.empty?
+    results << result
+  end
+  results
+end
+
+def fetch_duckduckgo_html(query)
+  fixture = duckduckgo_fixture_path
+  return load_duckduckgo_html_fixture(fixture, query.fetch("id")) unless fixture.empty?
+
+  uri = duckduckgo_search_url(query)
+  timeout = parse_positive_integer_env("BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_TIMEOUT_SECONDS", 10, 30)
+  response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: timeout, read_timeout: timeout) do |http|
+    request = Net::HTTP::Get.new(uri)
+    request["Accept"] = "text/html"
+    http.request(request)
+  end
+  fail_with("DuckDuckGo HTML search failed: HTTP #{response.code}") unless response.is_a?(Net::HTTPSuccess)
+  content_type = response["content-type"].to_s
+  fail_with("DuckDuckGo HTML search returned non-HTML content type") unless content_type.empty? || content_type.downcase.include?("html")
+  response.body
+end
+
+def discover_duckduckgo_html_candidates(query_pack)
+  candidates = []
+  Array(query_pack.fetch("queries")).each do |query|
+    html = fetch_duckduckgo_html(query)
+    results = parse_duckduckgo_html_results(html)
+    fail_with("DuckDuckGo HTML search returned no parseable results") if results.empty?
+    results.first(duckduckgo_results_per_query).each_with_index do |result, index|
+      begin
+        metadata = fallback_result_metadata(
+          "duckduckgo_html",
+          query,
+          index,
+          "endpoint_label" => ENV["BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_ENDPOINT_LABEL"].to_s.empty? ? "duckduckgo-html" : ENV.fetch("BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_ENDPOINT_LABEL"),
+          "search_url" => duckduckgo_fixture_mode? ? "fixture://#{query.fetch("id")}" : duckduckgo_metadata_url(query)
+        )
+        candidates << fallback_candidate("duckduckgo_html", query, result, index, metadata)
+      rescue ArgumentError
+        next
+      end
+    end
+  end
+  fail_with("DuckDuckGo HTML search returned no candidate URLs") if candidates.empty?
+
+  candidates
+end
+
+def local_browser_fixture_path
+  ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_FIXTURE"].to_s
+end
+
+def local_browser_fixture_mode?
+  !local_browser_fixture_path.empty?
+end
+
+def local_browser_results_per_query
+  parse_positive_integer_env("BOSS_IDEA_SEARCH_LOCAL_BROWSER_RESULTS_PER_QUERY", 5, POLICY.fetch("max_crawled_pages_per_query"))
+end
+
+def fetch_local_browser_results(query)
+  fixture = local_browser_fixture_path
+  return load_provider_fixture(fixture, "local_browser_search", query.fetch("id")) unless fixture.empty?
+
+  helper = ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_HELPER"].to_s.empty? ? "scripts/lib/boss_idea_local_browser_search.py" : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_HELPER")
+  fail_with("invalid local browser helper path: #{helper}") unless BossIdea.repo_local_path?(helper)
+  fail_with("local browser helper not found: #{helper}") unless File.file?(helper)
+  python = ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_PYTHON"].to_s.empty? ? "python3" : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_PYTHON")
+  search_url = ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_SEARCH_URL"].to_s.empty? ? duckduckgo_search_url(query).to_s : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_SEARCH_URL")
+  stdout, stderr, status = Open3.capture3(
+    python,
+    helper,
+    "--query", query.fetch("query"),
+    "--search-url", search_url,
+    "--max-results", local_browser_results_per_query.to_s,
+    "--timeout-ms", (POLICY.fetch("page_timeout_seconds") * 1000).to_s
+  )
+  raise ArgumentError, stderr.to_s.strip.empty? ? "local browser helper failed" : stderr.to_s.strip unless status.success?
+
+  JSON.parse(stdout)
+rescue Errno::ENOENT
+  raise ArgumentError, "local browser python runtime not found"
+rescue JSON::ParserError => e
+  raise ArgumentError, "local browser helper returned invalid JSON: #{e.message}"
+end
+
+def discover_local_browser_candidates(query_pack)
+  candidates = []
+  Array(query_pack.fetch("queries")).each do |query|
+    payload = fetch_local_browser_results(query)
+    fail_with("local browser helper returned unsuccessful payload") if payload["ok"] == false
+    results = payload["results"]
+    fail_with("local browser search result missing results") unless results.is_a?(Array)
+    results.first(local_browser_results_per_query).each_with_index do |result, index|
+      next unless result.is_a?(Hash)
+      begin
+        metadata = fallback_result_metadata(
+          "local_browser_search",
+          query,
+          index,
+          "endpoint_label" => ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_ENDPOINT_LABEL"].to_s.empty? ? "local-browser" : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_ENDPOINT_LABEL"),
+          "search_url" => local_browser_fixture_mode? ? "fixture://#{query.fetch("id")}" : "<local-browser-search-url>",
+          "engine_names" => ["local_chrome"]
+        )
+        candidates << fallback_candidate("local_browser_search", query, result, index, metadata)
+      rescue ArgumentError
+        next
+      end
+    end
+  end
+  fail_with("local browser search returned no candidate URLs") if candidates.empty?
+
+  candidates
+end
+
 manifest = load_manifest(MANIFEST_PATH)
 run = manifest["run"].is_a?(Hash) ? manifest["run"] : {}
 fail_with("run.id must equal #{run_id}") unless run["id"].to_s == run_id
@@ -767,9 +1000,12 @@ elsif live_env && search_provider == "fixture"
 end
 if from_query_pack
   fail_with("missing --search-provider", 2) if search_provider.empty?
-  if search_provider != "fixture" && !(search_provider == "searxng" && searxng_fixture_mode?)
+  fixture_backed_provider = (search_provider == "searxng" && searxng_fixture_mode?) ||
+    (search_provider == "duckduckgo_html" && duckduckgo_fixture_mode?) ||
+    (search_provider == "local_browser_search" && local_browser_fixture_mode?)
+  if search_provider != "fixture" && !fixture_backed_provider
     fail_with("public network search/crawl requires --live and BOSS_IDEA_LIVE_CRAWL=1", 2) unless live && live_env
-    fail_with("live search provider is not implemented in this slice: #{search_provider}", 2) unless %w[brave searxng].include?(search_provider)
+    fail_with("live search provider is not implemented in this slice: #{search_provider}", 2) unless %w[brave searxng duckduckgo_html local_browser_search].include?(search_provider)
   end
   seeds_path = DEFAULT_FIXTURE_SEEDS
 end
@@ -790,6 +1026,10 @@ candidates = if from_query_pack && search_provider == "brave"
   discover_brave_candidates(query_pack)
 elsif from_query_pack && search_provider == "searxng"
   discover_searxng_candidates(query_pack)
+elsif from_query_pack && search_provider == "duckduckgo_html"
+  discover_duckduckgo_html_candidates(query_pack)
+elsif from_query_pack && search_provider == "local_browser_search"
+  discover_local_browser_candidates(query_pack)
 else
   load_candidates(seeds_path)
 end
@@ -815,7 +1055,13 @@ end
 per_query_counts = Hash.new(0)
 candidate_records = []
 results = []
-crawl_mode = search_provider == "searxng" && searxng_fixture_mode? ? "fixture" : search_provider
+crawl_mode = if (search_provider == "searxng" && searxng_fixture_mode?) ||
+  (search_provider == "duckduckgo_html" && duckduckgo_fixture_mode?) ||
+  (search_provider == "local_browser_search" && local_browser_fixture_mode?)
+  "fixture"
+else
+  search_provider
+end
 crawl_log = {
   "schema_version" => 1,
   "run_id" => run_id,
@@ -992,6 +1238,16 @@ manifest["boss_idea_market_crawl"] = {
   elsif search_provider == "brave"
     metadata["no_paid_provider"] = false
     metadata["provider_priority"] = 4
+  elsif search_provider == "duckduckgo_html"
+    metadata["no_paid_provider"] = true
+    metadata["provider_priority"] = 2
+    metadata["provider_endpoint_label"] = ENV["BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_ENDPOINT_LABEL"].to_s.empty? ? "duckduckgo-html" : ENV.fetch("BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_ENDPOINT_LABEL")
+    metadata["fixture_mode"] = duckduckgo_fixture_mode?
+  elsif search_provider == "local_browser_search"
+    metadata["no_paid_provider"] = true
+    metadata["provider_priority"] = 3
+    metadata["provider_endpoint_label"] = ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_ENDPOINT_LABEL"].to_s.empty? ? "local-browser" : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_ENDPOINT_LABEL")
+    metadata["fixture_mode"] = local_browser_fixture_mode?
   end
 end
 manifest["run"]["updated_at"] = Time.now.utc.iso8601 if manifest["run"].is_a?(Hash)

@@ -536,6 +536,50 @@ if BOSS_IDEA_SEARCH_SEARXNG_BASE_URL=http://127.0.0.1:8080/search BOSS_IDEA_SEAR
 fi
 grep -q "SearXNG search returned no candidate URLs" /tmp/h20-boss-market-crawl-searxng-private.log
 
+if scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider duckduckgo_html --output "agentic/runs/$BOSS_IDEA_RUN/bad-duckduckgo-no-live-results.yaml" >/tmp/h20-boss-market-crawl-duckduckgo-no-live.log 2>&1; then
+  echo "expected DuckDuckGo HTML provider without live flags or fixture to fail" >&2
+  exit 1
+fi
+grep -q "public network search/crawl requires" /tmp/h20-boss-market-crawl-duckduckgo-no-live.log
+
+BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_FIXTURE=agentic/fixtures/boss-idea-response/duckduckgo-html-fixtures scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider duckduckgo_html --output "agentic/runs/$BOSS_IDEA_RUN/duckduckgo-results.yaml" >/dev/null
+scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
+ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected duckduckgo provider") unless c["provider"] == "duckduckgo_html"; abort("expected fixture mode") unless c["mode"] == "fixture"; abort("expected no-paid provider") unless c["no_paid_provider"] == true; abort("expected provider priority") unless c["provider_priority"].to_i == 2' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+ruby -ryaml -e 'c=YAML.load_file(ARGV.fetch(0)); abort("expected lower-trust fallback metadata") unless c.fetch("candidates").all? { |x| x.dig("provider_metadata", "lower_trust_fallback") == true && x.dig("provider_metadata", "fallback_from") == "searxng" }' "agentic/runs/$BOSS_IDEA_RUN/market-candidate-urls.yaml"
+
+mkdir -p "agentic/runs/$BOSS_IDEA_RUN/duckduckgo-empty-fixture"
+cat >"agentic/runs/$BOSS_IDEA_RUN/duckduckgo-empty-fixture/competitor_landscape.html" <<'HTML'
+<!doctype html><html><body><p>No result anchors.</p></body></html>
+HTML
+if BOSS_IDEA_SEARCH_DUCKDUCKGO_HTML_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/duckduckgo-empty-fixture" scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider duckduckgo_html --output "agentic/runs/$BOSS_IDEA_RUN/bad-duckduckgo-empty-results.yaml" >/tmp/h20-boss-market-crawl-duckduckgo-empty.log 2>&1; then
+  echo "expected empty DuckDuckGo HTML fixture to fail" >&2
+  exit 1
+fi
+grep -q "no parseable results" /tmp/h20-boss-market-crawl-duckduckgo-empty.log
+
+if scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider local_browser_search --output "agentic/runs/$BOSS_IDEA_RUN/bad-local-browser-no-live-results.yaml" >/tmp/h20-boss-market-crawl-local-browser-no-live.log 2>&1; then
+  echo "expected local browser provider without live flags or fixture to fail" >&2
+  exit 1
+fi
+grep -q "public network search/crawl requires" /tmp/h20-boss-market-crawl-local-browser-no-live.log
+
+BOSS_IDEA_SEARCH_LOCAL_BROWSER_FIXTURE=agentic/fixtures/boss-idea-response/local-browser-search-fixture.json scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider local_browser_search --output "agentic/runs/$BOSS_IDEA_RUN/local-browser-results.yaml" >/dev/null
+scripts/validate-boss-idea-research.sh "agentic/runs/$BOSS_IDEA_RUN/market-research.md" >/dev/null
+ruby -ryaml -e 'm=YAML.load_file(ARGV.fetch(0)); c=m.fetch("boss_idea_market_crawl"); abort("expected local browser provider") unless c["provider"] == "local_browser_search"; abort("expected fixture mode") unless c["mode"] == "fixture"; abort("expected no-paid provider") unless c["no_paid_provider"] == true; abort("expected provider priority") unless c["provider_priority"].to_i == 3' "agentic/runs/$BOSS_IDEA_RUN/manifest.yaml"
+
+cat >"agentic/runs/$BOSS_IDEA_RUN/local-browser-missing-results-fixture.json" <<'JSON'
+{
+  "query_results": {
+    "competitor_landscape": {"ok": true}
+  }
+}
+JSON
+if BOSS_IDEA_SEARCH_LOCAL_BROWSER_FIXTURE="agentic/runs/$BOSS_IDEA_RUN/local-browser-missing-results-fixture.json" scripts/crawl-boss-idea-market.sh --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider local_browser_search --output "agentic/runs/$BOSS_IDEA_RUN/bad-local-browser-missing-results.yaml" >/tmp/h20-boss-market-crawl-local-browser-missing-results.log 2>&1; then
+  echo "expected local browser missing results fixture to fail" >&2
+  exit 1
+fi
+grep -q "missing results" /tmp/h20-boss-market-crawl-local-browser-missing-results.log
+
 cat >"agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-live-redirect.yaml" <<'YAML'
 candidates:
   - id: live-redirect-private

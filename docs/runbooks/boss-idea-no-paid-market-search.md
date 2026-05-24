@@ -96,21 +96,24 @@ content or raw provider JSON into tracked docs.
 
 ## Fallback Handling
 
-`duckduckgo_html` is design-deferred to BIR-10F and is not available until that
-slice ships. Once available, use it only when:
+Use `duckduckgo_html` only when:
 
 - SearXNG is unavailable;
 - operator policy allows public non-JavaScript search result extraction;
 - the run records `fallback_from: searxng`;
 - artifacts label the provider as lower reproducibility than SearXNG.
 
-`local_browser_search` is design-deferred to BIR-10F and is not available until
-that slice ships. Once available, use it only when:
+Use `local_browser_search` only when:
 
 - SearXNG and HTML search are insufficient;
 - the browser runs in an isolated no-login profile;
 - locale, region, safe-search state, search URL, and timestamp are recorded;
 - captcha or bot-detection stops the run rather than being bypassed.
+
+The local browser provider uses `scripts/lib/boss_idea_local_browser_search.py`
+and requires an operator-provided Playwright/Chrome runtime for live smoke.
+Default validation uses `BOSS_IDEA_SEARCH_LOCAL_BROWSER_FIXTURE` and does not
+launch Chrome.
 
 Use `seed_replay` when:
 

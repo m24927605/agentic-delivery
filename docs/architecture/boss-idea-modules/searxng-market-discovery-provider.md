@@ -33,7 +33,6 @@ Deferred scope:
 - accepting paid SearXNG engines as the default provider configuration;
 - authenticated, customer-internal, or paywalled search;
 - scraping search result pages as the default provider;
-- local Chrome fallback implementation;
 - provider arbitration beyond the priority order defined in ADR 007;
 - automatic approval of market research or implementation.
 

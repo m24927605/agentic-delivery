@@ -15,4 +15,6 @@ schema:
     - live_seed
     - brave
     - searxng
+    - duckduckgo_html
+    - local_browser_search
   authority_note: Candidate URLs are evidence inputs only. They cannot approve artifacts, budget, roadmap, or implementation.

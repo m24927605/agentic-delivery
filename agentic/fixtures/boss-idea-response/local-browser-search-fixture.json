@@ -1,0 +1,48 @@
+{
+  "query_results": {
+    "competitor_landscape": {
+      "ok": true,
+      "results": [
+        {
+          "url": "https://93.184.216.34/local-browser-competitor",
+          "title": "Local browser fixture competitor workflow",
+          "content": "Browser fixture competitor result.",
+          "content_path": "agentic/fixtures/boss-idea-response/market-crawl-pages/competitor-workflow.html"
+        }
+      ]
+    },
+    "mainstream_practices": {
+      "ok": true,
+      "results": [
+        {
+          "url": "https://93.184.216.34/local-browser-mainstream",
+          "title": "Local browser fixture mainstream practices",
+          "content": "Browser fixture mainstream result.",
+          "content_path": "agentic/fixtures/boss-idea-response/market-crawl-pages/mainstream-practices.html"
+        }
+      ]
+    },
+    "implementation_patterns": {
+      "ok": true,
+      "results": [
+        {
+          "url": "https://93.184.216.34/local-browser-implementation",
+          "title": "Local browser fixture implementation patterns",
+          "content": "Browser fixture implementation result.",
+          "content_path": "agentic/fixtures/boss-idea-response/market-crawl-pages/implementation-patterns.html"
+        }
+      ]
+    },
+    "operator_workflow": {
+      "ok": true,
+      "results": [
+        {
+          "url": "https://93.184.216.34/local-browser-operator",
+          "title": "Local browser fixture operator workflow",
+          "content": "Browser fixture operator result.",
+          "content_path": "agentic/fixtures/boss-idea-response/market-crawl-pages/operator-workflow.html"
+        }
+      ]
+    }
+  }
+}

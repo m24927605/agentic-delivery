@@ -637,7 +637,7 @@ actions:
       - seeds
     input_contract:
       run_id: "Boss Idea planning run id."
-      search_provider: "One of fixture, seed_replay, live_seed, searxng, or brave. SearXNG is the default no-paid live provider when its environment is present."
+      search_provider: "One of fixture, seed_replay, live_seed, searxng, duckduckgo_html, local_browser_search, or brave. SearXNG is the default no-paid live provider when its environment is present."
       search_results: "Output YAML path under agentic/runs/<run-id>/."
       results_only: "Optional debug flag that skips downstream market research generation."
       seeds: "Optional deterministic candidate URL seed file for seed replay."
@@ -649,6 +649,8 @@ actions:
       - agentic/schemas/boss-idea-research.schema.yaml
       - agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml
       - agentic/fixtures/boss-idea-response/searxng-search-fixture.json
+      - agentic/fixtures/boss-idea-response/local-browser-search-fixture.json
+      - agentic/fixtures/boss-idea-response/duckduckgo-html-fixtures/
     writes:
       - "{{search_results}}"
       - agentic/runs/{{run_id}}/market-research-query-pack.yaml
