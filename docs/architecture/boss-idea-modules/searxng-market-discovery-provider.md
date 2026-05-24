@@ -103,6 +103,9 @@ The provider must use SearXNG URL, title, and snippet fields only for discovery
 metadata. It must not treat SearXNG snippets as crawled page content and must
 not bypass Crawl4AI URL safety, robots, TLS, rate, redirect, or content-size
 policy.
+`no_paid_engine_policy: unknown` is allowed only for fixture-mode or
+non-production validation metadata and must never appear in evidence used for a
+boss decision memo.
 
 ## CLI / Manifest / Pipeline Contract
 
@@ -258,7 +261,7 @@ Negative tests:
 - missing query id fails;
 - tracked raw provider response fails privacy validation.
 - `no_paid_engine_policy: unknown` appears in evidence used for a boss decision
-  memo.
+  memo fails.
 
 ## Acceptance Criteria
 
