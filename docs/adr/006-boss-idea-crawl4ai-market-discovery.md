@@ -43,6 +43,10 @@ contract:
 - deterministic no-network golden fixtures;
 - normalized results that feed `collect-boss-idea-research.sh`.
 
+ADR 007 further constrains the query-to-URL provider choice: no-paid providers
+are preferred, SearXNG is the default no-paid provider once implemented, and
+paid search APIs such as Brave are optional fallback only.
+
 ## Consequences
 
 This moves public market crawl/search from deferred scope into required Boss

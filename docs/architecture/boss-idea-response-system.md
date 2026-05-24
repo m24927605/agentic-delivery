@@ -55,6 +55,7 @@ Active scope:
 - gather market and competitor evidence with citations and freshness metadata;
 - crawl or search public web sources through a controlled Crawl4AI-compatible
   adapter when the team needs rapid competitor or solution discovery;
+- prefer no-paid market search providers before any paid search API;
 - score feasibility, impact, effort, risk, confidence, and reversibility;
 - produce an executive decision memo with clear recommendation;
 - define POC or MVP timebox and implementation boundary;
@@ -76,7 +77,7 @@ Deferred scope:
 ```text
 raw idea
   -> idea intake
-  -> controlled search + Crawl4AI public-source crawl
+  -> controlled no-paid search + Crawl4AI public-source crawl
   -> market research evidence
   -> feasibility scoring
   -> solution options and recommendation
@@ -99,6 +100,7 @@ public-safe tracked artifact.
 | --- | --- | --- |
 | Idea Intake | `docs/architecture/boss-idea-modules/idea-intake.md` | Structured idea brief |
 | Crawl4AI Market Discovery Adapter | `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md` | Public-source URL discovery and crawl evidence |
+| SearXNG Market Discovery Provider | `docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md` | No-paid query-to-URL discovery |
 | Market Research Evidence | `docs/architecture/boss-idea-modules/market-research-evidence.md` | Source-backed market scan |
 | Feasibility Scoring | `docs/architecture/boss-idea-modules/feasibility-scoring.md` | Scored feasibility record |
 | Boss Decision Memo | `docs/architecture/boss-idea-modules/boss-decision-memo.md` | Executive recommendation |
@@ -115,8 +117,10 @@ The profile-backed deliverables are:
 
 - `docs/architecture/boss-idea-response-system.md`
 - `docs/adr/006-boss-idea-crawl4ai-market-discovery.md`
+- `docs/adr/007-boss-idea-no-paid-search-provider.md`
 - `docs/architecture/boss-idea-modules/idea-intake.md`
 - `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
+- `docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md`
 - `docs/architecture/boss-idea-modules/market-research-evidence.md`
 - `docs/architecture/boss-idea-modules/feasibility-scoring.md`
 - `docs/architecture/boss-idea-modules/boss-decision-memo.md`
@@ -125,6 +129,7 @@ The profile-backed deliverables are:
 - `docs/architecture/boss-idea-modules/go-no-go-decision.md`
 - `docs/backlog/boss-idea-response-slices.md`
 - `docs/standards/boss-idea-response-quality-standard.md`
+- `docs/runbooks/boss-idea-no-paid-market-search.md`
 
 ## Authority Model
 
@@ -178,6 +183,8 @@ The system must block or escalate when:
 - the idea lacks a decision owner or requested response time;
 - Crawl4AI/search adapter attempts to reach unsafe, private, or non-public
   targets;
+- paid search is treated as mandatory when a no-paid provider path is
+  available;
 - market research lacks source citations or dates;
 - feasibility scoring omits risk, effort, confidence, or unknowns;
 - a POC/MVP has no timebox or success criteria;

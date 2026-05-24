@@ -11,6 +11,7 @@ source_of_truth:
   - docs/architecture/agentic-delivery-system.md
   - docs/architecture/boss-idea-response-system.md
   - docs/adr/006-boss-idea-crawl4ai-market-discovery.md
+  - docs/adr/007-boss-idea-no-paid-search-provider.md
   - docs/standards/agentic-delivery-quality-standard.md
   - docs/standards/boss-idea-response-quality-standard.md
   - docs/backlog/boss-idea-response-slices.md
@@ -22,6 +23,7 @@ required_artifacts:
     - docs/architecture/boss-idea-response-system.md
     - docs/architecture/boss-idea-modules/idea-intake.md
     - docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md
+    - docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md
     - docs/architecture/boss-idea-modules/market-research-evidence.md
     - docs/architecture/boss-idea-modules/feasibility-scoring.md
     - docs/architecture/boss-idea-modules/boss-decision-memo.md
@@ -30,11 +32,13 @@ required_artifacts:
     - docs/architecture/boss-idea-modules/go-no-go-decision.md
     - docs/backlog/boss-idea-response-slices.md
     - docs/standards/boss-idea-response-quality-standard.md
+    - docs/runbooks/boss-idea-no-paid-market-search.md
 
 memory:
   notes:
     - Executive ideas are not implementation authority.
     - Crawl4AI-compatible market discovery is required for rapid public competitor and solution discovery.
+    - No-paid search providers are preferred before paid search APIs.
     - Market research is evidence and must cite source metadata.
     - POC and MVP work require explicit timebox and success metrics.
     - Go decisions still require approved artifacts before implementation.
@@ -57,6 +61,7 @@ domain:
   required_questions:
     - Is the raw idea separated from the decision question?
     - Did the team use a controlled crawler/search adapter when rapid competitor discovery is needed?
+    - Did the team prefer no-paid search discovery before optional paid search APIs?
     - Are market claims backed by citation metadata?
     - Are feasibility scores explained and advisory only?
     - Does the decision memo state recommendation, risk, timebox, and next step?
@@ -80,6 +85,7 @@ review_prompt:
     - docs/architecture/boss-idea-response-system.md
     - docs/architecture/boss-idea-modules/idea-intake.md
     - docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md
+    - docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md
     - docs/architecture/boss-idea-modules/market-research-evidence.md
     - docs/architecture/boss-idea-modules/feasibility-scoring.md
     - docs/architecture/boss-idea-modules/boss-decision-memo.md
@@ -89,6 +95,8 @@ review_prompt:
     - docs/backlog/boss-idea-response-slices.md
     - docs/standards/boss-idea-response-quality-standard.md
     - docs/standards/agentic-delivery-quality-standard.md
+    - docs/adr/007-boss-idea-no-paid-search-provider.md
+    - docs/runbooks/boss-idea-no-paid-market-search.md
     - agentic/README.md
   output_sections:
     - Overall assessment
@@ -103,6 +111,7 @@ strategy_gate:
   anchor_patterns:
     - idea intake
     - Crawl4AI
+    - SearXNG
     - market discovery adapter
     - market research evidence
     - feasibility scoring

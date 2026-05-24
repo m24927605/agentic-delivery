@@ -10,7 +10,8 @@ The adapter exists because executive brainstorming often needs rapid competitor
 and solution discovery, not only manually curated search results. BIR-10 is
 therefore a two-stage adapter:
 
-1. query-to-URL discovery through a controlled public web search provider;
+1. query-to-URL discovery through a controlled public web search provider,
+   preferring no-paid providers before paid APIs;
 2. Crawl4AI-backed page crawl and markdown capture for the selected public URLs.
 
 It still preserves the Boss Idea authority model: search and crawled output are
@@ -24,6 +25,8 @@ Active scope:
 - consume `agentic/runs/<run-id>/market-research-query-pack.yaml`;
 - discover candidate public URLs for each query through an approved search
   provider adapter;
+- use `searxng` as the default no-paid live search provider once BIR-10D is
+  implemented;
 - crawl only public, policy-approved URLs through Crawl4AI or a strictly safer
   compatible crawler;
 - normalize Crawl4AI markdown output into the existing
@@ -38,6 +41,7 @@ Active scope:
 Deferred scope:
 
 - paid market databases;
+- paid search APIs as the default discovery path;
 - social media firehose search;
 - authenticated crawling;
 - customer-internal or private docs;
@@ -51,7 +55,7 @@ Deferred scope:
 boss idea run
   -> collect-boss-idea-research.sh --dry-run
   -> market-research-query-pack.yaml
-  -> approved search provider adapter
+  -> approved search provider adapter, defaulting to no-paid SearXNG
   -> candidate public URL list
   -> crawl-boss-idea-market.sh
   -> Crawl4AI public page crawl
@@ -89,6 +93,8 @@ URL discovery artifact:
   `retrieved_at`
 - may be produced by a live search provider, a local fixture provider, or an
   explicitly approved safer crawler/search tool
+- records provider reproducibility metadata when the provider supports it,
+  including query string, rank, endpoint label, locale, and fallback state
 - must not include private, authenticated, customer-internal, or paywalled URLs
 
 Normalized output artifact:
@@ -120,6 +126,7 @@ Command contract:
 scripts/crawl-boss-idea-market.sh --dry-run <run-id>
 scripts/crawl-boss-idea-market.sh <run-id> --from-query-pack --search-provider <provider> --output agentic/runs/<run-id>/market-search-results.yaml
 scripts/crawl-boss-idea-market.sh <run-id> --seeds <seeds.yaml> --output agentic/runs/<run-id>/market-search-results.yaml
+BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_SEARCH_SEARXNG_BASE_URL=http://127.0.0.1:8080/search scripts/crawl-boss-idea-market.sh <run-id> --live --from-query-pack --search-provider searxng --output agentic/runs/<run-id>/market-search-results.yaml
 ```
 
 Expected contract:
@@ -144,9 +151,12 @@ Manifest metadata shape:
 
 ```yaml
 boss_idea_market_crawl:
-  provider: fixture | <approved-live-provider>
-  mode: fixture | live | seed_replay
+  provider: fixture | searxng | duckduckgo_html | local_browser_search | brave | live_seed | seed_replay
+  mode: fixture | searxng | duckduckgo_html | local_browser_search | brave | live_seed | seed_replay
   crawl4ai_version: <pinned-version>
+  no_paid_provider: true | false
+  provider_priority: <integer>
+  provider_endpoint_label: <public-safe-label>
   candidate_urls_path: agentic/runs/<run-id>/market-candidate-urls.yaml
   results_path: agentic/runs/<run-id>/market-search-results.yaml
   raw_evidence_path: agentic/runs/<run-id>/crawl4ai/raw/
@@ -166,6 +176,9 @@ Search provider contract:
 
 - provider id is explicit in CLI input and manifest metadata;
 - provider returns URL candidates only, not final research claims;
+- provider priority is `searxng`, then `duckduckgo_html`, then
+  `local_browser_search`, then optional paid `brave`, unless a Staff+ waiver
+  records a different order for the run;
 - provider credentials, if any, are read from environment variables and never
   written to tracked files;
 - credential environment variables must use
@@ -176,6 +189,8 @@ Search provider contract:
 - provider output is stored under ignored run evidence;
 - default deterministic provider is `fixture`;
 - the only pre-approved provider for deterministic validation is `fixture`;
+- default no-paid live provider is `searxng` after BIR-10D implementation;
+- `brave` is optional paid fallback, not a required production dependency;
 - any new live provider requires Staff Security Engineer and Staff Software
   Architect approval before it can ship;
 - live provider execution requires `BOSS_IDEA_LIVE_CRAWL=1`;
@@ -183,6 +198,28 @@ Search provider contract:
   search/crawl and use fixture/local inputs only.
 - `fixture` and `--seeds` must not be combined with
   `BOSS_IDEA_LIVE_CRAWL=1`; live runs must use an approved live provider.
+- current implementation requires an explicit `--search-provider`; BIR-10E may
+  add `searxng` as the default only for `--live --from-query-pack` runs where
+  the required `BOSS_IDEA_SEARCH_SEARXNG_*` environment is present.
+
+Approved provider roles:
+
+| Provider | Cost posture | Role |
+| --- | --- | --- |
+| `fixture` | no network | Deterministic golden validation only. |
+| `seed_replay` | no network by default | Emergency replay or manually approved candidate URLs. |
+| `live_seed` | no paid search | Direct approved live crawl of explicit candidate URLs. |
+| `searxng` | no paid API | Default query-to-URL provider through an operator-approved SearXNG endpoint. |
+| `duckduckgo_html` | no paid API | Lower-trust fallback for non-JavaScript HTML search extraction. |
+| `local_browser_search` | no paid API | Lower-trust fallback using isolated local Chrome/Chromium automation. |
+| `brave` | paid API | Optional paid provider only. |
+
+The `searxng` provider contract is defined in
+`docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md`.
+The no-paid provider decision is recorded in
+`docs/adr/007-boss-idea-no-paid-search-provider.md`.
+Adding `searxng` does not relax Crawl4AI URL, robots, TLS, redirect, rate,
+content-size, raw-evidence, or manifest-authority policy.
 
 Hermes action:
 
@@ -263,6 +300,8 @@ Block crawling when:
 - manifest is missing or not `boss-idea-response`;
 - query pack is missing or malformed;
 - live mode is requested without `BOSS_IDEA_LIVE_CRAWL=1`;
+- a paid provider is selected as default without a Staff+ waiver;
+- a no-paid provider fallback is used without recording fallback metadata;
 - seed URL is not `http` or `https`;
 - URL resolves to private, loopback, link-local, multicast, or metadata-service
   address;
@@ -301,6 +340,8 @@ Validation must include:
 - bash syntax for wrapper scripts;
 - Python unit tests for URL policy and result normalization;
 - fixture crawl using local HTML or `raw://` input, not the public internet;
+- fixture SearXNG JSON coverage for the no-paid provider path once BIR-10D is
+  implemented;
 - negative tests for SSRF targets:
   - `http://localhost`
   - `http://127.0.0.1`
@@ -339,6 +380,8 @@ Positive tests:
 - local fixture page normalizes to a competitor signal;
 - local fixture page normalizes to a mainstream-practice signal;
 - fixture search provider maps query ids to candidate URLs;
+- SearXNG fixture JSON maps query ids to candidate URLs without paid API
+  credentials;
 - generated search results pass `collect-boss-idea-research.sh`;
 - raw markdown evidence stays under ignored run directory;
 - manifest records crawl metadata without approving artifacts.
@@ -347,6 +390,8 @@ Negative tests:
 
 - missing query pack fails;
 - missing search provider or seed URLs fail;
+- missing SearXNG base URL fails for live `searxng` runs;
+- malformed SearXNG JSON fails;
 - unsupported scheme fails;
 - localhost and metadata-service URLs fail;
 - DNS rebinding to blocked IP fails;
@@ -372,6 +417,8 @@ Negative tests:
 - Boss Idea run can produce a query pack, discover candidate public URLs, and
   crawl policy-approved public pages through Crawl4AI or a strictly safer
   compatible crawler/search tool.
+- The default production query-to-URL provider is no-paid; paid search APIs are
+  optional fallback only.
 - Crawl output is normalized into the existing market-search result schema.
 - Normalized results can feed `collect-boss-idea-research.sh` without manual
   editing.
@@ -395,6 +442,8 @@ Claude Code review must verify:
 - the design does not imply hosted LLM extraction or Firecrawl fallback;
 - URL policy, output path, and raw-evidence boundaries are explicit;
 - query-to-URL discovery is in scope, not deferred to an unnamed future slice;
+- the design does not make Brave or any other paid API mandatory;
+- no-paid provider fallback behavior is explicit and reviewable;
 - the adapter feeds the existing BIR-09 collector contract.
 
 ## Code Review Standard
@@ -434,6 +483,8 @@ provider-neutral and useful without Crawl4AI.
 - Crawl4AI CLI Guide: https://docs.crawl4ai.com/core/cli/
 - Crawl4AI SDK Reference: https://docs.crawl4ai.com/complete-sdk-reference/
 - Existing ADR: `docs/adr/002-crawl4ai-doc-ingestion.md`
+- No-paid provider ADR: `docs/adr/007-boss-idea-no-paid-search-provider.md`
+- SearXNG provider design: `docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md`
 
 ## Review Expectations
 

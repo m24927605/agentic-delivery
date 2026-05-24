@@ -490,6 +490,9 @@ Files touched:
 
 - `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
 - `docs/adr/006-boss-idea-crawl4ai-market-discovery.md`
+- `docs/adr/007-boss-idea-no-paid-search-provider.md`
+- `docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md`
+- `docs/runbooks/boss-idea-no-paid-market-search.md`
 - `docs/architecture/boss-idea-response-system.md`
 - `agentic/profiles/boss-idea-response.yaml`
 - `docs/backlog/boss-idea-response-slices.md`
@@ -519,6 +522,10 @@ Acceptance criteria:
   any Staff+ waiver in `boss_idea_market_crawl` manifest metadata;
 - live search providers require Staff Security Engineer and Staff Software
   Architect approval before implementation release;
+- default production discovery prefers no-paid providers; Brave and other paid
+  search APIs are optional fallback only;
+- SearXNG provider implementation can convert query pack entries into
+  candidate URLs without paid API credentials;
 - default golden fixtures use local HTML or controlled fixture inputs and do
   not require live internet;
 - live crawl smoke tests are opt-in and run before enabling or upgrading a live
@@ -597,6 +604,110 @@ Implementation sub-slices:
   Brave candidates are `live_approved` at the provider level after the provider
   itself is approved; future providers must document whether approval is
   provider-level or per-URL.
+- BIR-10D SearXNG no-paid provider design: completed for documentation.
+  Adds ADR 007, the SearXNG provider design, the no-paid market search runbook,
+  and updates the Boss Idea adapter/profile/research contracts so Brave is not
+  the required live search path. Implementation remains a separate slice that
+  must add fixture JSON, provider parsing, candidate schema validation,
+  manifest metadata, Hermes/pipeline coverage, validation, and AIT review.
+- BIR-10E SearXNG no-paid provider implementation: planned. Adds
+  `--search-provider searxng` to `scripts/crawl-boss-idea-market.sh`, supports
+  `BOSS_IDEA_SEARCH_SEARXNG_*` environment variables, maps JSON results to
+  candidate URLs, and runs Crawl4AI through the existing live crawl path.
+- BIR-10F local browser and HTML search fallback design: planned. Defines
+  `duckduckgo_html` and `local_browser_search` fallback contracts, captcha
+  handling, isolated browser profile rules, reproducibility metadata, and
+  lower-trust labeling before any fallback implementation.
+- BIR-10G provider arbitration and evidence quality scoring: planned. Defines
+  how provider priority, duplicate domains, source diversity, freshness,
+  fallback state, and evidence gaps are surfaced to Market Research Lead and
+  Staff+ reviewers without approving decisions automatically.
+
+## BIR-10D: SearXNG No-Paid Provider Design
+
+Status: documentation completed, implementation planned in BIR-10E.
+
+Owner role: Market Research Lead.
+
+Dependencies: BIR-10A deterministic adapter foundation, BIR-10B live Crawl4AI
+execution, and BIR-10C optional Brave provider.
+
+Source artifacts:
+
+- `docs/adr/007-boss-idea-no-paid-search-provider.md`
+- `docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md`
+- `docs/runbooks/boss-idea-no-paid-market-search.md`
+
+Files touched:
+
+- `docs/adr/007-boss-idea-no-paid-search-provider.md`
+- `docs/architecture/boss-idea-modules/searxng-market-discovery-provider.md`
+- `docs/runbooks/boss-idea-no-paid-market-search.md`
+- `docs/architecture/boss-idea-modules/crawl4ai-market-discovery-adapter.md`
+- `docs/architecture/boss-idea-modules/market-research-evidence.md`
+- `docs/architecture/boss-idea-response-system.md`
+- `docs/adr/006-boss-idea-crawl4ai-market-discovery.md`
+- `agentic/profiles/boss-idea-response.yaml`
+- `docs/backlog/boss-idea-response-slices.md`
+
+Acceptance criteria:
+
+- ADR 007 states that no-paid providers are preferred before paid search APIs.
+- SearXNG is documented as the default no-paid query-to-URL provider for the
+  next implementation slice.
+- Brave remains approved as optional paid fallback, not required default.
+- SearXNG is bound to query-to-URL discovery only; Crawl4AI remains the crawler
+  for approved candidate pages.
+- The SearXNG design defines purpose, scope, deferred scope, workflow, artifact
+  schema, CLI/env/manifest contract, failure behavior, validation strategy,
+  test cases, acceptance criteria, doc review standard, code review standard,
+  rollback notes, references, and review expectations.
+- The runbook explains no-paid setup, live command shape, evidence inspection,
+  fallback handling, and failure triage.
+- The Boss Idea profile, system doc, market evidence doc, and Crawl4AI adapter
+  all reference the no-paid provider decision.
+- Follow-on implementation remains split into small slices rather than mixing
+  design, implementation, local browser fallback, and arbitration in one change.
+
+Validation command:
+
+```bash
+git diff --check
+scripts/validate-agentic-system.sh
+PROFILE=boss-idea-response scripts/validate-agentic-system.sh
+scripts/privacy-scan-tracked.sh
+```
+
+Negative-path tests required for BIR-10E implementation:
+
+- SearXNG live run without `BOSS_IDEA_SEARCH_SEARXNG_BASE_URL` fails;
+- SearXNG live run without
+  `BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES=1` fails;
+- malformed SearXNG JSON fails;
+- missing `results` array fails;
+- paid engine marker in the no-paid path fails unless a Staff+ waiver selects a
+  paid provider;
+- empty result set fails with an actionable provider error;
+- private, localhost, link-local, metadata-service, non-http(s), or malformed
+  result URLs fail before Crawl4AI;
+- result count above hard caps fails;
+- credentials or raw provider response in tracked files fail privacy scan;
+- fallback provider output without fallback metadata fails.
+
+Rollback notes: remove ADR 007, the SearXNG provider design, the no-paid
+runbook, and cross-references from the Boss Idea profile/system/market/adapter
+docs. Keep BIR-10A/B/C because deterministic crawl, live seed crawl, and
+optional Brave remain valid.
+
+AIT review evidence path:
+`agentic/reviews/boss-idea-response/bir-10d/round-<n>.json`.
+
+Maximum review rounds: 5.
+
+Staff+ escalation path: if round 5 fails, keep Brave optional, defer SearXNG
+implementation, and record whether the default no-paid requirement is satisfied
+through `duckduckgo_html`, `local_browser_search`, self-hosted SearXNG, or a
+temporary Staff+ waiver.
 
 ## Review Expectations
 
