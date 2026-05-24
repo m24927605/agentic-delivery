@@ -423,7 +423,7 @@ def capture_stdout_capped(command, max_bytes)
       end
       raise ArgumentError, "local browser helper stdout exceeds max response bytes"
     end
-    stderr = err.read(8192).to_s
+      stderr = err.read(65_536).to_s
     status = wait_thr.value
   end
   [stdout, stderr, status]
@@ -826,6 +826,17 @@ def duckduckgo_metadata_url(query)
   uri.to_s
 end
 
+def redact_search_url_query(value)
+  uri = URI.parse(value.to_s)
+  params = URI.decode_www_form(uri.query.to_s).map do |key, existing|
+    %w[q query].include?(key) ? [key, "<query-recorded-separately>"] : [key, existing]
+  end
+  uri.query = params.empty? ? nil : URI.encode_www_form(params)
+  uri.to_s
+rescue URI::InvalidURIError
+  "<invalid-search-url>"
+end
+
 def load_duckduckgo_html_fixture(path, query_id)
   fail_with("invalid DuckDuckGo HTML fixture path: #{path}") unless BossIdea.repo_local_path?(path)
   if File.directory?(path)
@@ -952,7 +963,14 @@ def fetch_local_browser_results(query)
     "--timeout-ms", (POLICY.fetch("page_timeout_seconds") * 1000).to_s,
     "--locale", locale
   ], POLICY.fetch("max_response_bytes"))
-  raise ArgumentError, stderr.to_s.strip.empty? ? "local browser helper failed" : stderr.to_s.strip unless status.success?
+  unless status.success?
+    begin
+      error_payload = JSON.parse(stderr.lines.reverse.find { |line| line.include?('"error"') }.to_s)
+      fail_with(error_payload["error"].to_s.empty? ? "local browser helper failed" : error_payload["error"].to_s)
+    rescue JSON::ParserError
+      fail_with(stderr.to_s.strip.empty? ? "local browser helper failed" : stderr.to_s.strip)
+    end
+  end
 
   JSON.parse(stdout)
 rescue Errno::ENOENT
@@ -976,7 +994,7 @@ def discover_local_browser_candidates(query_pack)
           query,
           index,
           "endpoint_label" => ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_ENDPOINT_LABEL"].to_s.empty? ? "local-browser" : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_ENDPOINT_LABEL"),
-          "search_url" => local_browser_fixture_mode? ? "fixture://#{query.fetch("id")}" : "<local-browser-search-url>",
+          "search_url" => local_browser_fixture_mode? ? "fixture://#{query.fetch("id")}" : redact_search_url_query(ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_SEARCH_URL"].to_s.empty? ? duckduckgo_search_url(query).to_s : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_SEARCH_URL")),
           "locale" => ENV["BOSS_IDEA_SEARCH_LOCAL_BROWSER_LOCALE"].to_s.empty? ? "en-US" : ENV.fetch("BOSS_IDEA_SEARCH_LOCAL_BROWSER_LOCALE"),
           "engine_names" => ["local_chrome"]
         )
@@ -1127,6 +1145,14 @@ candidates.each_with_index do |candidate, index|
     raise ArgumentError, "candidates[].query_id is unknown: #{query_id}" unless query_ids.include?(query_id)
     raise ArgumentError, "candidates[].source_type is invalid: #{candidate["source_type"]}" unless allowed_source_types.include?(candidate["source_type"].to_s)
     raise ArgumentError, "candidates[].signal is invalid: #{candidate["signal"]}" unless allowed_signals.include?(candidate["signal"].to_s)
+    if %w[duckduckgo_html local_browser_search].include?(search_provider)
+      metadata = candidate["provider_metadata"]
+      raise ArgumentError, "fallback candidate requires provider_metadata" unless metadata.is_a?(Hash)
+      %w[fallback_from lower_trust_fallback no_paid_engine_policy result_rank].each do |field|
+        raise ArgumentError, "fallback candidate provider_metadata.#{field} is required" if metadata[field].to_s.empty?
+      end
+      raise ArgumentError, "fallback candidate must set lower_trust_fallback: true" unless metadata["lower_trust_fallback"] == true
+    end
     per_query_counts[query_id] += 1
     raise ArgumentError, "max crawled pages per query exceeded: #{query_id}" if per_query_counts[query_id] > POLICY.fetch("max_crawled_pages_per_query")
 

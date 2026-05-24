@@ -604,6 +604,19 @@ if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_SEARCH_LOCAL_BROWSER_SEARCH_URL=https://93.1
   exit 1
 fi
 grep -q "stdout exceeds max response bytes" /tmp/h20-boss-market-crawl-local-browser-huge.log
+cat >"agentic/runs/$BOSS_IDEA_RUN/local-browser-challenge-helper.py" <<'PY'
+#!/usr/bin/env python3
+import json
+import sys
+print(json.dumps({"ok": False, "error": "local browser search challenge detected"}), file=sys.stderr)
+sys.exit(4)
+PY
+chmod +x "agentic/runs/$BOSS_IDEA_RUN/local-browser-challenge-helper.py"
+if BOSS_IDEA_LIVE_CRAWL=1 BOSS_IDEA_SEARCH_LOCAL_BROWSER_SEARCH_URL=https://93.184.216.34/search BOSS_IDEA_SEARCH_LOCAL_BROWSER_HELPER="agentic/runs/$BOSS_IDEA_RUN/local-browser-challenge-helper.py" scripts/crawl-boss-idea-market.sh --live --force "$BOSS_IDEA_RUN" --from-query-pack --search-provider local_browser_search --output "agentic/runs/$BOSS_IDEA_RUN/bad-local-browser-challenge-results.yaml" >/tmp/h20-boss-market-crawl-local-browser-challenge.log 2>&1; then
+  echo "expected local browser challenge helper to fail" >&2
+  exit 1
+fi
+grep -q "local browser search challenge detected" /tmp/h20-boss-market-crawl-local-browser-challenge.log
 
 cat >"agentic/runs/$BOSS_IDEA_RUN/invalid-market-crawl-live-redirect.yaml" <<'YAML'
 candidates:
