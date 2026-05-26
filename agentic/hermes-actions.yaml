@@ -44,6 +44,9 @@ execute_mode:
     - validate_artifact_templates
     - validate_boss_idea_research
     - crawl_boss_idea_market
+    - generate_boss_idea_competitor_brief
+    - validate_boss_idea_competitor_brief
+    - run_boss_idea_live_smoke
     - score_boss_idea_feasibility
     - generate_boss_decision_memo
     - validate_boss_decision_memo
@@ -670,6 +673,126 @@ actions:
       - blocked_schema_invalid
       - blocked_missing_source
       - blocked_human_decision_required
+    retry_policy:
+      retryable: true
+      max_attempts: 2
+      requires_human_decision_on_exhaustion: true
+
+  - id: run_boss_idea_live_smoke
+    purpose: Manually run the Boss Idea SearXNG live smoke wrapper with explicit operator identity.
+    mode: planning
+    authorization:
+      action: boss_idea.live_smoke.run
+    requires_explicit_identity: true
+    command_template: BOSS_IDEA_LIVE_CRAWL={{live_crawl}} BOSS_IDEA_SEARCH_SEARXNG_BASE_URL={{searxng_base_url}} BOSS_IDEA_SEARCH_SEARXNG_ENDPOINT_LABEL={{searxng_endpoint_label}} BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES={{searxng_no_paid_engines}} scripts/run-boss-idea-live-smoke.sh --live --force --search-provider searxng --summary agentic/reviews/boss-idea-response/live-smoke/{{run_id}}/summary.yaml {{run_id}}
+    required_inputs:
+      - run_id
+      - live_crawl
+      - searxng_base_url
+      - searxng_endpoint_label
+      - searxng_no_paid_engines
+    optional_inputs: []
+    input_contract:
+      run_id: "Boss Idea planning run id."
+      live_crawl: "Must be 1. This renders BOSS_IDEA_LIVE_CRAWL=1 for the wrapper gate."
+      searxng_base_url: "Self-hosted SearXNG base URL. Must not include userinfo or credential query parameters."
+      searxng_endpoint_label: "Public-safe endpoint label for evidence."
+      searxng_no_paid_engines: "Must be 1. Operator confirmation that the SearXNG endpoint uses no-paid engines."
+      identity: "Execution requires explicit actor=local-operator role=operator or another policy-authorized operator identity."
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - scripts/run-boss-idea-live-smoke.sh
+      - scripts/boss-idea-searxng-preflight.sh
+      - scripts/crawl-boss-idea-market.sh
+      - agentic/schemas/boss-idea-market-discovery-quality.schema.yaml
+      - agentic/schemas/boss-idea-research.schema.yaml
+    writes:
+      - agentic/reviews/boss-idea-response/live-smoke/{{run_id}}/summary.yaml
+      - agentic/reviews/boss-idea-response/live-smoke/{{run_id}}/searxng-preflight.yaml
+      - agentic/reviews/boss-idea-response/live-smoke/{{run_id}}/logs/
+      - agentic/runs/{{run_id}}/market-search-results.yaml
+      - agentic/runs/{{run_id}}/market-research-query-pack.yaml
+      - agentic/runs/{{run_id}}/market-candidate-urls.yaml
+      - agentic/runs/{{run_id}}/market-discovery-quality.yaml
+      - agentic/runs/{{run_id}}/crawl4ai/crawl-log.yaml
+      - agentic/runs/{{run_id}}/crawl4ai/raw/
+      - agentic/runs/{{run_id}}/market-research.md
+      - agentic/runs/{{run_id}}/manifest.yaml
+    success_signals:
+      - stdout_contains: boss idea live smoke ok
+      - file_exists: agentic/reviews/boss-idea-response/live-smoke/{{run_id}}/summary.yaml
+      - file_exists: agentic/runs/{{run_id}}/market-discovery-quality.yaml
+      - manifest_path: agentic/runs/{{run_id}}/manifest.yaml
+    failure_states:
+      - blocked_authorization_failed
+      - blocked_missing_source
+      - blocked_schema_invalid
+      - blocked_human_decision_required
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: generate_boss_idea_competitor_brief
+    purpose: Generate a public-safe competitor brief from validated Boss Idea market evidence.
+    mode: planning
+    authorization:
+      action: artifact.generate
+    command_template: scripts/generate-boss-idea-competitor-brief.sh --output {{brief_file}} {{run_id}}
+    required_inputs:
+      - run_id
+      - brief_file
+    optional_inputs: []
+    input_contract:
+      run_id: "Boss Idea planning run id with validated market research and market-discovery quality artifacts."
+      brief_file: "Generated brief path under agentic/runs/<run-id>/."
+    reads:
+      - agentic/runs/{{run_id}}/manifest.yaml
+      - agentic/runs/{{run_id}}/market-research.md
+      - agentic/runs/{{run_id}}/market-discovery-quality.yaml
+      - agentic/schemas/boss-idea-competitor-brief.schema.yaml
+      - scripts/generate-boss-idea-competitor-brief.sh
+      - scripts/validate-boss-idea-competitor-brief.sh
+    writes:
+      - "{{brief_file}}"
+      - agentic/runs/{{run_id}}/manifest.yaml
+    success_signals:
+      - stdout_contains: boss idea competitor brief generated
+      - file_exists: "{{brief_file}}"
+      - manifest_path: agentic/runs/{{run_id}}/manifest.yaml
+      - manifest_field_equals:
+          path: boss_idea_competitor_brief.artifact_path
+          value: "{{brief_file}}"
+    failure_states:
+      - blocked_schema_invalid
+      - blocked_missing_source
+      - blocked_human_decision_required
+    retry_policy:
+      retryable: false
+      max_attempts: 1
+      requires_human_decision_on_exhaustion: true
+
+  - id: validate_boss_idea_competitor_brief
+    purpose: Validate a Boss Idea competitor brief contract.
+    mode: planning
+    command_template: scripts/validate-boss-idea-run-competitor-brief.sh {{run_id}} {{brief_file}}
+    required_inputs:
+      - run_id
+      - brief_file
+    optional_inputs: []
+    input_contract:
+      run_id: "Boss Idea planning run id containing the generated brief."
+      brief_file: "Brief filename or subpath relative to agentic/runs/<run-id>/; parent traversal is rejected by the validator."
+    reads:
+      - agentic/runs/{{run_id}}/{{brief_file}}
+      - agentic/schemas/boss-idea-competitor-brief.schema.yaml
+      - scripts/validate-boss-idea-run-competitor-brief.sh
+    writes: []
+    success_signals:
+      - stdout_contains: boss idea competitor brief ok
+    failure_states:
+      - blocked_schema_invalid
+      - blocked_missing_source
     retry_policy:
       retryable: true
       max_attempts: 2

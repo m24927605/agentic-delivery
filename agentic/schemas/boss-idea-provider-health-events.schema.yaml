@@ -1,0 +1,76 @@
+schema:
+  id: boss-idea-provider-health-events
+  required_fields:
+    - schema_version
+    - artifact_kind
+    - run_id
+    - generated_at
+    - provider
+    - mode
+    - retention_policy
+    - event_counts
+    - events
+    - authority_note
+  artifact_kind: boss_idea_provider_health_events
+  allowed_providers:
+    - fixture
+    - seed_replay
+    - live_seed
+    - brave
+    - searxng
+    - duckduckgo_html
+    - local_browser_search
+  allowed_modes:
+    - fixture
+    - seed_replay
+    - live_seed
+    - brave
+    - searxng
+    - duckduckgo_html
+    - local_browser_search
+  allowed_event_types:
+    - provider_attempt
+    - provider_success
+    - provider_failure
+    - challenge_or_captcha
+    - fallback_used
+  reason_taxonomy:
+    - primary_unavailable
+    - provider_timeout
+    - provider_error
+    - challenge_or_captcha
+    - policy_block
+    - insufficient_results
+    - manual_staff_waiver
+    - operator_selected
+    - fixture_replay
+  event_required_fields:
+    - event_id
+    - occurred_at
+    - event_type
+    - provider
+    - mode
+    - count
+    - public_safe
+    - source
+  event_types_requiring_reason:
+    - provider_failure
+    - challenge_or_captcha
+    - fallback_used
+  event_count_fields:
+    provider_attempt: provider_attempt_count
+    provider_success: provider_success_count
+    provider_failure: provider_failure_count
+    challenge_or_captcha: challenge_or_captcha_count
+    fallback_used: fallback_used_count
+  retention_policy:
+    raw_event_retention_days: 14
+    scrubbed_summary_retention_days: 90
+    tracked_artifact_policy: scrubbed_summary_only
+    raw_event_path_policy: ignored_paths_only
+    public_safe_counts_only: true
+  authority_policy:
+    advisory_only: true
+    required_phrases:
+      - advisory
+      - cannot approve

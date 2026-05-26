@@ -270,24 +270,34 @@ scripts/init-boss-idea-run.sh --dry-run agentic/fixtures/boss-idea-response/vali
 RUN_ID=<run-id> scripts/init-boss-idea-run.sh agentic/fixtures/boss-idea-response/valid-idea.md
 ```
 
-Generate a market search query pack, then collect source-backed market research
-from public-safe search results:
+Generate source-backed market research and market-discovery quality evidence:
 
 ```bash
 scripts/collect-boss-idea-research.sh --dry-run <run-id>
 scripts/collect-boss-idea-research.sh <run-id> --search-results agentic/fixtures/boss-idea-response/valid-market-search-results.yaml --output agentic/runs/<run-id>/market-research.md
 scripts/validate-boss-idea-research.sh agentic/runs/<run-id>/market-research.md
+scripts/crawl-boss-idea-market.sh --force <run-id> --from-query-pack --search-provider fixture --output agentic/runs/<run-id>/market-search-results.yaml
+scripts/validate-boss-idea-market-discovery-quality.sh agentic/runs/<run-id>/market-discovery-quality.yaml
+scripts/generate-boss-idea-competitor-brief.sh <run-id>
+scripts/validate-boss-idea-competitor-brief.sh agentic/fixtures/boss-idea-response/valid-competitor-brief.md
+scripts/validate-boss-idea-provider-health.sh agentic/fixtures/boss-idea-response/valid-provider-health.yaml
+scripts/validate-boss-idea-provider-health-events.sh agentic/fixtures/boss-idea-response/valid-provider-health-events.yaml
+scripts/summarize-boss-idea-provider-health.sh --output agentic/runs/<run-id>/provider-health.yaml <run-id>
+scripts/recommend-boss-idea-provider-fallback.sh --output agentic/runs/<run-id>/provider-fallback-advisory.yaml agentic/runs/<run-id>/provider-health.yaml
 ```
 
 Validate each downstream artifact independently:
 
 ```bash
 scripts/validate-boss-idea-research.sh agentic/fixtures/boss-idea-response/valid-research.md
+scripts/validate-boss-idea-competitor-brief.sh agentic/fixtures/boss-idea-response/valid-competitor-brief.md
 scripts/score-boss-idea-feasibility.sh --dry-run agentic/fixtures/boss-idea-response/valid-scorecard.yaml
 scripts/validate-boss-decision-memo.sh agentic/fixtures/boss-idea-response/valid-memo.md
 scripts/validate-boss-idea-poc-mvp.sh agentic/fixtures/boss-idea-response/valid-poc-plan.md
 scripts/validate-boss-idea-success-metrics.sh agentic/fixtures/boss-idea-response/valid-metrics.yaml
 scripts/validate-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-decision.yaml
+scripts/validate-boss-idea-provider-health.sh agentic/fixtures/boss-idea-response/valid-provider-health.yaml
+scripts/validate-boss-idea-provider-health-events.sh agentic/fixtures/boss-idea-response/valid-provider-health-events.yaml
 ```
 
 Decision recording is authorized and manifest-backed:
@@ -416,6 +426,9 @@ Hermes actions map to repo-local commands:
 | `run_agency_review` | `RUN_ID=<run-id> scripts/run-agency-review.sh` |
 | `summarize_review` | `scripts/summarize-agency-review.sh <run-id>` |
 | `collect_boss_idea_research` | `scripts/collect-boss-idea-research.sh <run-id> --search-results <results.yaml> --output <research.md>` |
+| `generate_boss_idea_competitor_brief` | `scripts/generate-boss-idea-competitor-brief.sh --output <brief.md> <run-id>` |
+| `validate_boss_idea_competitor_brief` | `scripts/validate-boss-idea-run-competitor-brief.sh <run-id> <brief.md>` |
+| `run_boss_idea_live_smoke` | `scripts/run-boss-idea-live-smoke.sh --live --force <run-id>` |
 | `start_implementation_run` | `RUN_ID=<run-id> scripts/init-implementation-run.sh --planning-run <planning-run-id>` |
 | `generate_implementation_task_graph` | `scripts/generate-implementation-task-graph.sh <run-id>` |
 | `dispatch_implementation_task` | `scripts/dispatch-implementation-task.sh <run-id> <task-id>` |
@@ -437,6 +450,8 @@ Executable mutating Hermes actions declare an `authorization.action` in
 inputs, checks them against `agentic/identity-policy.yaml`, and propagates the
 resolved identity to called repo-local scripts through `AIT_ACTOR` and
 `AIT_ACTOR_ROLE`.
+The `run_boss_idea_live_smoke` action additionally requires explicit
+`actor=local-operator role=operator` inputs and the live SearXNG gate inputs.
 
 ## Hermes-Native Dry Runs
 

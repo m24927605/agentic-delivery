@@ -1,0 +1,38 @@
+schema_version: 1
+artifact_kind: boss_idea_provider_health
+generated_at: "2026-05-25T12:00:00Z"
+run_scope: recent_runs
+window:
+  started_at: "2026-05-11T12:00:00Z"
+  ended_at: "2026-05-25T12:00:00Z"
+  lookback_days: 14
+retention_policy:
+  raw_event_retention_days: 14
+  scrubbed_summary_retention_days: 90
+  tracked_artifact_policy: scrubbed_summary_only
+  raw_event_path_policy: ignored_paths_only
+  public_safe_counts_only: true
+providers:
+  - provider: searxng
+    provider_priority: 1
+    no_paid_provider: true
+    advisory_status: healthy
+    counters:
+      attempt_count: 1
+      success_count: 1
+      failure_count: 0
+      challenge_or_captcha_count: 0
+      timeout_count: 0
+      policy_block_count: 0
+      fallback_used_count: 0
+    fallback_reasons: []
+    evidence_gaps: []
+summary:
+  provider_count: 1
+  total_attempt_count: 1
+  total_success_count: 1
+  total_failure_count: 0
+  total_challenge_or_captcha_count: 0
+  total_fallback_used_count: 0
+  advisory_only: true
+authority_note: Provider health approves provider selection and fallback execution.

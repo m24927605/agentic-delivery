@@ -1,0 +1,16 @@
+schema_version: 1
+run_id: crawl-log-missing-observed-network
+provider: searxng
+mode: searxng
+fixture_overrides_live: false
+user_agent: agentic-delivery-boss-idea-crawler/0.1.0 (+mailto:agentic-delivery@example.invalid)
+policy:
+  max_redirect_depth: 3
+  page_timeout_seconds: 20
+entries:
+  - url: https://example.com/competitor/workflow
+    status: success
+    raw_path: agentic/runs/crawl-log-missing-observed-network/crawl4ai/raw/competitor-public-workflow.md
+    truncated: false
+    crawl4ai_version: 0.6.0
+authority_note: Crawl log network metadata is evidence only and cannot approve artifacts, roadmap, budget, implementation, PR publishing, deployment, or go/no-go decisions.

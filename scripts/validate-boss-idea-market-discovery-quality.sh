@@ -53,13 +53,16 @@ end
 
 checks = BossIdea.required_mapping!(quality["checks"], "market_discovery_quality.checks")
 BossIdea.require_fields!(checks, Array(schema["checks_required_fields"]), "market_discovery_quality.checks")
-%w[source_count query_coverage_count query_count unique_host_count duplicate_host_count fresh_source_max_age_days stale_source_count missing_or_invalid_access_date_count lower_trust_fallback_count].each do |field|
+%w[source_count query_coverage_count query_count unique_host_count duplicate_host_count fresh_source_max_age_days stale_source_count missing_or_invalid_access_date_count lower_trust_fallback_count crawl_log_success_count observed_network_entry_count live_success_missing_observed_network_count].each do |field|
   unless checks[field].is_a?(Integer) && checks[field] >= 0
     BossIdea.fail_with("market_discovery_quality.checks.#{field} must be a non-negative integer")
   end
 end
 unless [true, false].include?(checks["required_signals_present"])
   BossIdea.fail_with("market_discovery_quality.checks.required_signals_present must be boolean")
+end
+unless [true, false].include?(checks["live_observed_network_required"])
+  BossIdea.fail_with("market_discovery_quality.checks.live_observed_network_required must be boolean")
 end
 if checks["query_coverage_count"] > checks["query_count"]
   BossIdea.fail_with("market_discovery_quality.checks.query_coverage_count cannot exceed query_count")
@@ -69,6 +72,12 @@ if checks["unique_host_count"] > checks["source_count"]
 end
 if checks["duplicate_host_count"] > checks["source_count"]
   BossIdea.fail_with("market_discovery_quality.checks.duplicate_host_count cannot exceed source_count")
+end
+if checks["observed_network_entry_count"] > checks["crawl_log_success_count"]
+  BossIdea.fail_with("market_discovery_quality.checks.observed_network_entry_count cannot exceed crawl_log_success_count")
+end
+if checks["live_success_missing_observed_network_count"] > checks["crawl_log_success_count"]
+  BossIdea.fail_with("market_discovery_quality.checks.live_success_missing_observed_network_count cannot exceed crawl_log_success_count")
 end
 
 BossIdea.fail_with("market_discovery_quality.evidence_gaps is required") unless quality.key?("evidence_gaps")

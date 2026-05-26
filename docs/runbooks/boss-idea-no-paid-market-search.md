@@ -69,6 +69,68 @@ export BOSS_IDEA_SEARCH_SEARXNG_CATEGORY="general"
 
 Do not export paid provider keys unless explicitly using a paid provider.
 
+## Preflight
+
+Before a live crawl, run the standalone SearXNG preflight against the
+self-hosted endpoint:
+
+```bash
+BOSS_IDEA_SEARCH_SEARXNG_BASE_URL="http://127.0.0.1:8080/search" \
+BOSS_IDEA_SEARCH_SEARXNG_ENDPOINT_LABEL="local-searxng" \
+BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES=1 \
+scripts/boss-idea-searxng-preflight.sh \
+  --evidence agentic/runs/<run-id>/searxng-preflight.yaml
+```
+
+The preflight verifies the base URL, endpoint label, no-paid-engine operator
+confirmation, and JSON output from `q=<probe>&format=json`. It does not store
+raw SearXNG JSON or raw page bodies. Evidence is public-safe, advisory-only,
+and must stay under ignored `agentic/runs/` or `agentic/reviews/` paths.
+
+Do not put userinfo or credential-like query parameters in the SearXNG URL.
+The preflight rejects those URLs and redacts them in stdout and evidence.
+
+## Live Smoke Wrapper
+
+For the BIR-11C live smoke, use the wrapper so the same run records preflight,
+market discovery, quality validation, and research validation phases:
+
+```bash
+BOSS_IDEA_LIVE_CRAWL=1 \
+BOSS_IDEA_SEARCH_SEARXNG_BASE_URL="http://127.0.0.1:8080/search" \
+BOSS_IDEA_SEARCH_SEARXNG_ENDPOINT_LABEL="local-searxng" \
+BOSS_IDEA_SEARCH_SEARXNG_NO_PAID_ENGINES=1 \
+scripts/run-boss-idea-live-smoke.sh --live --force <run-id>
+```
+
+The wrapper supports only `--search-provider searxng` in this slice because the
+preflight is SearXNG-specific. It rejects `--search-provider fixture` and
+`BOSS_IDEA_SEARCH_SEARXNG_FIXTURE`, requires `BOSS_IDEA_LIVE_CRAWL=1`, and
+writes the summary to ignored
+`agentic/reviews/boss-idea-response/live-smoke/<run-id>/summary.yaml` by
+default. The summary stores phase status, artifact paths, and validation
+outcomes; it does not store raw SearXNG JSON or raw page bodies.
+
+## Hermes Manual Action
+
+BIR-11D exposes the same wrapper through an optional Hermes action. It is
+manual-only and requires explicit operator identity:
+
+```bash
+scripts/run-hermes-action.sh --dry-run run_boss_idea_live_smoke \
+  run_id=<run-id> \
+  live_crawl=1 \
+  searxng_base_url="http://127.0.0.1:8080/search" \
+  searxng_endpoint_label="local-searxng" \
+  searxng_no_paid_engines=1 \
+  actor=local-operator \
+  role=operator
+```
+
+Remove `--dry-run` only for an intentional live smoke. The action is not
+scheduled and cannot approve artifacts, decisions, roadmap, budget,
+implementation, PR publishing, or deployment.
+
 ## Run
 
 Generate or confirm the query pack:
@@ -146,6 +208,32 @@ Use optional paid `brave` only when:
 - credentials stay in `BOSS_IDEA_SEARCH_BRAVE_*` environment variables;
 - artifacts label Brave as optional paid fallback, not the default path.
 
+## Provider Health
+
+Market discovery records provider-health event evidence under ignored run paths:
+
+```text
+agentic/runs/<run-id>/provider-health-events.yaml
+```
+
+Summarize those events only through the scrubbed summary command:
+
+```bash
+scripts/summarize-boss-idea-provider-health.sh --output agentic/runs/<run-id>/provider-health.yaml <run-id>
+```
+
+Fallback guidance must be advisory-only:
+
+```bash
+scripts/recommend-boss-idea-provider-fallback.sh --output agentic/runs/<run-id>/provider-fallback-advisory.yaml agentic/runs/<run-id>/provider-health.yaml
+```
+
+Provider-health event logs and raw crawl/search evidence remain ignored. Tracked
+provider-health summaries or advisory examples must be scrubbed, schema-valid,
+and free of raw URLs, hosts, IPs, queries, provider responses, crawl bodies, and
+credentials. Advisory output cannot approve provider selection or fallback
+execution; it must require a human decision and forbid automatic execution.
+
 ## Failure Triage
 
 Missing SearXNG base URL:
@@ -198,6 +286,8 @@ Before using the output in a boss decision memo, confirm:
 - source metadata includes provider, query id, rank, retrieval time, access
   date, and fallback state if any;
 - quality evidence gaps are reflected in memo caveats or follow-up actions;
+- provider-health summaries or fallback advisory artifacts are schema-valid,
+  public-safe, and advisory-only when included in review evidence;
 - market research separates facts, inferences, and unknowns;
 - no search or crawl output is treated as implementation approval.
 

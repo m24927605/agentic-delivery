@@ -1,0 +1,19 @@
+schema_version: 1
+artifact_kind: boss_idea_provider_fallback_advisory
+generated_at: "2026-05-25T12:00:00Z"
+source_provider_health_path: agentic/fixtures/boss-idea-response/valid-provider-health.yaml
+recommendations:
+  - provider: searxng
+    advisory_action: consider_fallback
+    reason: provider_timeout
+    suggested_fallback_provider: duckduckgo_html
+    requires_human_decision: true
+    automatic_execution_allowed: false
+    approval_status: not_approved
+  - provider: duckduckgo_html
+    advisory_action: escalate_staff_review
+    reason: challenge_or_captcha
+    requires_human_decision: true
+    automatic_execution_allowed: false
+    approval_status: not_approved
+authority_note: Provider fallback advisory is advisory evidence only. It cannot approve artifacts, roadmap, budget, implementation, provider selection, or fallback execution.

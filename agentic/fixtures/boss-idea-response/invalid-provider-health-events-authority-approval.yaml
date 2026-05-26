@@ -1,0 +1,36 @@
+schema_version: 1
+artifact_kind: boss_idea_provider_health_events
+run_id: invalid-provider-health-events
+generated_at: "2026-05-25T12:00:00Z"
+provider: searxng
+mode: searxng
+retention_policy:
+  raw_event_retention_days: 14
+  scrubbed_summary_retention_days: 90
+  tracked_artifact_policy: scrubbed_summary_only
+  raw_event_path_policy: ignored_paths_only
+  public_safe_counts_only: true
+event_counts:
+  provider_attempt_count: 1
+  provider_success_count: 1
+  provider_failure_count: 0
+  challenge_or_captcha_count: 0
+  fallback_used_count: 0
+events:
+  - event_id: searxng-attempt-1
+    occurred_at: "2026-05-25T12:00:00Z"
+    event_type: provider_attempt
+    provider: searxng
+    mode: searxng
+    count: 1
+    public_safe: true
+    source: market_discovery
+  - event_id: searxng-success-1
+    occurred_at: "2026-05-25T12:00:00Z"
+    event_type: provider_success
+    provider: searxng
+    mode: searxng
+    count: 1
+    public_safe: true
+    source: market_discovery
+authority_note: Provider health events approve provider selection and fallback execution.

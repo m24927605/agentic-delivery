@@ -138,10 +138,18 @@ CANDIDATE_URLS_PATH = File.join(RUN_DIR, "market-candidate-urls.yaml")
 RAW_DIR = File.join(RUN_DIR, "crawl4ai/raw")
 CRAWL_LOG_PATH = File.join(RUN_DIR, "crawl4ai/crawl-log.yaml")
 QUALITY_PATH = File.join(RUN_DIR, "market-discovery-quality.yaml")
+PROVIDER_HEALTH_EVENTS_PATH = File.join(RUN_DIR, "provider-health-events.yaml")
 DEFAULT_FIXTURE_SEEDS = "agentic/fixtures/boss-idea-response/market-crawl-seeds.yaml"
 DEFAULT_USER_AGENT = "agentic-delivery-boss-idea-crawler/0.1.0 (+mailto:agentic-delivery@example.invalid)"
 ALLOWED_PROVIDERS = %w[fixture seed_replay live_seed brave searxng duckduckgo_html local_browser_search].freeze
 LIVE_CRAWL_PROVIDERS = %w[live_seed brave searxng duckduckgo_html local_browser_search].freeze
+CRAWL_LOG_SCHEMA = BossIdea.load_yaml("agentic/schemas/boss-idea-crawl-log.schema.yaml").fetch("schema")
+PROVIDER_HEALTH_EVENTS_SCHEMA = BossIdea.load_yaml("agentic/schemas/boss-idea-provider-health-events.schema.yaml").fetch("schema")
+OBSERVED_NETWORK_SOURCES = Array(CRAWL_LOG_SCHEMA["observed_network_sources"]).map(&:to_s).freeze
+OBSERVED_IP_DENYLIST = Array(CRAWL_LOG_SCHEMA.dig("observed_ip_policy", "reject_non_public_ranges")).map { |range| IPAddr.new(range.to_s) }.freeze
+OBSERVED_IPV6_PUBLIC_RANGES = Array(CRAWL_LOG_SCHEMA.dig("observed_ip_policy", "ipv6_public_unicast_ranges")).map { |range| IPAddr.new(range.to_s) }.freeze
+PROVIDER_HEALTH_RETENTION_POLICY = PROVIDER_HEALTH_EVENTS_SCHEMA.fetch("retention_policy").freeze
+PROVIDER_HEALTH_AUTHORITY_NOTE = "Provider health events are advisory evidence only. They cannot approve artifacts, roadmap, budget, implementation, provider selection, or fallback execution."
 STOP_WORDS = %w[
   a an and are as at be by for from has have in into is it its of on or that
   the this to with without
@@ -161,8 +169,12 @@ POLICY = {
   "max_total_failures" => 10
 }.freeze
 QUALITY_FRESH_SOURCE_MAX_AGE_DAYS = 180
+$provider_health_context = nil
+$provider_health_events_written = false
+$last_failure_message = nil
 
 def fail_with(message, code = 1)
+  $last_failure_message = message.to_s
   warn message
   exit code
 end
@@ -170,6 +182,92 @@ end
 def safe_slug(value)
   slug = value.to_s.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-+|-+\z/, "")
   slug.empty? ? "source" : slug[0, 64]
+end
+
+def provider_health_reason_for_message(message)
+  text = message.to_s.downcase
+  return "challenge_or_captcha" if text.match?(/captcha|challenge|bot detection|are you human|unusual traffic|robot check/)
+  return "provider_timeout" if text.match?(/timeout|timed out/)
+  return "insufficient_results" if text.match?(/no candidate|no parseable results|returned no|missing results/)
+  return "policy_block" if text.match?(/policy|blocked ip|not allowed|paid engine|requires|must use|must not/)
+
+  "provider_error"
+end
+
+def provider_health_event(event_type, provider, mode, count = 1, reason = nil)
+  event = {
+    "occurred_at" => Time.now.utc.iso8601,
+    "event_type" => event_type,
+    "provider" => provider,
+    "mode" => mode,
+    "count" => count,
+    "public_safe" => true,
+    "source" => "market_discovery"
+  }
+  event["reason"] = reason if reason.to_s.length.positive?
+  event
+end
+
+def build_provider_health_event_log(run_id, provider, mode, events)
+  event_count_fields = PROVIDER_HEALTH_EVENTS_SCHEMA.fetch("event_count_fields")
+  counts = event_count_fields.values.to_h { |field| [field, 0] }
+  safe_events = events.each_with_index.map do |event, index|
+    event = event.dup
+    event["event_id"] ||= safe_slug("#{provider}-#{event.fetch("event_type")}-#{event["reason"] || "none"}-#{index + 1}")
+    counts[event_count_fields.fetch(event.fetch("event_type"))] += event.fetch("count")
+    event
+  end
+  {
+    "schema_version" => 1,
+    "artifact_kind" => PROVIDER_HEALTH_EVENTS_SCHEMA.fetch("artifact_kind"),
+    "run_id" => run_id,
+    "generated_at" => Time.now.utc.iso8601,
+    "provider" => provider,
+    "mode" => mode,
+    "retention_policy" => PROVIDER_HEALTH_RETENTION_POLICY,
+    "event_counts" => counts,
+    "events" => safe_events,
+    "authority_note" => PROVIDER_HEALTH_AUTHORITY_NOTE
+  }
+end
+
+def record_provider_health_events!(events, strict: true)
+  context = $provider_health_context
+  return unless context && !$provider_health_events_written
+
+  log = build_provider_health_event_log(context.fetch("run_id"), context.fetch("provider"), context.fetch("mode"), events)
+  FileUtils.mkdir_p(File.dirname(PROVIDER_HEALTH_EVENTS_PATH))
+  unless system("git", "check-ignore", "-q", PROVIDER_HEALTH_EVENTS_PATH)
+    message = "provider health events path is not ignored by git: #{PROVIDER_HEALTH_EVENTS_PATH}"
+    strict ? fail_with(message) : warn(message)
+    return
+  end
+  File.write(PROVIDER_HEALTH_EVENTS_PATH, log.to_yaml)
+  unless system("scripts/validate-boss-idea-provider-health-events.sh", PROVIDER_HEALTH_EVENTS_PATH, out: File::NULL, err: File::NULL)
+    message = "generated provider health events failed validation"
+    strict ? fail_with(message) : warn(message)
+    return
+  end
+  $provider_health_events_written = true
+end
+
+at_exit do
+  status = $!.is_a?(SystemExit) ? $!.status.to_i : ($!.nil? ? 0 : 1)
+  if status != 0 && $provider_health_context && !$provider_health_events_written
+    context = $provider_health_context
+    reason = provider_health_reason_for_message($last_failure_message)
+    events = [
+      provider_health_event("provider_attempt", context.fetch("provider"), context.fetch("mode")),
+      provider_health_event("provider_failure", context.fetch("provider"), context.fetch("mode"), 1, reason)
+    ]
+    if reason == "challenge_or_captcha"
+      events << provider_health_event("challenge_or_captcha", context.fetch("provider"), context.fetch("mode"), 1, reason)
+    end
+    if %w[duckduckgo_html local_browser_search].include?(context.fetch("provider"))
+      events << provider_health_event("fallback_used", context.fetch("provider"), context.fetch("mode"), 1, "operator_selected")
+    end
+    record_provider_health_events!(events, strict: false)
+  end
 end
 
 def compact_query(value)
@@ -321,6 +419,84 @@ def validate_url_policy!(candidate, allow_hosts, redirect_depth = 0)
   uri
 end
 
+def blocked_observed_ip?(value)
+  unless value.is_a?(String) && !value.strip.empty?
+    raise ArgumentError, "Crawl4AI helper observed_network.observed_ips contains invalid IP: #{value.inspect}"
+  end
+
+  stripped = value.strip
+  if stripped.include?("/")
+    raise ArgumentError, "Crawl4AI helper observed_network.observed_ips contains invalid IP: #{value}"
+  end
+
+  ip = IPAddr.new(stripped).native
+  return true if OBSERVED_IP_DENYLIST.any? { |range| range.include?(ip) }
+
+  ip.ipv6? && !OBSERVED_IPV6_PUBLIC_RANGES.any? { |range| range.include?(ip) }
+rescue IPAddr::InvalidAddressError
+  raise ArgumentError, "Crawl4AI helper observed_network.observed_ips contains invalid IP: #{value}"
+end
+
+def validate_observed_network_payload!(payload, requested_url, allow_hosts)
+  observed = payload["observed_network"]
+  raise ArgumentError, "Crawl4AI helper observed_network is required" unless observed.is_a?(Hash)
+
+  %w[requested_url final_url final_host observed_ips resolved_at source].each do |field|
+    raise ArgumentError, "Crawl4AI helper observed_network.#{field} is required" if observed[field].to_s.empty?
+  end
+  unless observed["requested_url"].to_s == requested_url.to_s
+    raise ArgumentError, "Crawl4AI helper observed_network.requested_url mismatch"
+  end
+
+  final_uri = parse_http_url!(observed["final_url"], "Crawl4AI helper observed_network.final_url")
+  final_host = observed["final_host"].to_s.downcase
+  unless final_uri.host.to_s.downcase == final_host
+    raise ArgumentError, "Crawl4AI helper observed_network.final_host must match final_url host"
+  end
+  unless allow_hosts.include?(final_host)
+    raise ArgumentError, "Crawl4AI helper observed_network.final_host is not in per-run allowlist: #{final_host}"
+  end
+
+  observed_ips = observed["observed_ips"]
+  unless observed_ips.is_a?(Array) && !observed_ips.empty?
+    raise ArgumentError, "Crawl4AI helper observed_network.observed_ips must be a non-empty array"
+  end
+  observed_ips.each do |ip|
+    if blocked_observed_ip?(ip)
+      raise ArgumentError, "Crawl4AI helper observed_network.observed_ips contains blocked IP: #{ip}"
+    end
+  end
+  Time.iso8601(observed["resolved_at"].to_s)
+  unless OBSERVED_NETWORK_SOURCES.include?(observed["source"].to_s)
+    raise ArgumentError, "Crawl4AI helper observed_network.source is invalid: #{observed["source"]}"
+  end
+
+  observed
+rescue ArgumentError
+  raise
+end
+
+def provider_fixture_observed_network(candidate, allow_hosts)
+  url = candidate["url"].to_s
+  uri = parse_http_url!(url, "candidate.url")
+  observed_ips = Array(candidate["resolved_ips"]).map(&:to_s).reject(&:empty?)
+  if observed_ips.empty?
+    literal = host_ip_literal(uri.host)
+    observed_ips = [literal.to_s] if literal
+  end
+  return nil if observed_ips.empty?
+
+  observed = {
+    "requested_url" => url,
+    "final_url" => url,
+    "final_host" => uri.host.downcase,
+    "observed_ips" => observed_ips,
+    "resolved_at" => candidate["retrieved_at"].to_s.empty? ? Time.now.utc.iso8601 : candidate["retrieved_at"].to_s,
+    "source" => "provider_fixture"
+  }
+  validate_observed_network_payload!({ "observed_network" => observed }, url, allow_hosts)
+end
+
 def html_to_markdown(content)
   text = content.to_s.dup
   text.gsub!(/<script\b.*?<\/script>/mi, " ")
@@ -373,7 +549,7 @@ def read_fixture_content(candidate)
   File.read(content_path)
 end
 
-def crawl4ai_markdown(candidate, user_agent)
+def crawl4ai_markdown(candidate, user_agent, allow_hosts)
   python = ENV["BOSS_IDEA_CRAWL4AI_PYTHON"].to_s.empty? ? "python3.11" : ENV.fetch("BOSS_IDEA_CRAWL4AI_PYTHON")
   helper = ENV["BOSS_IDEA_CRAWL4AI_HELPER"].to_s.empty? ? "scripts/lib/boss_idea_crawl4ai.py" : ENV.fetch("BOSS_IDEA_CRAWL4AI_HELPER")
   raise ArgumentError, "invalid Crawl4AI helper path: #{helper}" unless BossIdea.repo_local_path?(helper)
@@ -403,7 +579,8 @@ def crawl4ai_markdown(candidate, user_agent)
   markdown = payload["markdown"].to_s
   raise ArgumentError, "Crawl4AI returned no usable markdown" if markdown.strip.empty?
 
-  [markdown, payload["truncated"] == true, payload["crawl4ai_version"].to_s]
+  observed_network = validate_observed_network_payload!(payload, candidate["url"].to_s, allow_hosts)
+  [markdown, payload["truncated"] == true, payload["crawl4ai_version"].to_s, observed_network]
 rescue Errno::ENOENT
   raise ArgumentError, "Crawl4AI python runtime not found: #{python}"
 rescue JSON::ParserError => e
@@ -742,6 +919,8 @@ def discover_searxng_candidates(query_pack)
       }.tap do |candidate|
         content_path = result["content_path"].to_s
         candidate["content_path"] = content_path unless content_path.empty?
+        resolved_ips = result["resolved_ips"]
+        candidate["resolved_ips"] = resolved_ips if resolved_ips.is_a?(Array)
       end
     end
   end
@@ -1023,6 +1202,16 @@ def provider_priority(provider)
   }.fetch(provider.to_s, 99)
 end
 
+def resolved_crawl_mode(provider)
+  if (provider == "searxng" && searxng_fixture_mode?) ||
+      (provider == "duckduckgo_html" && duckduckgo_fixture_mode?) ||
+      (provider == "local_browser_search" && local_browser_fixture_mode?)
+    "fixture"
+  else
+    provider
+  end
+end
+
 def no_paid_provider?(provider)
   %w[searxng duckduckgo_html local_browser_search live_seed fixture seed_replay].include?(provider.to_s)
 end
@@ -1049,7 +1238,7 @@ def quality_band(score)
   "insufficient"
 end
 
-def build_discovery_quality(run_id, provider, mode, query_ids, required_signals, results, candidates, reference_date)
+def build_discovery_quality(run_id, provider, mode, query_ids, required_signals, results, candidates, crawl_log, reference_date)
   scoring_date = reference_date.is_a?(Date) ? reference_date : Date.iso8601(reference_date.to_s)
   result_query_ids = results.map { |result| result["query_id"].to_s }.uniq
   result_signals = results.map { |result| result["signal"].to_s }.uniq
@@ -1063,6 +1252,11 @@ def build_discovery_quality(run_id, provider, mode, query_ids, required_signals,
   missing_or_invalid_date_count = results.length - access_dates.length
   stale_source_count = access_dates.count { |date| (scoring_date - date).to_i > QUALITY_FRESH_SOURCE_MAX_AGE_DAYS }
   lower_trust_count = candidates.count { |candidate| candidate.dig("provider_metadata", "lower_trust_fallback") == true }
+  crawl_entries = Array(crawl_log["entries"])
+  success_entries = crawl_entries.select { |entry| entry["status"].to_s == "success" }
+  live_observed_required = Array(CRAWL_LOG_SCHEMA["live_modes_requiring_observed_network"]).map(&:to_s).include?(mode.to_s)
+  observed_network_entry_count = success_entries.count { |entry| entry["observed_network"].is_a?(Hash) }
+  missing_observed_count = live_observed_required ? success_entries.length - observed_network_entry_count : 0
   missing_required_signals = required_signals - result_signals
   missing_queries = query_ids - result_query_ids
   provider_score = [25 - ((provider_priority(provider) - 1) * 4), 5].max
@@ -1082,6 +1276,7 @@ def build_discovery_quality(run_id, provider, mode, query_ids, required_signals,
   evidence_gaps << "duplicate_host_sources: #{duplicate_host_count}" if duplicate_host_count.positive?
   evidence_gaps << "stale_sources_over_#{QUALITY_FRESH_SOURCE_MAX_AGE_DAYS}_days: #{stale_source_count}" if stale_source_count.positive?
   evidence_gaps << "missing_or_invalid_access_dates: #{missing_or_invalid_date_count}" if missing_or_invalid_date_count.positive?
+  evidence_gaps << "live_success_missing_observed_network: #{missing_observed_count}" if missing_observed_count.positive?
 
   {
     "schema_version" => 1,
@@ -1104,7 +1299,11 @@ def build_discovery_quality(run_id, provider, mode, query_ids, required_signals,
       "missing_or_invalid_access_date_count" => missing_or_invalid_date_count,
       "oldest_access_date" => access_dates.min&.iso8601,
       "latest_access_date" => access_dates.max&.iso8601,
-      "lower_trust_fallback_count" => lower_trust_count
+      "lower_trust_fallback_count" => lower_trust_count,
+      "crawl_log_success_count" => success_entries.length,
+      "observed_network_entry_count" => observed_network_entry_count,
+      "live_observed_network_required" => live_observed_required,
+      "live_success_missing_observed_network_count" => missing_observed_count
     },
     "evidence_gaps" => evidence_gaps,
     "authority_note" => "Discovery quality is advisory evidence only. It cannot approve artifacts, roadmap, budget, or implementation."
@@ -1172,6 +1371,11 @@ end
 
 ua = user_agent
 fail_with("crawler user-agent is invalid") unless valid_user_agent?(ua)
+$provider_health_context = {
+  "run_id" => run_id,
+  "provider" => search_provider,
+  "mode" => resolved_crawl_mode(search_provider)
+}
 
 market_schema = BossIdea.load_yaml("agentic/schemas/boss-idea-market-search.schema.yaml").fetch("schema")
 research_schema = BossIdea.load_yaml("agentic/schemas/boss-idea-research.schema.yaml").fetch("schema")
@@ -1197,10 +1401,10 @@ end.uniq
 
 fail_with("candidate URL count exceeds policy") if candidates.length > POLICY.fetch("max_crawled_pages_per_run")
 if force
-  [output_path, CANDIDATE_URLS_PATH, CRAWL_LOG_PATH, QUALITY_PATH].each { |path| FileUtils.rm_f(path) }
+  [output_path, CANDIDATE_URLS_PATH, CRAWL_LOG_PATH, QUALITY_PATH, PROVIDER_HEALTH_EVENTS_PATH].each { |path| FileUtils.rm_f(path) }
   FileUtils.rm_rf(RAW_DIR)
 else
-  [output_path, CANDIDATE_URLS_PATH, CRAWL_LOG_PATH, QUALITY_PATH].each do |path|
+  [output_path, CANDIDATE_URLS_PATH, CRAWL_LOG_PATH, QUALITY_PATH, PROVIDER_HEALTH_EVENTS_PATH].each do |path|
     fail_with("crawl artifact already exists: #{path}; use --force to overwrite") if File.exist?(path)
   end
   if Dir.exist?(RAW_DIR) && Dir.children(RAW_DIR).any?
@@ -1211,13 +1415,8 @@ end
 per_query_counts = Hash.new(0)
 candidate_records = []
 results = []
-crawl_mode = if (search_provider == "searxng" && searxng_fixture_mode?) ||
-  (search_provider == "duckduckgo_html" && duckduckgo_fixture_mode?) ||
-  (search_provider == "local_browser_search" && local_browser_fixture_mode?)
-  "fixture"
-else
-  search_provider
-end
+crawl_mode = resolved_crawl_mode(search_provider)
+$provider_health_context["mode"] = crawl_mode if $provider_health_context
 crawl_log = {
   "schema_version" => 1,
   "run_id" => run_id,
@@ -1226,7 +1425,8 @@ crawl_log = {
   "fixture_overrides_live" => live && live_env && crawl_mode == "fixture",
   "user_agent" => ua,
   "policy" => POLICY,
-  "entries" => []
+  "entries" => [],
+  "authority_note" => "Crawl log network metadata is evidence only and cannot approve artifacts, roadmap, budget, implementation, PR publishing, deployment, or go/no-go decisions."
 }
 
 consecutive_failures = 0
@@ -1269,13 +1469,19 @@ candidates.each_with_index do |candidate, index|
     raise ArgumentError, "Crawl4AI output must be markdown-only" unless extraction_type == "markdown"
 
     crawl4ai_version = "not-used-fixture"
+    helper_observed_network = nil
     if live && live_env && LIVE_CRAWL_PROVIDERS.include?(search_provider) && candidate["content_path"].to_s.empty?
       raise ArgumentError, "live seed candidate requires live_approved: true" unless candidate["live_approved"] == true
       before_ips = resolve_public_host!(uri.host, "candidate.url")
-      markdown, truncated, crawl4ai_version = crawl4ai_markdown(candidate, ua)
+      markdown, truncated, crawl4ai_version, helper_observed_network = crawl4ai_markdown(candidate, ua, allow_hosts)
       after_ips = resolve_public_host!(uri.host, "candidate.url post-crawl")
       if before_ips.none? { |ip| after_ips.include?(ip) }
         raise ArgumentError, "candidate.url DNS addresses changed during Crawl4AI crawl"
+      end
+      final_host_ips = resolve_public_host!(helper_observed_network.fetch("final_host"), "Crawl4AI helper observed_network.final_host")
+      observed_ips = Array(helper_observed_network["observed_ips"])
+      if observed_ips.none? { |ip| final_host_ips.include?(ip) }
+        raise ArgumentError, "Crawl4AI helper observed_network.observed_ips do not match final host DNS"
       end
     else
       html = read_fixture_content(candidate)
@@ -1286,6 +1492,9 @@ candidates.each_with_index do |candidate, index|
       if markdown.length > POLICY.fetch("max_markdown_chars")
         markdown = markdown[0, POLICY.fetch("max_markdown_chars")]
         truncated = true
+      end
+      if live && live_env && LIVE_CRAWL_PROVIDERS.include?(search_provider)
+        helper_observed_network = provider_fixture_observed_network(candidate, allow_hosts)
       end
     end
 
@@ -1330,13 +1539,15 @@ candidates.each_with_index do |candidate, index|
       "claim" => claim
     }
     results << result
-    crawl_log.fetch("entries") << {
+    crawl_entry = {
       "url" => candidate["url"].to_s,
       "status" => "success",
       "raw_path" => raw_path,
       "truncated" => truncated,
       "crawl4ai_version" => crawl4ai_version
     }
+    crawl_entry["observed_network"] = helper_observed_network if helper_observed_network
+    crawl_log.fetch("entries") << crawl_entry
     consecutive_failures = 0
   rescue SystemExit
     raise
@@ -1377,9 +1588,21 @@ File.write(CANDIDATE_URLS_PATH, {
   "candidates" => candidate_records
 }.to_yaml)
 File.write(CRAWL_LOG_PATH, crawl_log.to_yaml)
+unless system("scripts/validate-boss-idea-crawl-log.sh", CRAWL_LOG_PATH, out: File::NULL, err: File::NULL)
+  fail_with("generated crawl log failed validation")
+end
 File.write(output_path, { "results" => results }.to_yaml)
-quality = build_discovery_quality(run_id, search_provider, crawl_mode, query_ids, required_signals, results, candidate_records, Date.iso8601(today))
+quality = build_discovery_quality(run_id, search_provider, crawl_mode, query_ids, required_signals, results, candidate_records, crawl_log, Date.iso8601(today))
 File.write(QUALITY_PATH, quality.to_yaml)
+provider_health_events = [
+  provider_health_event("provider_attempt", search_provider, crawl_mode),
+  provider_health_event("provider_success", search_provider, crawl_mode)
+]
+fallback_used_count = quality.dig("checks", "lower_trust_fallback_count").to_i
+if fallback_used_count.positive?
+  provider_health_events << provider_health_event("fallback_used", search_provider, crawl_mode, fallback_used_count, "operator_selected")
+end
+record_provider_health_events!(provider_health_events)
 
 unless results_only
   research_output = File.join(RUN_DIR, "market-research.md")
@@ -1398,10 +1621,14 @@ manifest["boss_idea_market_crawl"] = {
   "raw_evidence_path" => RAW_DIR,
   "crawl_log_path" => CRAWL_LOG_PATH,
   "quality_path" => QUALITY_PATH,
+  "provider_health_events_path" => PROVIDER_HEALTH_EVENTS_PATH,
+  "provider_health_event_counts" => BossIdea.load_yaml(PROVIDER_HEALTH_EVENTS_PATH).fetch("event_counts"),
   "quality_score" => quality["score"],
   "quality_band" => quality["band"],
   "policy" => POLICY,
   "source_count" => results.length,
+  "observed_network_entry_count" => quality.dig("checks", "observed_network_entry_count"),
+  "live_success_missing_observed_network_count" => quality.dig("checks", "live_success_missing_observed_network_count"),
   "generated_at" => Time.now.utc.iso8601,
   "authority_note" => "Crawl/search output is evidence only and cannot approve artifacts or implementation."
 }.tap do |metadata|

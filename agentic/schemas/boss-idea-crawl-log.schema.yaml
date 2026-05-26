@@ -1,0 +1,146 @@
+schema:
+  id: boss-idea-crawl-log
+  required_fields:
+    - schema_version
+    - run_id
+    - provider
+    - mode
+    - fixture_overrides_live
+    - user_agent
+    - policy
+    - entries
+    - authority_note
+  allowed_providers:
+    - fixture
+    - seed_replay
+    - live_seed
+    - brave
+    - searxng
+    - duckduckgo_html
+    - local_browser_search
+  allowed_modes:
+    - fixture
+    - seed_replay
+    - live_seed
+    - brave
+    - searxng
+    - duckduckgo_html
+    - local_browser_search
+  allowed_statuses:
+    - success
+    - failed
+    - skipped
+  entry_required_fields:
+    - url
+    - status
+  success_entry_required_fields:
+    - raw_path
+    - truncated
+    - crawl4ai_version
+  live_modes_requiring_observed_network:
+    - live_seed
+    - brave
+    - searxng
+    - duckduckgo_html
+    - local_browser_search
+  fixture_modes_without_network:
+    - fixture
+    - seed_replay
+  observed_network_required_fields:
+    - requested_url
+    - final_url
+    - final_host
+    - observed_ips
+    - resolved_at
+    - source
+  observed_network_sources:
+    - dns
+    - connect
+    - browser
+    - provider_fixture
+  observed_ip_policy:
+    require_public_ips: true
+    ipv6_public_unicast_ranges:
+      - "2000::/3"
+    reject_non_public_ranges:
+      - 0.0.0.0/8
+      - 10.0.0.0/8
+      - 100.64.0.0/10
+      - 127.0.0.0/8
+      - 169.254.0.0/16
+      - 172.16.0.0/12
+      - 192.0.0.0/24
+      - 192.0.2.0/24
+      - 192.88.99.0/24
+      - 192.168.0.0/16
+      - 198.18.0.0/15
+      - 198.51.100.0/24
+      - 203.0.113.0/24
+      - 224.0.0.0/4
+      - 240.0.0.0/4
+      - 255.255.255.255/32
+      - "::/128"
+      - "::1/128"
+      - "64:ff9b:1::/48"
+      - "100::/64"
+      - "100:0:0:1::/64"
+      - "2001::/32"
+      - "2001:2::/48"
+      - "2001:10::/28"
+      - "2001:db8::/32"
+      - "2002::/16"
+      - "3fff::/20"
+      - "5f00::/16"
+      - "fc00::/7"
+      - "fe80::/10"
+      - "ff00::/8"
+  authority_policy:
+    advisory_only: true
+    required_phrases:
+      - evidence only
+      - cannot approve
+    allowed_note_patterns:
+      - '\A(Crawl log network metadata|Fixture crawl log metadata) is evidence only and cannot approve artifacts, roadmap, budget, implementation, PR publishing, deployment, or go/no-go decisions\.\z'
+    forbidden_phrases:
+      - approved artifacts
+      - artifacts approved
+      - approved for artifacts
+      - approved for decisions
+      - decision approved
+      - approved for implementation
+      - approval to implement
+      - implementation approved
+      - approved for deployment
+      - deployment approved
+      - approved for PR publishing
+      - PR publishing approved
+      - approved for roadmap
+      - roadmap approved
+      - approved for budget
+      - budget approved
+      - approved for go/no-go
+      - go/no-go decision approved
+    forbidden_patterns:
+      - '\b(can|may|will|does)\s+approve\b.*\b(artifact|artifacts|decision|decisions|implementation|deploy|deployment|publish|publishing|PR publishing|roadmap|budget|go/no-go)\b'
+      - '\bapprov(es|ed|al)\b.*\b(artifact|artifacts|decision|decisions|implementation|deploy|deployment|publish|publishing|PR publishing|roadmap|budget|go/no-go)\b'
+      - '\b(artifact|artifacts|decision|decisions|implementation|deploy|deployment|publish|publishing|PR publishing|roadmap|budget)\b.*\b(approved|approval\s+(granted|recorded|made)|is\s+(approved|granted|made|recorded|authorized))\b'
+      - '\b(go|no-go|go/no-go)\s+decision\s+(is\s+)?(recorded|approved|made|granted|authorized)\b'
+      - '\b(go|no-go|go/no-go)\s+decision\s+approval\s+(is\s+)?(granted|recorded|made|approved)\b'
+    prohibited_authority_surfaces:
+      - artifact
+      - artifacts
+      - decision
+      - decisions
+      - implementation
+      - deployment
+      - deploy
+      - publishing
+      - publish
+      - PR publishing
+      - roadmap
+      - budget
+      - go/no-go
+      - go decision
+      - no-go decision
+    approval_signal_pattern: '\b(approve|approves|approved|approval|authorize|authorizes|authorized|authorization|grant|grants|granted|proceed|proceeds|proceeded|set|sets|deploy|deploys|deployed|implement|implements|implemented|publish|publishes|published|ship|ships|shipped|launch|launches|launched)\b'
+    negated_approval_pattern: '\b(cannot|can not|can''t|does not|do not|must not|will not|without)\b.{0,40}\b(approve|approval|authorize|authorization|grant)\b'

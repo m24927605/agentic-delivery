@@ -183,6 +183,11 @@ actions:
       - hermes_operator
     default_actor: local-operator
     default_role: validator
+  boss_idea.live_smoke.run:
+    roles:
+      - operator
+    default_actor: local-operator
+    default_role: operator
   boss_idea.decision.record:
     roles:
       - operator

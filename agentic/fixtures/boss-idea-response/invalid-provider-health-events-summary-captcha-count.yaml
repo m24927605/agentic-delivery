@@ -1,0 +1,46 @@
+schema_version: 1
+artifact_kind: boss_idea_provider_health_events
+run_id: invalid-provider-health-events
+generated_at: "2026-05-25T12:00:00Z"
+provider: duckduckgo_html
+mode: fixture
+retention_policy:
+  raw_event_retention_days: 14
+  scrubbed_summary_retention_days: 90
+  tracked_artifact_policy: scrubbed_summary_only
+  raw_event_path_policy: ignored_paths_only
+  public_safe_counts_only: true
+event_counts:
+  provider_attempt_count: 1
+  provider_success_count: 0
+  provider_failure_count: 1
+  challenge_or_captcha_count: 0
+  fallback_used_count: 0
+events:
+  - event_id: duckduckgo-html-provider-attempt-1
+    occurred_at: "2026-05-25T12:00:00Z"
+    event_type: provider_attempt
+    provider: duckduckgo_html
+    mode: fixture
+    count: 1
+    public_safe: true
+    source: market_discovery
+  - event_id: duckduckgo-html-provider-failure-1
+    occurred_at: "2026-05-25T12:00:00Z"
+    event_type: provider_failure
+    provider: duckduckgo_html
+    mode: fixture
+    reason: challenge_or_captcha
+    count: 1
+    public_safe: true
+    source: market_discovery
+  - event_id: duckduckgo-html-challenge-or-captcha-1
+    occurred_at: "2026-05-25T12:00:00Z"
+    event_type: challenge_or_captcha
+    provider: duckduckgo_html
+    mode: fixture
+    reason: challenge_or_captcha
+    count: 1
+    public_safe: true
+    source: market_discovery
+authority_note: Provider health events are advisory evidence only. They cannot approve artifacts, roadmap, budget, implementation, provider selection, or fallback execution.

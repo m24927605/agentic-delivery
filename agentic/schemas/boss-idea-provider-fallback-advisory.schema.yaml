@@ -1,0 +1,48 @@
+schema:
+  id: boss-idea-provider-fallback-advisory
+  required_fields:
+    - schema_version
+    - artifact_kind
+    - generated_at
+    - source_provider_health_path
+    - recommendations
+    - authority_note
+  artifact_kind: boss_idea_provider_fallback_advisory
+  allowed_providers:
+    - fixture
+    - seed_replay
+    - live_seed
+    - brave
+    - searxng
+    - duckduckgo_html
+    - local_browser_search
+  allowed_actions:
+    - keep_current_provider
+    - retry_primary
+    - consider_fallback
+    - monitor_fallback
+    - escalate_staff_review
+  allowed_reason_labels:
+    - primary_unavailable
+    - provider_timeout
+    - provider_error
+    - challenge_or_captcha
+    - policy_block
+    - insufficient_results
+    - manual_staff_waiver
+    - operator_selected
+    - fixture_replay
+    - provider_healthy
+  recommendation_required_fields:
+    - provider
+    - advisory_action
+    - reason
+    - requires_human_decision
+    - automatic_execution_allowed
+    - approval_status
+  approval_status: not_approved
+  authority_policy:
+    advisory_only: true
+    required_phrases:
+      - advisory
+      - cannot approve

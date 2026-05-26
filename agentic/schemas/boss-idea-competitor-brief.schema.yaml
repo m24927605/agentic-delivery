@@ -1,0 +1,108 @@
+schema:
+  id: boss-idea-competitor-brief
+  required_frontmatter:
+    - artifact_status
+    - evidence_inputs
+    - recommendation_boundary
+  artifact_statuses:
+    - drafted
+    - reviewed
+    - approved
+    - rejected
+  required_evidence_inputs:
+    - market_research
+    - market_discovery_quality
+  required_sections:
+    - Executive Summary
+    - Competitor Matrix
+    - Mainstream Practice Summary
+    - Build / Buy / Partner / Defer Options
+    - Engineering Effort Band
+    - Risks, Assumptions, And Unknowns
+    - Next Experiment And Timebox
+    - Source Mapping
+  competitor_matrix_required_columns:
+    - claim_id
+    - competitor_or_alternative
+    - relevant_capability
+    - source_ids
+    - gap_or_risk
+    - implication
+  option_ids:
+    - build
+    - buy
+    - partner
+    - defer
+  effort_bands:
+    - xs
+    - s
+    - m
+    - l
+    - xl
+    - unknown
+  source_mapping_required_fields:
+    - source_id
+    - claim_ids
+    - brief_sections
+  claim_reference_required_fields:
+    - claim_id
+    - source_ids
+  claim_bearing_sections:
+    - Executive Summary
+    - Competitor Matrix
+    - Mainstream Practice Summary
+    - Build
+    - Buy
+    - Partner
+    - Defer
+    - Engineering Effort Band
+    - Risks, Assumptions, And Unknowns
+    - Next Experiment And Timebox
+  claim_policy:
+    competitor_claims_require_source_ids: true
+    competitor_or_market_claims_require_claim_ids: true
+    claim_ids_must_map_to_sources: true
+    claim_id_pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$'
+    source_id_pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$'
+    max_claim_chars: 280
+    copied_raw_provider_text_allowed: false
+  authority_policy:
+    required_phrases:
+      - evidence only
+      - cannot approve
+    forbidden_phrases:
+      - approved for implementation
+      - approval to implement
+      - go decision recorded
+      - approved for deployment
+      - approved for PR publishing
+      - approved for roadmap
+      - approved for budget
+      - approved for go/no-go
+      - approval to deploy
+      - approval to publish
+      - deployment approved
+      - PR publishing approved
+      - roadmap approved
+      - budget approved
+      - go/no-go decision approved
+    forbidden_patterns:
+      - '\b(can|may|will|does)\s+approve\b.*\b(implementation|deploy|deployment|publish|publishing|PR publishing|roadmap|budget|go/no-go)\b'
+      - '\bapprov(es|ed|al)\b.*\b(implementation|deploy|deployment|publish|publishing|PR publishing|roadmap|budget|go/no-go)\b'
+      - '\b(implementation|deploy|deployment|publish|publishing|PR publishing|roadmap|budget)\b.*\b(approved|approval\s+(granted|recorded|made)|is\s+(approved|granted|made|recorded))\b'
+      - '\b(go|no-go|go/no-go)\s+decision\s+(is\s+)?(recorded|approved|made|granted)\b'
+      - '\b(go|no-go|go/no-go)\s+decision\s+approval\s+(is\s+)?(granted|recorded|made|approved)\b'
+    prohibited_authority_surfaces:
+      - implementation
+      - deployment
+      - deploy
+      - publishing
+      - publish
+      - PR publishing
+      - roadmap
+      - budget
+      - go/no-go
+      - go decision
+      - no-go decision
+    approval_signal_pattern: '\b(approve|approves|approved|approval|authorize|authorizes|authorized|authorization|grant|grants|granted|proceed|proceeds|proceeded|set|sets|deploy|deploys|deployed|implement|implements|implemented|publish|publishes|published|ship|ships|shipped|launch|launches|launched)\b'
+    negated_approval_pattern: '\b(cannot|can not|can''t|does not|do not|must not|will not|without)\b.{0,40}\b(approve|approval|authorize|authorization|grant)\b'

@@ -46,6 +46,10 @@ schema:
     - stale_source_count
     - missing_or_invalid_access_date_count
     - lower_trust_fallback_count
+    - crawl_log_success_count
+    - observed_network_entry_count
+    - live_observed_network_required
+    - live_success_missing_observed_network_count
   checks_optional_date_fields:
     - oldest_access_date
     - latest_access_date

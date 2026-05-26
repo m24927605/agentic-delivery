@@ -117,6 +117,39 @@ Ignored raw evidence:
 - `agentic/runs/<run-id>/crawl4ai/crawl-log.yaml`
 - raw evidence must never be copied into tracked docs.
 
+The crawl log contract is defined in
+`agentic/schemas/boss-idea-crawl-log.schema.yaml`. Live success entries must
+record observed network metadata before they can be used as live evidence:
+
+```yaml
+entries:
+  - url: https://example.com/source
+    status: success
+    raw_path: agentic/runs/<run-id>/crawl4ai/raw/<source-id>.md
+    truncated: false
+    crawl4ai_version: <version>
+    observed_network:
+      requested_url: https://example.com/source
+      final_url: https://example.com/source
+      final_host: example.com
+      observed_ips:
+        - 93.184.216.34
+      resolved_at: <iso8601>
+      source: dns | connect | browser | provider_fixture
+```
+
+Fixture and seed-replay modes remain deterministic and may omit
+`observed_network`; live modes must fail closed when successful crawl entries
+cannot provide final URL and public observed IP metadata. Validators reject
+non-public observed IPs, including private, loopback, link-local, multicast,
+CGNAT, broadcast, documentation, and metadata-service ranges. Crawl-log
+authority notes are evidence-only: they cannot grant artifact, go/no-go,
+roadmap, budget, implementation, PR publishing, or deployment approval, and
+must use the schema allowlisted no-approval wording. The IP denylist is
+schema-backed and includes IANA special-purpose ranges that are not globally
+reachable; IPv6 observed addresses must also be in the `2000::/3` global
+unicast range before denylist exceptions are considered.
+
 ## CLI / Manifest / Pipeline Contract
 
 Command contract:
@@ -146,6 +179,33 @@ Expected contract:
 - records crawl metadata in `boss_idea_market_crawl` manifest metadata;
 - does not approve artifacts, decisions, budget, or implementation.
 
+Crawl4AI helper output is JSON. Successful payloads must include markdown,
+truncation, runtime version, and observed network metadata:
+
+```json
+{
+  "ok": true,
+  "url": "https://example.com/source",
+  "crawl4ai_version": "0.6.0",
+  "markdown": "...",
+  "truncated": false,
+  "observed_network": {
+    "requested_url": "https://example.com/source",
+    "final_url": "https://example.com/source",
+    "final_host": "example.com",
+    "observed_ips": ["93.184.216.34"],
+    "resolved_at": "2026-05-25T00:00:00Z",
+    "source": "dns"
+  }
+}
+```
+
+The Ruby wrapper validates the helper `observed_network` shape before accepting
+the helper payload. In live mode, the observed final host must still be in the
+per-run approved host allowlist. Live success entries persist this metadata in
+`crawl4ai/crawl-log.yaml`, and market-discovery quality records public-safe
+observed-network counts rather than raw page content.
+
 Manifest metadata shape:
 
 ```yaml
@@ -163,6 +223,8 @@ boss_idea_market_crawl:
   quality_path: agentic/runs/<run-id>/market-discovery-quality.yaml
   quality_score: 0-100
   quality_band: strong | usable | thin | insufficient
+  observed_network_entry_count: <integer>
+  live_success_missing_observed_network_count: <integer>
   live_smoke_evidence_path: agentic/reviews/boss-idea-response/bir-10/live-smoke-<date>.md
   waiver:
     reviewer: <staff-plus-role-or-user>
@@ -196,6 +258,10 @@ checks:
   stale_source_count: <integer>
   missing_or_invalid_access_date_count: <integer>
   lower_trust_fallback_count: <integer>
+  crawl_log_success_count: <integer>
+  observed_network_entry_count: <integer>
+  live_observed_network_required: true | false
+  live_success_missing_observed_network_count: <integer>
 evidence_gaps:
   - <gap-label>
 authority_note: Discovery quality is advisory evidence only. It cannot approve artifacts, roadmap, budget, or implementation.
@@ -263,6 +329,103 @@ candidate metadata must record `fallback_from: searxng` and
 `lower_trust_fallback: true`; captcha or bot-detection must stop the run rather
 than be bypassed. Fallback search responses and helper stdout must respect the
 same max response byte policy used by the Crawl4AI adapter.
+
+Provider health artifact:
+
+```yaml
+schema_version: 1
+artifact_kind: boss_idea_provider_health
+generated_at: <ISO8601>
+run_scope: fixture | single_run | recent_runs
+window:
+  started_at: <ISO8601>
+  ended_at: <ISO8601>
+  lookback_days: 14
+retention_policy:
+  raw_event_retention_days: 14
+  scrubbed_summary_retention_days: 90
+  tracked_artifact_policy: scrubbed_summary_only
+  raw_event_path_policy: ignored_paths_only
+  public_safe_counts_only: true
+providers:
+  - provider: searxng | duckduckgo_html | local_browser_search | brave | live_seed | fixture | seed_replay
+    provider_priority: <integer>
+    no_paid_provider: true | false
+    advisory_status: healthy | degraded | unavailable | unknown
+    counters:
+      attempt_count: <integer>
+      success_count: <integer>
+      failure_count: <integer>
+      challenge_or_captcha_count: <integer>
+      timeout_count: <integer>
+      policy_block_count: <integer>
+      fallback_used_count: <integer>
+    fallback_reasons:
+      - reason: primary_unavailable | provider_timeout | provider_error | challenge_or_captcha | policy_block | insufficient_results | manual_staff_waiver | operator_selected | fixture_replay
+        count: <integer>
+    evidence_gaps:
+      - <gap-label>
+summary:
+  provider_count: <integer>
+  total_attempt_count: <integer>
+  total_success_count: <integer>
+  total_failure_count: <integer>
+  total_challenge_or_captcha_count: <integer>
+  total_fallback_used_count: <integer>
+  advisory_only: true
+authority_note: Provider health is advisory evidence only. It cannot approve artifacts, roadmap, budget, implementation, provider selection, or fallback execution.
+```
+
+`provider-health.yaml` is a scrubbed summary contract for future provider
+health reporting. Raw provider-health events, raw search responses, URLs,
+hosts, IPs, query strings, helper stdout, and crawl bodies must stay under
+ignored run or review evidence paths and must not be copied into tracked
+provider-health artifacts. The tracked artifact can contain only aggregate
+counts, fallback reason labels from the schema taxonomy, public-safe evidence
+gap labels, retention policy fields, and advisory status. Provider health is
+advisory only: it can explain retry, fallback, or escalation context, but it
+cannot approve a provider switch, fallback execution, roadmap, budget, artifact,
+or implementation decision.
+
+Discovery runs also write ignored provider-health event evidence to:
+
+```text
+agentic/runs/<run-id>/provider-health-events.yaml
+```
+
+The event log records run-level `provider_attempt`, `provider_success`,
+`provider_failure`, `challenge_or_captcha`, and `fallback_used` events with
+aggregate counts only. It uses the same fallback reason taxonomy and retention
+policy as the provider-health summary contract. The event log is intentionally
+ignored run evidence: it may support a later public-safe summary, but it does
+not by itself change provider priority, recommend fallback, or approve fallback
+execution.
+
+Provider health summary command:
+
+```bash
+scripts/summarize-boss-idea-provider-health.sh --output agentic/runs/<run-id>/provider-health.yaml <run-id> [<run-id>...]
+```
+
+The summary command reads one or more ignored event logs and writes a scrubbed
+`provider-health.yaml` that conforms to the provider-health schema. It aggregates
+attempt, success, failure, challenge/captcha, timeout, policy-block, and
+fallback reason counts by provider, derives advisory health status, and
+validates the generated summary before returning. It is a reporting command
+only; it does not recommend a fallback provider or approve provider changes.
+
+Fallback advisory command:
+
+```bash
+scripts/recommend-boss-idea-provider-fallback.sh --output agentic/runs/<run-id>/provider-fallback-advisory.yaml agentic/runs/<run-id>/provider-health.yaml
+```
+
+Fallback advisory output is advisory-only guidance for human review. Every
+recommendation must set `requires_human_decision: true`,
+`automatic_execution_allowed: false`, and `approval_status: not_approved`.
+The command may suggest that reviewers keep, retry, consider fallback, monitor
+fallback, or escalate to Staff+ review, but it cannot execute or approve a
+fallback provider change. Fallback reasons must use the BIR-15 taxonomy.
 
 Hermes action:
 
@@ -407,6 +570,16 @@ Validation must include:
 - negative tests for missing required signals;
 - validation of generated `market-search-results.yaml`;
 - validation of generated `market-discovery-quality.yaml`;
+- validation of `provider-health.yaml` schema, fallback reason taxonomy,
+  challenge/captcha counters, retention policy, and public-safe tracked
+  content;
+- validation that discovery runs write ignored `provider-health-events.yaml`
+  with provider attempt, success/failure, fallback, and challenge/captcha
+  event counts;
+- validation that `summarize-boss-idea-provider-health.sh` turns ignored event
+  logs into a scrubbed provider-health summary;
+- validation that fallback advisory output forbids automatic execution and
+  approval wording;
 - validation of downstream `market-research.md`;
 - validation that raw crawl evidence paths are ignored and not tracked;
 - privacy scan over tracked files;
@@ -430,6 +603,15 @@ Positive tests:
 - manifest records crawl metadata without approving artifacts;
 - quality artifact records provider priority, diversity, freshness, fallback
   state, score, band, and advisory-only authority.
+- provider health fixture records aggregate provider counters, challenge/captcha
+  counts, fallback reason counts, fixed retention policy, and advisory-only
+  authority.
+- market discovery writes ignored provider-health events after successful runs,
+  including lower-trust fallback counts when fallback providers are used.
+- provider health summary command aggregates ignored event logs into a validated
+  advisory `provider-health.yaml`.
+- fallback advisory command produces human-decision-only guidance with no
+  automatic execution or approval.
 
 Negative tests:
 
@@ -442,10 +624,24 @@ Negative tests:
 - DNS rebinding to blocked IP fails;
 - redirect to blocked IP fails;
 - non-allowlisted host fails;
+- provider health artifact with a raw URL, raw IP, query string, or raw provider
+  response fails validation;
+- provider health artifact with a fallback reason outside the schema taxonomy
+  fails validation;
+- provider health artifact with mismatched challenge/captcha summary counts or
+  non-advisory authority fails validation;
+- DuckDuckGo HTML or local browser challenge detection writes a failed
+  provider-health event log with `challenge_or_captcha_count` before exiting.
+- provider health summary command fails when a referenced run has no validated
+  provider-health event log.
+- fallback advisory artifact with automatic execution, approval status, invalid
+  reason labels, or raw URL content fails validation.
 - robots disallow fails;
 - TLS verification failure fails;
 - excessive redirect depth fails;
 - redirect-chain DNS rebinding to blocked IP fails;
+- live crawl success without observed final URL and public IP metadata fails in
+  strict validation;
 - per-host rate violation fails;
 - user-agent that does not match
   `agentic-delivery-boss-idea-crawler/<version> (+mailto:<contact>)` fails;

@@ -89,6 +89,11 @@ unless action
   exit 1
 end
 
+if action["requires_explicit_identity"] == true && (identity_actor.to_s.strip.empty? || identity_role.to_s.strip.empty?)
+  warn "action requires explicit actor and role: #{action_id}"
+  exit 2
+end
+
 template = action["command_template"].to_s
 if template.strip.empty?
   warn "command_template is empty for action: #{action_id}"

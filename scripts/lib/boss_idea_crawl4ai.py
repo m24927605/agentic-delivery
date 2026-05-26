@@ -10,8 +10,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from datetime import datetime, timezone
+import ipaddress
 import json
+import socket
 import sys
+from urllib.parse import urlparse
 
 
 def fail(message: str, code: int = 1) -> None:
@@ -29,6 +33,51 @@ def markdown_text(markdown: object) -> str:
         if isinstance(value, str) and value.strip():
             return value
     return str(markdown)
+
+
+def result_final_url(result: object, requested_url: str) -> str:
+    for attr in ("final_url", "redirected_url", "url"):
+        value = getattr(result, attr, None)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return requested_url
+
+
+def resolved_ips(host: str, port: int) -> list[str]:
+    try:
+        infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except socket.gaierror as exc:
+        raise ValueError(f"observed network DNS resolution failed: {exc}") from exc
+
+    ips: list[str] = []
+    seen: set[str] = set()
+    for info in infos:
+        value = str(info[4][0]).split("%", 1)[0]
+        try:
+            normalized = str(ipaddress.ip_address(value))
+        except ValueError:
+            continue
+        if normalized not in seen:
+            seen.add(normalized)
+            ips.append(normalized)
+    if not ips:
+        raise ValueError("observed network DNS resolution returned no IPs")
+    return ips
+
+
+def observed_network_payload(requested_url: str, final_url: str) -> dict[str, object]:
+    uri = urlparse(final_url)
+    if uri.scheme not in {"http", "https"} or not uri.hostname:
+        raise ValueError("observed network final_url must be http or https with host")
+    port = uri.port or (443 if uri.scheme == "https" else 80)
+    return {
+        "requested_url": requested_url,
+        "final_url": final_url,
+        "final_host": uri.hostname.lower(),
+        "observed_ips": resolved_ips(uri.hostname, port),
+        "resolved_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "source": "dns",
+    }
 
 
 async def crawl(args: argparse.Namespace) -> dict[str, object]:
@@ -68,12 +117,19 @@ async def crawl(args: argparse.Namespace) -> dict[str, object]:
         markdown = markdown[: args.max_markdown_chars]
         truncated = True
 
+    final_url = result_final_url(result, args.url)
+    try:
+        observed_network = observed_network_payload(args.url, final_url)
+    except ValueError as exc:
+        fail(str(exc), 8)
+
     return {
         "ok": True,
         "url": args.url,
         "crawl4ai_version": getattr(crawl4ai, "__version__", "unknown"),
         "markdown": markdown,
         "truncated": truncated,
+        "observed_network": observed_network,
     }
 
 

@@ -1,0 +1,128 @@
+schema:
+  id: boss-idea-provider-health
+  required_fields:
+    - schema_version
+    - artifact_kind
+    - generated_at
+    - run_scope
+    - window
+    - retention_policy
+    - providers
+    - summary
+    - authority_note
+  artifact_kind: boss_idea_provider_health
+  allowed_run_scopes:
+    - fixture
+    - single_run
+    - recent_runs
+  allowed_providers:
+    - fixture
+    - seed_replay
+    - live_seed
+    - brave
+    - searxng
+    - duckduckgo_html
+    - local_browser_search
+  allowed_health_statuses:
+    - healthy
+    - degraded
+    - unavailable
+    - unknown
+  fallback_reason_taxonomy:
+    - primary_unavailable
+    - provider_timeout
+    - provider_error
+    - challenge_or_captcha
+    - policy_block
+    - insufficient_results
+    - manual_staff_waiver
+    - operator_selected
+    - fixture_replay
+  provider_required_fields:
+    - provider
+    - provider_priority
+    - no_paid_provider
+    - advisory_status
+    - counters
+    - fallback_reasons
+    - evidence_gaps
+  counter_required_fields:
+    - attempt_count
+    - success_count
+    - failure_count
+    - challenge_or_captcha_count
+    - timeout_count
+    - policy_block_count
+    - fallback_used_count
+  summary_required_fields:
+    - provider_count
+    - total_attempt_count
+    - total_success_count
+    - total_failure_count
+    - total_challenge_or_captcha_count
+    - total_fallback_used_count
+    - advisory_only
+  retention_policy:
+    required_fields:
+      - raw_event_retention_days
+      - scrubbed_summary_retention_days
+      - tracked_artifact_policy
+      - raw_event_path_policy
+      - public_safe_counts_only
+    raw_event_retention_days: 14
+    scrubbed_summary_retention_days: 90
+    tracked_artifact_policy: scrubbed_summary_only
+    raw_event_path_policy: ignored_paths_only
+    public_safe_counts_only: true
+  public_safety:
+    scrubbed_summary_only: true
+    forbidden_keys:
+      - url
+      - urls
+      - uri
+      - uris
+      - host
+      - hosts
+      - hostname
+      - ip
+      - ips
+      - observed_ips
+      - requested_url
+      - final_url
+      - query
+      - queries
+      - raw_query
+      - raw_response
+      - response_body
+      - crawl_body
+      - provider_response
+      - html
+      - markdown
+      - api_key
+      - token
+      - secret
+      - credential
+      - credentials
+      - password
+      - userinfo
+      - user_info
+    forbidden_value_patterns:
+      - 'https?://'
+      - '://[^/\s]+@'
+      - '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'
+      - '(api[_-]?key|token|secret|password)='
+  authority_policy:
+    advisory_only: true
+    required_phrases:
+      - advisory
+      - cannot approve
+    forbidden_phrases:
+      - approves provider selection
+      - approves fallback
+      - approved fallback
+      - approval granted
+      - greenlit
+      - good to go
+    forbidden_patterns:
+      - '\b(can|may|should)\s+(approve|greenlight|authorize)\b'
+      - '\b(approve|greenlight|authorize)\s+(provider|fallback|budget|roadmap|implementation)\b'

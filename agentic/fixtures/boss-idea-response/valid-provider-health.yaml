@@ -1,0 +1,57 @@
+schema_version: 1
+artifact_kind: boss_idea_provider_health
+generated_at: "2026-05-25T12:00:00Z"
+run_scope: recent_runs
+window:
+  started_at: "2026-05-11T12:00:00Z"
+  ended_at: "2026-05-25T12:00:00Z"
+  lookback_days: 14
+retention_policy:
+  raw_event_retention_days: 14
+  scrubbed_summary_retention_days: 90
+  tracked_artifact_policy: scrubbed_summary_only
+  raw_event_path_policy: ignored_paths_only
+  public_safe_counts_only: true
+providers:
+  - provider: searxng
+    provider_priority: 1
+    no_paid_provider: true
+    advisory_status: healthy
+    counters:
+      attempt_count: 5
+      success_count: 4
+      failure_count: 1
+      challenge_or_captcha_count: 0
+      timeout_count: 1
+      policy_block_count: 0
+      fallback_used_count: 1
+    fallback_reasons:
+      - reason: provider_timeout
+        count: 1
+    evidence_gaps: []
+  - provider: duckduckgo_html
+    provider_priority: 2
+    no_paid_provider: true
+    advisory_status: degraded
+    counters:
+      attempt_count: 2
+      success_count: 1
+      failure_count: 1
+      challenge_or_captcha_count: 1
+      timeout_count: 0
+      policy_block_count: 0
+      fallback_used_count: 1
+    fallback_reasons:
+      - reason: challenge_or_captcha
+        count: 1
+    evidence_gaps:
+      - challenge_or_captcha_observed
+summary:
+  provider_count: 2
+  total_attempt_count: 7
+  total_success_count: 5
+  total_failure_count: 2
+  total_challenge_or_captcha_count: 1
+  total_fallback_used_count: 2
+  advisory_only: true
+authority_note: Provider health is advisory evidence only. It cannot approve artifacts, roadmap, budget, implementation, provider selection, or fallback execution.

@@ -142,6 +142,10 @@ actions.each_with_index do |action, index|
     end
   end
 
+  if action.key?("requires_explicit_identity") && ![true, false].include?(action["requires_explicit_identity"])
+    errors << "#{prefix}.requires_explicit_identity must be boolean"
+  end
+
   %w[required_inputs reads writes success_signals failure_states].each do |field|
     value = action[field]
     errors << "#{prefix}.#{field} must be an array" unless value.is_a?(Array)

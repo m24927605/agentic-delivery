@@ -74,8 +74,12 @@ core_files=(
   scripts/validate-manifest-schema.sh
   scripts/init-boss-idea-run.sh
   scripts/crawl-boss-idea-market.sh
+  scripts/validate-boss-idea-crawl-log.sh
   scripts/collect-boss-idea-research.sh
   scripts/validate-boss-idea-research.sh
+  scripts/generate-boss-idea-competitor-brief.sh
+  scripts/validate-boss-idea-competitor-brief.sh
+  scripts/validate-boss-idea-run-competitor-brief.sh
   scripts/score-boss-idea-feasibility.sh
   scripts/generate-boss-decision-memo.sh
   scripts/validate-boss-decision-memo.sh
@@ -83,6 +87,13 @@ core_files=(
   scripts/validate-boss-idea-poc-mvp.sh
   scripts/validate-boss-idea-success-metrics.sh
   scripts/validate-boss-idea-market-discovery-quality.sh
+  scripts/validate-boss-idea-provider-health.sh
+  scripts/validate-boss-idea-provider-health-events.sh
+  scripts/summarize-boss-idea-provider-health.sh
+  scripts/validate-boss-idea-provider-fallback-advisory.sh
+  scripts/recommend-boss-idea-provider-fallback.sh
+  scripts/boss-idea-searxng-preflight.sh
+  scripts/run-boss-idea-live-smoke.sh
   scripts/record-boss-idea-decision.sh
   scripts/validate-boss-idea-decision.sh
   scripts/lib/boss_idea.rb
@@ -91,8 +102,13 @@ core_files=(
   agentic/schemas/boss-idea-intake.schema.yaml
   agentic/schemas/boss-idea-market-candidate-urls.schema.yaml
   agentic/schemas/boss-idea-market-search.schema.yaml
+  agentic/schemas/boss-idea-crawl-log.schema.yaml
   agentic/schemas/boss-idea-market-discovery-quality.schema.yaml
+  agentic/schemas/boss-idea-provider-health.schema.yaml
+  agentic/schemas/boss-idea-provider-health-events.schema.yaml
+  agentic/schemas/boss-idea-provider-fallback-advisory.schema.yaml
   agentic/schemas/boss-idea-research.schema.yaml
+  agentic/schemas/boss-idea-competitor-brief.schema.yaml
   agentic/schemas/boss-idea-scorecard.schema.yaml
   agentic/schemas/boss-decision-memo.schema.yaml
   agentic/schemas/boss-idea-poc-mvp.schema.yaml
@@ -108,7 +124,14 @@ core_files=(
   agentic/fixtures/boss-idea-response/duckduckgo-html-fixtures/implementation_patterns.html
   agentic/fixtures/boss-idea-response/duckduckgo-html-fixtures/operator_workflow.html
   agentic/fixtures/boss-idea-response/valid-market-search-results.yaml
+  agentic/fixtures/boss-idea-response/valid-crawl-log.yaml
+  agentic/fixtures/boss-idea-response/valid-crawl-log-fixture-mode.yaml
+  agentic/fixtures/boss-idea-response/valid-provider-health.yaml
+  agentic/fixtures/boss-idea-response/valid-provider-health-events.yaml
+  agentic/fixtures/boss-idea-response/valid-provider-fallback-advisory.yaml
   agentic/fixtures/boss-idea-response/valid-research.md
+  agentic/fixtures/boss-idea-response/competitor-brief-template.md
+  agentic/fixtures/boss-idea-response/valid-competitor-brief.md
   agentic/fixtures/boss-idea-response/valid-scorecard.yaml
   agentic/fixtures/boss-idea-response/valid-memo.md
   agentic/fixtures/boss-idea-response/valid-poc-plan.md
@@ -205,8 +228,12 @@ for script in \
   scripts/validate-manifest-schema.sh \
   scripts/init-boss-idea-run.sh \
   scripts/crawl-boss-idea-market.sh \
+  scripts/validate-boss-idea-crawl-log.sh \
   scripts/collect-boss-idea-research.sh \
   scripts/validate-boss-idea-research.sh \
+  scripts/generate-boss-idea-competitor-brief.sh \
+  scripts/validate-boss-idea-competitor-brief.sh \
+  scripts/validate-boss-idea-run-competitor-brief.sh \
   scripts/score-boss-idea-feasibility.sh \
   scripts/generate-boss-decision-memo.sh \
   scripts/validate-boss-decision-memo.sh \
@@ -214,6 +241,13 @@ for script in \
   scripts/validate-boss-idea-poc-mvp.sh \
   scripts/validate-boss-idea-success-metrics.sh \
   scripts/validate-boss-idea-market-discovery-quality.sh \
+  scripts/validate-boss-idea-provider-health.sh \
+  scripts/validate-boss-idea-provider-health-events.sh \
+  scripts/summarize-boss-idea-provider-health.sh \
+  scripts/validate-boss-idea-provider-fallback-advisory.sh \
+  scripts/recommend-boss-idea-provider-fallback.sh \
+  scripts/boss-idea-searxng-preflight.sh \
+  scripts/run-boss-idea-live-smoke.sh \
   scripts/record-boss-idea-decision.sh \
   scripts/validate-boss-idea-decision.sh; do
   bash -n "$script"
