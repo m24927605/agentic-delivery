@@ -9,7 +9,7 @@ idea directly into engineering work.
 The system converts an idea into bounded research, explicit recommendation,
 POC or MVP scope, success metrics, and go/no-go decisions. It keeps the same
 authority model as the base scaffold: repo-local manifests and tracked
-artifacts are authoritative; AI, Hermes, AIT, and Claude Code outputs are
+artifacts are authoritative; AI, Hermes, AIT, and Codex CLI outputs are
 evidence only.
 
 ## Staff+ Review Board
@@ -41,7 +41,7 @@ profile maps board roles to agent slugs as follows:
 | Staff QA Architect | `engineering-qa-architect` |
 | Staff Technical Writer | `engineering-technical-writer` |
 | Engineering Manager | `engineering-manager` |
-| AIT Claude Code reviewer | `engineering-code-reviewer` |
+| AIT Codex CLI Staff+ reviewer | `engineering-code-reviewer` |
 
 The board does not replace artifact approval. It records recommendations,
 residual risks, and deadlock decisions. Implementation still requires approved
@@ -142,7 +142,7 @@ The profile-backed deliverables are:
 | Implementation manifest | Authoritative | Owns approved inputs, task state, validation records, and leases. |
 | Tracked boss idea artifacts | Authoritative | Own public-safe design, recommendation, and acceptance contracts. |
 | Market source excerpts | Evidence | Must cite source, access date, and confidence. |
-| AIT / Claude Code review | Evidence | Cannot approve artifacts or implementation by itself. |
+| AIT / Codex CLI Staff+ review | Evidence | Cannot approve artifacts or implementation by itself. |
 | Hermes memory | Non-authoritative | May schedule and remind, but cannot decide or approve. |
 
 ## Lifecycle States
@@ -228,7 +228,7 @@ actions, ignored run output, and related fixture data for the affected slice.
   criteria, doc review standard, code review standard, rollback, and review
   expectations.
 - Implementation work is split into small slices in a backlog artifact.
-- AIT plus Claude Code review is required for documentation and implementation
+- AIT plus Codex CLI Staff+ review is required for documentation and implementation
   slices.
 - Five-round review limit and Staff+ deadlock decision are documented.
 - No artifact bypasses the base approval gate.

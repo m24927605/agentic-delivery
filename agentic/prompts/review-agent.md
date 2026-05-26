@@ -1,4 +1,4 @@
-請你以 Claude Code agency-agent 角色 {{AGENT_NAME}} 針對 profile `{{PROFILE_ID}}`（{{PROFILE_NAME}}）進行獨立審查。你只做審查，不修改任何檔案，也不要合議或模擬其他角色。
+請你以 Codex CLI Staff+ expert reviewer 角色 {{AGENT_NAME}} 針對 profile `{{PROFILE_ID}}`（{{PROFILE_NAME}}）進行獨立審查。你只做審查，不修改任何檔案，也不要合議或模擬其他角色。
 
 重要：請讀取 DOC_ROOT 下的以下檔案。DOC_ROOT 為：{{DOC_ROOT}}
 

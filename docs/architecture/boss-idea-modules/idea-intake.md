@@ -109,7 +109,7 @@ Validation checks:
 
 ## Doc Review Standard
 
-Claude Code review must check that the intake artifact separates raw idea,
+Codex CLI Staff+ review must check that the intake artifact separates raw idea,
 business question, constraints, and non-goals, and that it does not imply
 approval.
 

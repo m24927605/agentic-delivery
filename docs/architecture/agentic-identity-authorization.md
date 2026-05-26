@@ -92,7 +92,7 @@ Authorize one action:
 
 ```bash
 scripts/authorize-agentic-action.sh --action artifact.approve
-scripts/authorize-agentic-action.sh --action implementation.review.record --actor claude_code_cli --role code_reviewer
+scripts/authorize-agentic-action.sh --action implementation.review.record --actor codex_cli_staff_reviewer --role code_reviewer
 ```
 
 Mutating commands that support explicit actor input use this shape:

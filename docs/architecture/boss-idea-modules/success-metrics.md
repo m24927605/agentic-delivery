@@ -106,7 +106,7 @@ Validation checks:
 
 ## Doc Review Standard
 
-Claude Code review must check metric relevance, measurability, thresholds,
+Codex CLI Staff+ review must check metric relevance, measurability, thresholds,
 evidence paths, and decision mapping clarity.
 
 ## Code Review Standard

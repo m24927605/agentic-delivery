@@ -99,7 +99,7 @@ The BIR-10 implementation must include:
   required by the BIR-10 module validation strategy;
 - generated `market-search-results.yaml` validation;
 - downstream `collect-boss-idea-research.sh` validation;
-- AIT plus Claude Code review.
+- AIT plus Codex CLI Staff+ review.
 
 Live web smoke tests must require explicit opt-in and must not run in default
 golden fixtures.

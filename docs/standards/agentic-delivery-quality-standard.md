@@ -13,7 +13,7 @@ only when all of the following are true:
 - mutating commands pass the repo-local identity policy when identity hardening
   is in scope;
 - review evidence is stored only in ignored paths;
-- AIT-driven Claude Code review has no blocking finding;
+- AIT-driven Codex CLI Staff+ review has no blocking finding;
 - any known residual risk is recorded by Staff+ decision.
 
 Because automated CI feedback is deferred, local validation evidence is
@@ -112,23 +112,23 @@ agentic/reviews/auto-doc-to-implementation/<slice-id>/validation-round-<n>.log
 The evidence should include command, exit status, and redacted output. It should
 not be committed.
 
-## AIT Claude Code Review Standard
+## AIT Codex Staff+ Review Standard
 
-Each slice must use AIT to invoke Claude Code CLI as the reviewer. The review
+Each slice must use AIT to invoke Codex CLI as a Staff+ reviewer. The review
 command shape is:
 
 ```bash
-env -u ANTHROPIC_API_KEY ait run \
-  --adapter claude-code \
+ait run \
+  --adapter codex \
   --stdin none \
   --apply never \
   --review never \
   --no-auto-commit \
   --format json -- \
-  env -u ANTHROPIC_API_KEY "$(command -v claude)" \
-    --add-dir "$PWD" \
-    --agent engineering-code-reviewer \
-    -p "<slice review prompt>"
+  "$(command -v codex)" exec \
+    --cd "$PWD" \
+    --sandbox read-only \
+    "<slice review prompt>"
 ```
 
 Write the result to the slice evidence path:
@@ -178,8 +178,8 @@ agentic/reviews/auto-doc-to-implementation/<slice-id>/decision-log.md
 
 ## Code Review Pass Criteria
 
-Claude Code review passes only when there are no blocking findings in these
-areas:
+Codex CLI Staff+ review passes only when there are no blocking findings in
+these areas:
 
 - behavior contradicts the approved artifact or roadmap slice;
 - implementation consumes unapproved artifacts;
@@ -206,7 +206,7 @@ Tracked evidence:
 Ignored evidence:
 
 - AIT review output;
-- Claude Code review transcripts;
+- Codex CLI Staff+ review transcripts;
 - run manifests;
 - worker stdout;
 - Staff+ decision logs for blocked review loops.

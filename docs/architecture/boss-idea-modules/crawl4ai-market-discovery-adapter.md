@@ -583,7 +583,7 @@ Validation must include:
 - validation of downstream `market-research.md`;
 - validation that raw crawl evidence paths are ignored and not tracked;
 - privacy scan over tracked files;
-- AIT plus Claude Code review.
+- AIT plus Codex CLI Staff+ review.
 
 Default golden fixtures must not depend on external network availability.
 Live crawl smoke tests must require both `--live` and
@@ -680,7 +680,7 @@ Negative tests:
 
 ## Doc Review Standard
 
-Claude Code review must verify:
+Codex CLI Staff+ review must verify:
 
 - Crawl4AI role is limited to local-first public-source evidence gathering;
 - live web crawling is not part of default deterministic validation;

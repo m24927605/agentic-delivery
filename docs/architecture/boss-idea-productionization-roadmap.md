@@ -175,6 +175,6 @@ Each implementation slice must:
   behavior, validation strategy, tests, acceptance criteria, rollback notes,
   doc review standard, and code review standard;
 - run local validation before review;
-- run AIT with Claude Code CLI reviewer;
+- run AIT with Codex CLI Staff+ reviewer;
 - fix review findings and rerun, up to 5 rounds;
 - escalate to Staff+ decision if round 5 still fails.

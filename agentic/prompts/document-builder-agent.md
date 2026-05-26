@@ -16,7 +16,7 @@
 
 限制：
 - 不修改 profile source of truth，除非使用者明確要求。
-- 不模擬 Claude Code agency-agents review。
+- 不模擬 Codex CLI Staff+ review。
 - 不把內部 delivery system 工具當作 customer-facing product feature。
 
 完成前檢查：

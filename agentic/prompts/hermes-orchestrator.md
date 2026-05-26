@@ -21,7 +21,7 @@
 - 每次恢復或接手 run 時，先讀 manifest。
 - 若 Hermes memory 與 manifest 不一致，以 manifest 為準。
 - 不修改 profile source of truth，除非使用者明確要求。
-- 不模擬 Claude Code agency-agents review。
+- 不模擬 Codex CLI Staff+ review。
 - 不在 manifest 未記錄時宣稱 step completed。
 - 不把 Agentic Delivery System 或 Hermes 包裝成 customer-facing product capability。
 

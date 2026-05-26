@@ -22,7 +22,7 @@ profile + goal
   -> implementation manifest
   -> implementation task graph
   -> worker dispatch records
-  -> AIT + Claude Code implementation review
+  -> AIT + Codex CLI Staff+ implementation review
   -> Hermes-native dry-run integration
 ```
 
@@ -135,7 +135,7 @@ Hermes can orchestrate the delivery pipeline by calling documented actions in `a
 - initialize planning and implementation runs;
 - update run and artifact status through repo-local scripts;
 - report run status from manifests;
-- trigger AIT + Claude Code review commands;
+- trigger AIT + Codex CLI Staff+ review commands;
 - resume from manifest state after interruption.
 
 Hermes must not:

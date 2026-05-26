@@ -132,4 +132,4 @@ strategy_gate:
   internal_tool_terms:
     - Hermes
     - AIT
-    - Claude Code
+    - Codex CLI Staff+ review

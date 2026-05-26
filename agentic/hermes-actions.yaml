@@ -7,7 +7,7 @@ rules:
   - Repo-local manifest is authoritative run state.
   - Every action must map to a repo-local command.
   - Hermes must not modify profile source of truth.
-  - Hermes must not simulate Claude Code agency-agents review.
+  - Hermes must not simulate Codex CLI Staff+ review.
 
 defaults:
   shell: bash
@@ -320,7 +320,7 @@ actions:
       requires_human_decision_on_exhaustion: true
 
   - id: run_agency_review
-    purpose: Run profile-declared Claude Code agency-agents through AIT for a planning run.
+    purpose: Run profile-declared Codex CLI Staff+ reviewers through AIT for a planning run.
     mode: planning
     authorization:
       action: agency.review.run

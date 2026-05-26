@@ -16,7 +16,7 @@ Active scope:
 - provide a controlled Crawl4AI-compatible public web crawl/search path for
   rapid competitor and solution discovery;
 - preserve the approval gate for implementation;
-- require AIT plus Claude Code review for every slice.
+- require AIT plus Codex CLI Staff+ review for every slice.
 
 Deferred scope:
 
@@ -69,7 +69,7 @@ Acceptance criteria:
 - each module doc is manually audited against the required section contract
   until a structural linter exists;
 - profile validation passes;
-- AIT plus Claude Code doc review passes.
+- AIT plus Codex CLI Staff+ doc review passes.
 
 Validation command:
 
@@ -988,7 +988,7 @@ split freshness/diversity scoring into a later slice.
 
 ## Review Expectations
 
-Each slice must pass validation and AIT plus Claude Code review before the next
-dependent slice starts. If a review fails, fix the finding and rerun. If round 5
-fails, the Staff+ board records a decision and continues through the selected
-path rather than leaving the delivery blocked indefinitely.
+Each slice must pass validation and AIT plus Codex CLI Staff+ review before the
+next dependent slice starts. If a review fails, fix the finding and rerun. If
+round 5 fails, the Staff+ board records a decision and continues through the
+selected path rather than leaving the delivery blocked indefinitely.

@@ -12,7 +12,7 @@ This roadmap is the post-H13 automation map. H14-H22 are now implemented as
 repo-local commands, schemas, validators, fixtures, and Hermes action policy.
 
 The quality target is zero known blocking defects at merge time. Each slice must
-meet its acceptance criteria, pass validation, and pass AIT-driven Claude Code
+meet its acceptance criteria, pass validation, and pass AIT-driven Codex CLI Staff+
 review before the next slice proceeds.
 
 ## Staff+ Review Board
@@ -39,7 +39,7 @@ The current authority model stays unchanged:
 - implementation manifests own approved inputs and task state;
 - Git-tracked docs own public-safe design and process contracts;
 - Hermes memory is execution context only;
-- AIT and Claude Code outputs are review evidence only;
+- AIT and Codex CLI Staff+ outputs are review evidence only;
 - implementation consumes only artifacts marked `approved`.
 
 No future slice may approve an artifact from chat, memory, worker output, or
@@ -133,12 +133,12 @@ Required behavior:
 ### Implementation Review-Fix Loop
 
 Every completed implementation slice needs a bounded review-fix loop using AIT
-and Claude Code as the reviewer. Review evidence must not become approval by
-itself.
+and Codex CLI Staff+ as the reviewer. Review evidence must not become approval
+by itself.
 
 Required behavior:
 
-- run Claude Code reviewer through AIT after each slice implementation;
+- run Codex CLI Staff+ reviewer through AIT after each slice implementation;
 - cap review at 5 rounds;
 - require a fix or explicit Staff+ decision after every failed round;
 - prevent a next review round when the implementation has not changed;
@@ -226,7 +226,7 @@ These can be restored later as new slices, but they must not block H14-H22.
 Each slice moves through this sequence:
 
 ```text
-design -> implementation -> local validation evidence -> AIT Claude Code review -> fixes -> pass or Staff+ decision -> merge
+design -> implementation -> local validation evidence -> AIT Codex CLI Staff+ review -> fixes -> pass or Staff+ decision -> merge
 ```
 
 After any failed review round, the slice must be revised before another review.

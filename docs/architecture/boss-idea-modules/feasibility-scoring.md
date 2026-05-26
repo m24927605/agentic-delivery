@@ -114,7 +114,7 @@ Validation checks:
 
 ## Doc Review Standard
 
-Claude Code review must check whether the score definitions are consistent,
+Codex CLI Staff+ review must check whether the score definitions are consistent,
 whether risk and confidence are separated, and whether recommendation bands are
 clear.
 

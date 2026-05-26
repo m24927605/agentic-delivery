@@ -63,7 +63,7 @@ domain:
     - Runtime and delivery-system boundaries remain separate.
   rejected_directions:
     - stores_authoritative_state_in_hermes_memory
-    - simulates_agency_review_instead_of_ait_claude_code_agent
+    - simulates_agency_review_instead_of_ait_codex_staff_reviewer
     - commits_private_strategy_or_review_evidence
     - allows_unapproved_artifacts_to_drive_implementation
     - introduces_customer_facing_runtime_behavior
@@ -102,4 +102,4 @@ strategy_gate:
   internal_tool_terms:
     - Hermes
     - AIT
-    - Claude Code
+    - Codex CLI Staff+ review

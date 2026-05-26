@@ -53,8 +53,8 @@ actors:
     roles:
       - implementation_worker
     default_role: implementation_worker
-  - id: claude_code_cli
-    display_name: Claude Code CLI Reviewer
+  - id: codex_cli_staff_reviewer
+    display_name: Codex CLI Staff+ Reviewer
     roles:
       - code_reviewer
     default_role: code_reviewer
@@ -110,7 +110,7 @@ actions:
       - code_reviewer
       - staff_board
       - hermes_operator
-    default_actor: claude_code_cli
+    default_actor: codex_cli_staff_reviewer
     default_role: code_reviewer
   artifact.revision.create:
     roles:
@@ -125,7 +125,7 @@ actions:
       - operator
       - code_reviewer
       - hermes_operator
-    default_actor: claude_code_cli
+    default_actor: codex_cli_staff_reviewer
     default_role: code_reviewer
   review.summary.write:
     roles:
@@ -162,7 +162,7 @@ actions:
     roles:
       - code_reviewer
       - staff_board
-    default_actor: claude_code_cli
+    default_actor: codex_cli_staff_reviewer
     default_role: code_reviewer
   hermes.action.execute:
     roles:

@@ -114,7 +114,7 @@ Validation checks:
 
 ## Doc Review Standard
 
-Claude Code review must check whether the timebox, scope-out list, demo path,
+Codex CLI Staff+ review must check whether the timebox, scope-out list, demo path,
 and post-timebox decision are explicit.
 
 ## Code Review Standard

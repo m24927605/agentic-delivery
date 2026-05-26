@@ -116,7 +116,7 @@ def draft_content_for(path, run_id, goal, now)
       ## Acceptance Criteria
 
       - The artifact remains public-safe.
-      - The artifact can be reviewed by AIT and Claude Code.
+      - The artifact can be reviewed by AIT and Codex CLI Staff+ reviewers.
       - The artifact is not used for implementation until explicitly approved.
 
       ## Validation

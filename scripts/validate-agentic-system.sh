@@ -265,9 +265,9 @@ for cmd in ait "$SHELL"; do
   fi
 done
 
-claude_bin="${CLAUDE_BIN:-$(command -v claude || true)}"
-if [[ -z "$claude_bin" || ! -x "$claude_bin" ]]; then
-  echo "warning: Claude binary not executable; set CLAUDE_BIN if needed" >&2
+codex_bin="${CODEX_BIN:-$(command -v codex || true)}"
+if [[ -z "$codex_bin" || ! -x "$codex_bin" ]]; then
+  echo "warning: Codex CLI binary not executable; set CODEX_BIN if needed" >&2
 fi
 
 echo "agentic system scaffold ok"

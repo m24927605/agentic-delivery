@@ -102,7 +102,7 @@ Validation checks:
 
 ## Doc Review Standard
 
-Claude Code review must check clarity, evidence traceability, explicit
+Codex CLI Staff+ review must check clarity, evidence traceability, explicit
 recommendation, risk visibility, and lack of hidden implementation approval.
 
 ## Code Review Standard

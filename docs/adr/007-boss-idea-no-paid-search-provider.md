@@ -121,7 +121,7 @@ The no-paid provider implementation must include:
   ids, excessive result count, and output path traversal;
 - downstream `collect-boss-idea-research.sh` validation;
 - privacy scan over tracked files;
-- AIT plus Claude Code review.
+- AIT plus Codex CLI Staff+ review.
 
 Live SearXNG smoke tests must be opt-in and excluded from default golden
 fixtures.

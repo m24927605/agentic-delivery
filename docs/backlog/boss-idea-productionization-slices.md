@@ -9,7 +9,7 @@ after BIR-10G.
 
 ## Review Rule
 
-Every documentation or implementation slice must run AIT with Claude Code CLI
+Every documentation or implementation slice must run AIT with Codex CLI Staff+
 review. Implementation slices may run up to 5 review/fix rounds. If round 5
 does not pass, the Staff+ expert board records a decision and chooses a smaller
 slice, deferral, or alternate implementation path.
@@ -299,7 +299,8 @@ and defer Hermes exposure until the action contract can be split smaller.
 
 ## BIR-12: One-Command Boss Idea Workflow
 
-Status: completed by the productionization documentation update.
+Status: planning completed by the productionization documentation update;
+implementation slices BIR-12A through BIR-12E remain planned.
 
 Owner role: Engineering Manager.
 
@@ -1518,7 +1519,7 @@ Maximum review rounds: 5.
 
 ## BIR-16: Documentation State Cleanup
 
-Status: planned.
+Status: completed by the productionization documentation update.
 
 Owner role: Tech Writer.
 

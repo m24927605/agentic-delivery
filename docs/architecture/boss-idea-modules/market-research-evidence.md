@@ -161,7 +161,7 @@ Validation checks:
 
 ## Doc Review Standard
 
-Claude Code review must check source traceability, claim confidence, separation
+Codex CLI Staff+ review must check source traceability, claim confidence, separation
 of facts and inferences, and whether the summary is executive-readable.
 
 ## Code Review Standard

@@ -29,7 +29,7 @@ A boss idea response slice is ready only when:
 - recommendation, risk, timebox, metric, and next decision are explicit;
 - tracked files remain public-safe;
 - validation commands pass;
-- AIT plus Claude Code review has no blocking finding;
+- AIT plus Codex CLI Staff+ review has no blocking finding;
 - any round 5 failure has a Staff+ decision log.
 
 ## Validation
@@ -79,23 +79,23 @@ Implementation review must verify:
 - negative-path tests cover missing citations, missing timebox, missing metrics,
   unknown decision value, and unapproved implementation inputs.
 
-## AIT Claude Code Review
+## AIT Codex Staff+ Review
 
-Every documentation or implementation slice must use AIT with Claude Code CLI
-as reviewer:
+Every documentation or implementation slice must use AIT with Codex CLI as a
+Staff+ reviewer:
 
 ```bash
-env -u ANTHROPIC_API_KEY ait run \
-  --adapter claude-code \
+ait run \
+  --adapter codex \
   --stdin none \
   --apply never \
   --review never \
   --no-auto-commit \
   --format json -- \
-  env -u ANTHROPIC_API_KEY "$(command -v claude)" \
-    --add-dir "$PWD" \
-    --agent engineering-code-reviewer \
-    -p "<boss idea response review prompt>"
+  "$(command -v codex)" exec \
+    --cd "$PWD" \
+    --sandbox read-only \
+    "<boss idea response review prompt>"
 ```
 
 Write ignored evidence to:

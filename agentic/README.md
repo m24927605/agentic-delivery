@@ -336,7 +336,7 @@ Run one implementation review-fix round:
 ```bash
 scripts/run-implementation-review-loop.sh --dry-run <implementation-run-id> <task-id>
 scripts/run-implementation-review-loop.sh <implementation-run-id> <task-id>
-scripts/run-implementation-review-loop.sh --actor claude_code_cli --role code_reviewer <implementation-run-id> <task-id>
+scripts/run-implementation-review-loop.sh --actor codex_cli_staff_reviewer --role code_reviewer <implementation-run-id> <task-id>
 ```
 
 Review output remains evidence only. It cannot approve artifacts or override
@@ -384,15 +384,14 @@ Status reporting is read-only. It does not approve artifacts or infer approval f
 
 ## Review Rule
 
-Claude Code agency-agents are review-only and must run through AIT:
+Codex CLI Staff+ reviewers are review-only and must run through AIT:
 
 ```bash
-unset ANTHROPIC_API_KEY
-ait run --adapter claude-code --stdin none --apply never --review never --format json -- \
-  "$(command -v claude)" \
-  --add-dir "$PWD" \
-  --agent <agent-name> \
-  -p "<review prompt>"
+ait run --adapter codex --stdin none --apply never --review never --format json -- \
+  "$(command -v codex)" exec \
+  --cd "$PWD" \
+  --sandbox read-only \
+  "<review prompt>"
 ```
 
 Review outputs are evidence. They do not automatically approve artifacts. After each review round, revise the artifact or implementation slice before another review round. Each loop is capped at 5 rounds; after that, record a Staff-level council decision.

@@ -107,7 +107,7 @@ Validation checks:
 
 ## Doc Review Standard
 
-Claude Code review must check decision clarity, evidence traceability, residual
+Codex CLI Staff+ review must check decision clarity, evidence traceability, residual
 risk handling, and approval-gate separation.
 
 ## Code Review Standard

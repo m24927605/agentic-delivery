@@ -2384,7 +2384,7 @@ if scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/vali
   exit 1
 fi
 grep -q "blocked_schema_invalid" /tmp/h20-boss-decision-bad-profile.log
-if scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-no-go-decision.yaml --run-id "$BOSS_DECISION_RUN" --actor claude_code_cli --role code_reviewer >/tmp/h20-boss-decision-auth.log 2>&1; then
+if scripts/record-boss-idea-decision.sh agentic/fixtures/boss-idea-response/valid-no-go-decision.yaml --run-id "$BOSS_DECISION_RUN" --actor codex_cli_staff_reviewer --role code_reviewer >/tmp/h20-boss-decision-auth.log 2>&1; then
   echo "expected unauthorized decision record to fail" >&2
   exit 1
 fi

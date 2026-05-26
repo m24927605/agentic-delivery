@@ -229,7 +229,7 @@ Validation must include:
 - fixture Crawl4AI helper path that proves provider candidates feed downstream
   market research;
 - privacy scan proving fixture and metadata contain no credentials;
-- AIT plus Claude Code review.
+- AIT plus Codex CLI Staff+ review.
 
 Default validation must not require a running SearXNG instance.
 
@@ -285,7 +285,7 @@ Negative tests:
 
 ## Doc Review Standard
 
-Claude Code review must verify that the provider is no-paid by default,
+Codex CLI Staff+ review must verify that the provider is no-paid by default,
 separates search from crawling, records reproducibility metadata, preserves URL
 safety, and keeps paid providers optional.
 

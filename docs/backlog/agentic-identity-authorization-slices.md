@@ -3,7 +3,7 @@
 ## Slice Rules
 
 H23-H26 implement the strong identity and authorization hardening stream. Each
-slice is intentionally small enough for adversarial AIT + Claude Code review.
+slice is intentionally small enough for adversarial AIT + Codex CLI Staff+ review.
 
 Every slice must include:
 
@@ -57,11 +57,11 @@ Validation command:
 ```bash
 scripts/validate-identity-policy.sh
 scripts/authorize-agentic-action.sh --action artifact.approve --format json
-scripts/authorize-agentic-action.sh --action implementation.task.execute --actor claude_code_cli --role code_reviewer
+scripts/authorize-agentic-action.sh --action implementation.task.execute --actor codex_cli_staff_reviewer --role code_reviewer
 scripts/validate-agentic-system.sh
 ```
 
-The `claude_code_cli` worker-execution authorization command must fail.
+The `codex_cli_staff_reviewer` worker-execution authorization command must fail.
 
 Rollback notes: revert H23 files and remove ignored H23 review evidence.
 

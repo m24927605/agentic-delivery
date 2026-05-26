@@ -168,7 +168,7 @@ review_board:
     - compliance-auditor
     - sales-engineer
   execution:
-    adapter: claude-code
+    adapter: codex
     via: ait
     apply: never
     review: never

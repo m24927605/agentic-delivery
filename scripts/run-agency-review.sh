@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude || true)}"
+CODEX_BIN="${CODEX_BIN:-$(command -v codex || true)}"
 PROMPT_TEMPLATE="${PROMPT_TEMPLATE:-$ROOT/agentic/prompts/review-agent.md}"
 OUT_BASE="${OUT_BASE:-$ROOT/.ait/review-outputs}"
 PROFILE="${PROFILE:-}"
@@ -41,10 +41,6 @@ RUBY
 )"
 PROFILE_PATH="$ROOT/agentic/profiles/${PROFILE_ID}.yaml"
 
-if [[ "${USE_CLAUDE_LOGIN_AUTH:-1}" == "1" ]]; then
-  unset ANTHROPIC_API_KEY || true
-fi
-
 mkdir -p "$OUT_DIR"
 
 if [[ -n "$REQUESTED_RUN_ID" && ! -f "$MANIFEST" ]]; then
@@ -53,8 +49,8 @@ if [[ -n "$REQUESTED_RUN_ID" && ! -f "$MANIFEST" ]]; then
   exit 1
 fi
 
-if [[ ! -x "$CLAUDE_BIN" ]]; then
-  echo "Claude binary not executable: $CLAUDE_BIN" >&2
+if [[ ! -x "$CODEX_BIN" ]]; then
+  echo "Codex CLI binary not executable: $CODEX_BIN" >&2
   exit 1
 fi
 
@@ -203,11 +199,11 @@ for agent in "${AGENTS[@]}"; do
 
   echo "Running agency review: $agent"
   set +e
-  ait run --adapter claude-code --stdin none --apply never --review never --format json -- \
-    "$CLAUDE_BIN" \
-    --add-dir "$ROOT" \
-    --agent "$agent" \
-    -p "$prompt" > "$out_file"
+  ait run --adapter codex --stdin none --apply never --review never --no-auto-commit --format json -- \
+    "$CODEX_BIN" exec \
+    --cd "$ROOT" \
+    --sandbox read-only \
+    "$prompt" > "$out_file"
   command_exit=$?
   set -e
 

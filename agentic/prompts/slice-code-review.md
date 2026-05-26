@@ -1,4 +1,4 @@
-請你以 Claude Code reviewer 身分審查 Agentic Delivery System 的 implementation slice。
+請你以 Codex CLI Staff+ reviewer 身分審查 Agentic Delivery System 的 implementation slice。
 
 你只做 code review / docs-contract review，不修改任何檔案，不模擬其他 reviewer。
 
@@ -36,7 +36,7 @@
 - 是否保持 repo manifest 為 authoritative state。
 - 是否避免 Hermes memory 取代 manifest。
 - 是否每個 action 都可人工用 repo-local command 重跑。
-- 是否沒有模擬 Claude Code agency-agents review。
+- 是否沒有模擬 Codex CLI Staff+ review。
 - 是否沒有修改 profile source of truth 或產品策略。
 - 是否 shell / YAML / manifest validation 足夠。
 - 是否有錯誤處理、failure state、retry 或 human decision 邊界。
