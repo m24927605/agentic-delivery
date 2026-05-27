@@ -1,0 +1,7 @@
+pipeline:
+  id: agentic-delivery-system
+  version: v0.6
+  purpose: test fixture
+  default_profile: default-delivery
+  profile_dir: agentic/profiles
+modes: [planning, implementation]

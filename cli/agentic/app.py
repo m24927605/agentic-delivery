@@ -1,11 +1,16 @@
 """Agentic CLI root."""
 
+from __future__ import annotations
+
 import platform
 import sys
+from pathlib import Path
+from typing import Annotated
 
 import typer
 
 from agentic import __version__
+from agentic.context import RepoNotFound, resolve_repo
 
 app = typer.Typer(
     name="agentic",
@@ -16,20 +21,30 @@ app = typer.Typer(
 
 
 @app.callback()
-def _root() -> None:
-    """Root callback. Forces multi-command app structure even with a single command.
-
-    Later slices (CLI-02 onward) extend this with global flags like
-    --repo, --run-id, --actor, --role, --json, --no-compat-check.
-    """
+def _root(
+    ctx: typer.Context,
+    repo: Annotated[
+        Path | None,
+        typer.Option("--repo", help="Path to agentic-delivery repo.", show_default=False),
+    ] = None,
+    no_compat_check: Annotated[
+        bool, typer.Option("--no-compat-check", help="Skip pipeline.yaml compatibility check.")
+    ] = False,
+) -> None:
+    ctx.obj = {"repo_flag": repo, "compat_check": not no_compat_check}
 
 
 @app.command()
-def version() -> None:
-    """Print CLI, python, and platform info."""
+def version(ctx: typer.Context) -> None:
+    """Print CLI, python, repo, and compat info."""
     typer.echo(f"agentic-delivery CLI  {__version__}")
     typer.echo(f"  python:   {platform.python_version()}")
     typer.echo(f"  platform: {sys.platform}")
+    try:
+        repo = resolve_repo(repo_flag=ctx.obj.get("repo_flag") if ctx.obj else None)
+        typer.echo(f"  repo:     {repo.path}  (source: {repo.source})")
+    except RepoNotFound as e:
+        typer.echo(f"  repo:     not found ({e})")
 
 
 def main() -> None:
