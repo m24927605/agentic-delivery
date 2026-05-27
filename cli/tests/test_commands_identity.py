@@ -68,3 +68,73 @@ def test_identity_authorize_requires_action(
     result = cli.invoke(app, ["identity", "authorize"])
     assert result.exit_code != 0
     assert not runner.calls
+
+
+# --------------------------------------------------------------------------- #
+# Env propagation — spec §9.4 / §13 CLI-09a acceptance: --actor / --role at
+# the root callback MUST reach call.env as AIT_ACTOR / AIT_ACTOR_ROLE on the
+# authorize path (the system's authorization gate) and validate.
+# --------------------------------------------------------------------------- #
+
+
+def test_identity_authorize_propagates_actor_and_role_env(
+    cli: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    runner: RecordingRunner,
+) -> None:
+    repo = _seed(tmp_path)
+    monkeypatch.chdir(repo)
+    result = cli.invoke(
+        app,
+        [
+            "--actor",
+            "alice",
+            "--role",
+            "reviewer",
+            "identity",
+            "authorize",
+            "--action",
+            "artifact.approve",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    call = runner.calls[-1]
+    assert call.env["AIT_ACTOR"] == "alice"
+    assert call.env["AIT_ACTOR_ROLE"] == "reviewer"
+
+
+def test_identity_validate_propagates_actor_and_role_env(
+    cli: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    runner: RecordingRunner,
+) -> None:
+    repo = _seed(tmp_path)
+    monkeypatch.chdir(repo)
+    result = cli.invoke(
+        app,
+        ["--actor", "alice", "--role", "reviewer", "identity", "validate"],
+    )
+    assert result.exit_code == 0, result.output
+    call = runner.calls[-1]
+    assert call.env["AIT_ACTOR"] == "alice"
+    assert call.env["AIT_ACTOR_ROLE"] == "reviewer"
+
+
+def test_identity_authorize_no_actor_means_no_env(
+    cli: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    runner: RecordingRunner,
+) -> None:
+    """Without --actor/--role at the root, env must not contain AIT_ACTOR*."""
+    repo = _seed(tmp_path)
+    monkeypatch.chdir(repo)
+    result = cli.invoke(
+        app, ["identity", "authorize", "--action", "artifact.approve"]
+    )
+    assert result.exit_code == 0, result.output
+    call = runner.calls[-1]
+    assert "AIT_ACTOR" not in call.env
+    assert "AIT_ACTOR_ROLE" not in call.env
