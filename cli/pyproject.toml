@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentic-delivery"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Agentic Delivery CLI — wrapper over the scripts/* pipeline"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -38,6 +38,11 @@ dev = [
 
 [tool.agentic]
 compatible_pipeline_versions = [">=0.6,<0.7"]
+
+[tool.hatch.version]
+source = "regex"
+path = "agentic/__init__.py"
+pattern = "^__version__ = \"(?P<version>[^\"]+)\""
 
 [tool.hatch.build.targets.wheel]
 packages = ["agentic"]

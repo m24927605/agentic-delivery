@@ -1,3 +1,4 @@
+from agentic import __version__
 from agentic.app import app
 
 
@@ -16,7 +17,7 @@ def test_help_lists_version_command(cli):
 def test_version_command_prints_version(cli):
     result = cli.invoke(app, ["version"])
     assert result.exit_code == 0
-    assert "0.1.0" in result.stdout
+    assert __version__ in result.stdout
 
 
 def test_version_command_prints_python(cli):
