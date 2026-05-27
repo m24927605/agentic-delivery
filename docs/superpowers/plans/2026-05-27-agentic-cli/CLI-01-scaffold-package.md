@@ -161,6 +161,8 @@ git commit -m "feat(cli): pyproject + package marker + readme/changelog stubs"
 
 - [ ] **Step 2: Write `cli/tests/conftest.py`**
 
+> **Staff-level amendment 2026-05-27:** typer 0.26+ (Click 8.2+) removed the `mix_stderr` kwarg from `CliRunner`. Separated stderr is now the default, so dropping the kwarg is behavior-preserving.
+
 ```python
 import pytest
 from typer.testing import CliRunner
@@ -168,7 +170,7 @@ from typer.testing import CliRunner
 
 @pytest.fixture
 def cli():
-    return CliRunner(mix_stderr=False)
+    return CliRunner()
 ```
 
 - [ ] **Step 3: Write the failing test `cli/tests/test_smoke.py`**
@@ -199,6 +201,8 @@ Expected: ImportError because `agentic.app` does not exist yet.
 
 - [ ] **Step 5: Implement `cli/agentic/app.py` minimally**
 
+> **Staff-level amendment 2026-05-27:** Typer collapses single-command apps so `agentic --help` would show only the `version` command's help, breaking the multi-command UX promised in §5.1. The minimal fix is an empty `@app.callback()` that forces the multi-command form; later slices extend the callback with global flags.
+
 ```python
 """Agentic CLI root."""
 
@@ -210,6 +214,15 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=True,
 )
+
+
+@app.callback()
+def _root() -> None:
+    """Root callback. Forces multi-command app structure even with a single command.
+
+    Later slices (CLI-02 onward) extend this with global flags like
+    --repo, --run-id, --actor, --role, --json, --no-compat-check.
+    """
 
 
 def main() -> None:
