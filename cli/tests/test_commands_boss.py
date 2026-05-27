@@ -12,9 +12,21 @@ from agentic.commands import boss as boss_cmd
 from tests._recording import RecordingRunner
 
 
-def _seed_boss(tmp_path: Path, run_id: str = "boss-run") -> Path:
+def _seed_repo_only(tmp_path: Path) -> Path:
+    """Seed only the repo marker (pipeline.yaml). No run directory.
+
+    Used by commands that must work without a pre-existing run — ``init``
+    (which CREATES a run), ``research preflight`` (env-only), validators
+    (artifact paths only), ``score`` / ``poc plan`` / ``provider fallback``
+    (positional artifact args).
+    """
     (tmp_path / "agentic").mkdir()
     (tmp_path / "agentic" / "pipeline.yaml").write_text("pipeline:\n  version: v0.6\n")
+    return tmp_path
+
+
+def _seed_boss(tmp_path: Path, run_id: str = "boss-run") -> Path:
+    _seed_repo_only(tmp_path)
     d = tmp_path / "agentic" / "runs" / run_id
     d.mkdir(parents=True)
     (d / "manifest.yaml").write_text(
@@ -36,13 +48,45 @@ def test_boss_init(
     monkeypatch: pytest.MonkeyPatch,
     runner: RecordingRunner,
 ) -> None:
-    repo = _seed_boss(tmp_path)
+    repo = _seed_repo_only(tmp_path)
     monkeypatch.chdir(repo)
     (repo / "idea.md").write_text("# idea\n")
-    result = cli.invoke(app, ["boss", "init", "idea.md", "--run-id", "boss-run"])
+    result = cli.invoke(app, ["boss", "init", "idea.md"])
     assert result.exit_code == 0, result.output
-    assert runner.calls[-1].name == "init-boss-idea-run.sh"
-    assert "idea.md" in runner.calls[-1].args
+    call = runner.calls[-1]
+    assert call.name == "init-boss-idea-run.sh"
+    # init CREATES the run; the script accepts the idea path as positional
+    # without --run-id (the script's "--goal-file" form is not required).
+    assert call.args == ("idea.md",)
+
+
+def test_boss_init_works_without_existing_run(
+    cli: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    runner: RecordingRunner,
+) -> None:
+    """Regression: init must work in a fresh repo with no agentic/runs/."""
+    repo = _seed_repo_only(tmp_path)
+    monkeypatch.chdir(repo)
+    (repo / "idea.md").write_text("# idea\n")
+    assert not (repo / "agentic" / "runs").exists()
+    result = cli.invoke(app, ["boss", "init", "idea.md"])
+    assert result.exit_code == 0, result.output
+
+
+def test_boss_init_dry_run_forwards_flag(
+    cli: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    runner: RecordingRunner,
+) -> None:
+    repo = _seed_repo_only(tmp_path)
+    monkeypatch.chdir(repo)
+    (repo / "idea.md").write_text("# idea\n")
+    result = cli.invoke(app, ["boss", "init", "--dry-run", "idea.md"])
+    assert result.exit_code == 0, result.output
+    assert runner.calls[-1].args == ("--dry-run", "idea.md")
 
 
 def test_boss_research_collect_forwards_args(
@@ -104,17 +148,22 @@ def test_boss_research_brief(
     assert "boss-run" in call.args
 
 
-def test_boss_research_preflight(
+def test_boss_research_preflight_no_run_required(
     cli: CliRunner,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     runner: RecordingRunner,
 ) -> None:
-    repo = _seed_boss(tmp_path)
+    """preflight is env-only; it must work in a repo with no runs."""
+    repo = _seed_repo_only(tmp_path)
     monkeypatch.chdir(repo)
-    result = cli.invoke(app, ["boss", "research", "preflight", "--run-id", "boss-run"])
+    result = cli.invoke(app, ["boss", "research", "preflight"])
     assert result.exit_code == 0, result.output
-    assert runner.calls[-1].name == "boss-idea-searxng-preflight.sh"
+    call = runner.calls[-1]
+    assert call.name == "boss-idea-searxng-preflight.sh"
+    assert call.args == ()
+    # invoke_no_run does not export RUN_ID
+    assert "RUN_ID" not in call.env
 
 
 def test_boss_research_live_smoke(
@@ -134,18 +183,51 @@ def test_boss_research_live_smoke(
     assert "boss-run" in call.args
 
 
-def test_boss_score_dry_run(
+def test_boss_score_forwards_scorecard_positional(
     cli: CliRunner,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     runner: RecordingRunner,
 ) -> None:
-    repo = _seed_boss(tmp_path)
+    """score takes <scorecard.yaml> positional, not a run id."""
+    repo = _seed_repo_only(tmp_path)
     monkeypatch.chdir(repo)
-    result = cli.invoke(app, ["boss", "score", "--dry-run", "--run-id", "boss-run"])
+    (repo / "scorecard.yaml").write_text("scorecard: {}\n")
+    result = cli.invoke(app, ["boss", "score", "--scorecard", "scorecard.yaml"])
     assert result.exit_code == 0, result.output
-    assert runner.calls[-1].name == "score-boss-idea-feasibility.sh"
-    assert "--dry-run" in runner.calls[-1].args
+    call = runner.calls[-1]
+    assert call.name == "score-boss-idea-feasibility.sh"
+    assert call.args == ("scorecard.yaml",)
+
+
+def test_boss_score_dry_run_orders_args_correctly(
+    cli: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    runner: RecordingRunner,
+) -> None:
+    repo = _seed_repo_only(tmp_path)
+    monkeypatch.chdir(repo)
+    (repo / "scorecard.yaml").write_text("scorecard: {}\n")
+    result = cli.invoke(
+        app, ["boss", "score", "--dry-run", "--scorecard", "scorecard.yaml"]
+    )
+    assert result.exit_code == 0, result.output
+    # Script accepts: [--dry-run] <scorecard.yaml>
+    assert runner.calls[-1].args == ("--dry-run", "scorecard.yaml")
+
+
+def test_boss_score_requires_scorecard(
+    cli: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    runner: RecordingRunner,
+) -> None:
+    repo = _seed_repo_only(tmp_path)
+    monkeypatch.chdir(repo)
+    result = cli.invoke(app, ["boss", "score"])
+    # typer raises a usage error (exit code 2) when --scorecard is missing.
+    assert result.exit_code == 2
 
 
 def test_boss_memo_generate(
@@ -161,17 +243,48 @@ def test_boss_memo_generate(
     assert runner.calls[-1].name == "generate-boss-decision-memo.sh"
 
 
-def test_boss_poc_plan(
+@pytest.mark.parametrize("work_type", ["poc", "mvp"])
+def test_boss_poc_plan_forwards_work_type(
+    cli: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    runner: RecordingRunner,
+    work_type: str,
+) -> None:
+    """plan-boss-idea-poc-mvp.sh takes [poc|mvp] positional, not a run id."""
+    repo = _seed_repo_only(tmp_path)
+    monkeypatch.chdir(repo)
+    result = cli.invoke(app, ["boss", "poc", "plan", "--work-type", work_type])
+    assert result.exit_code == 0, result.output
+    call = runner.calls[-1]
+    assert call.name == "plan-boss-idea-poc-mvp.sh"
+    assert call.args == (work_type,)
+
+
+def test_boss_poc_plan_defaults_to_poc(
     cli: CliRunner,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     runner: RecordingRunner,
 ) -> None:
-    repo = _seed_boss(tmp_path)
+    repo = _seed_repo_only(tmp_path)
     monkeypatch.chdir(repo)
-    result = cli.invoke(app, ["boss", "poc", "plan", "--run-id", "boss-run"])
+    result = cli.invoke(app, ["boss", "poc", "plan"])
     assert result.exit_code == 0, result.output
-    assert runner.calls[-1].name == "plan-boss-idea-poc-mvp.sh"
+    assert runner.calls[-1].args == ("poc",)
+
+
+def test_boss_poc_plan_rejects_unknown_work_type(
+    cli: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    runner: RecordingRunner,
+) -> None:
+    repo = _seed_repo_only(tmp_path)
+    monkeypatch.chdir(repo)
+    result = cli.invoke(app, ["boss", "poc", "plan", "--work-type", "spike"])
+    assert result.exit_code == 2
+    assert not runner.calls
 
 
 def test_boss_decision_record(
@@ -215,28 +328,41 @@ def test_boss_provider_health(
     assert runner.calls[-1].name == "summarize-boss-idea-provider-health.sh"
 
 
-def test_boss_provider_fallback(
+def test_boss_provider_fallback_no_run_required(
     cli: CliRunner,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     runner: RecordingRunner,
 ) -> None:
-    repo = _seed_boss(tmp_path)
+    """fallback takes only a health-input path (and optional --output); no run id."""
+    repo = _seed_repo_only(tmp_path)
     monkeypatch.chdir(repo)
     result = cli.invoke(
         app,
         [
             "boss", "provider", "fallback", "health.yaml",
             "--output", "advisory.yaml",
-            "--run-id", "boss-run",
         ],
     )
     assert result.exit_code == 0, result.output
     call = runner.calls[-1]
     assert call.name == "recommend-boss-idea-provider-fallback.sh"
-    assert "health.yaml" in call.args
-    assert "--output" in call.args
-    assert "advisory.yaml" in call.args
+    # Script's documented usage: --output <advisory> <health.yaml>
+    assert call.args == ("--output", "advisory.yaml", "health.yaml")
+    assert "RUN_ID" not in call.env
+
+
+def test_boss_provider_fallback_without_output(
+    cli: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    runner: RecordingRunner,
+) -> None:
+    repo = _seed_repo_only(tmp_path)
+    monkeypatch.chdir(repo)
+    result = cli.invoke(app, ["boss", "provider", "fallback", "health.yaml"])
+    assert result.exit_code == 0, result.output
+    assert runner.calls[-1].args == ("health.yaml",)
 
 
 def test_boss_validate_unknown_kind_exits_2(
@@ -245,9 +371,9 @@ def test_boss_validate_unknown_kind_exits_2(
     monkeypatch: pytest.MonkeyPatch,
     runner: RecordingRunner,
 ) -> None:
-    repo = _seed_boss(tmp_path)
+    repo = _seed_repo_only(tmp_path)
     monkeypatch.chdir(repo)
-    result = cli.invoke(app, ["boss", "validate", "nope", "thing", "--run-id", "boss-run"])
+    result = cli.invoke(app, ["boss", "validate", "nope", "thing"])
     assert result.exit_code == 2
 
 
@@ -257,10 +383,24 @@ def test_boss_validate_missing_kind_exits_2(
     monkeypatch: pytest.MonkeyPatch,
     runner: RecordingRunner,
 ) -> None:
-    repo = _seed_boss(tmp_path)
+    repo = _seed_repo_only(tmp_path)
     monkeypatch.chdir(repo)
     result = cli.invoke(app, ["boss", "validate"])
     assert result.exit_code == 2
+
+
+def test_boss_validate_missing_target_exits_2(
+    cli: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    runner: RecordingRunner,
+) -> None:
+    """validators always need at least one positional artifact path."""
+    repo = _seed_repo_only(tmp_path)
+    monkeypatch.chdir(repo)
+    result = cli.invoke(app, ["boss", "validate", "research"])
+    assert result.exit_code == 2
+    assert not runner.calls
 
 
 @pytest.mark.parametrize(
@@ -268,6 +408,7 @@ def test_boss_validate_missing_kind_exits_2(
     [
         ("research", "validate-boss-idea-research.sh"),
         ("competitor", "validate-boss-idea-competitor-brief.sh"),
+        ("run-competitor", "validate-boss-idea-run-competitor-brief.sh"),
         ("crawl", "validate-boss-idea-crawl-log.sh"),
         ("quality", "validate-boss-idea-market-discovery-quality.sh"),
         ("poc-mvp", "validate-boss-idea-poc-mvp.sh"),
@@ -287,29 +428,35 @@ def test_boss_validate_dispatch(
     kind: str,
     script: str,
 ) -> None:
-    repo = _seed_boss(tmp_path)
+    """Validators take artifact path(s) only — they must dispatch without a run."""
+    repo = _seed_repo_only(tmp_path)
     monkeypatch.chdir(repo)
     (repo / "thing").write_text("x")
-    result = cli.invoke(app, ["boss", "validate", kind, "thing", "--run-id", "boss-run"])
+    result = cli.invoke(app, ["boss", "validate", kind, "thing"])
     assert result.exit_code == 0, result.output
-    assert runner.calls[-1].name == script
-    assert "thing" in runner.calls[-1].args
+    call = runner.calls[-1]
+    assert call.name == script
+    assert call.args == ("thing",)
+    # Validators don't take RUN_ID; invoke_no_run must not export it.
+    assert "RUN_ID" not in call.env
 
 
-def test_boss_validate_run_competitor_kind(
+def test_boss_validate_run_competitor_two_positionals(
     cli: CliRunner,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     runner: RecordingRunner,
 ) -> None:
-    repo = _seed_boss(tmp_path)
+    """run-competitor validator takes <run-id> <brief-file> per script usage."""
+    repo = _seed_repo_only(tmp_path)
     monkeypatch.chdir(repo)
-    (repo / "thing").write_text("x")
     result = cli.invoke(
-        app, ["boss", "validate", "run-competitor", "thing", "--run-id", "boss-run"]
+        app, ["boss", "validate", "run-competitor", "boss-run", "brief.md"]
     )
     assert result.exit_code == 0, result.output
-    assert runner.calls[-1].name == "validate-boss-idea-run-competitor-brief.sh"
+    call = runner.calls[-1]
+    assert call.name == "validate-boss-idea-run-competitor-brief.sh"
+    assert call.args == ("boss-run", "brief.md")
 
 
 def test_boss_init_with_actor_role(
@@ -318,14 +465,14 @@ def test_boss_init_with_actor_role(
     monkeypatch: pytest.MonkeyPatch,
     runner: RecordingRunner,
 ) -> None:
-    repo = _seed_boss(tmp_path)
+    repo = _seed_repo_only(tmp_path)
     monkeypatch.chdir(repo)
     (repo / "idea.md").write_text("# idea\n")
     result = cli.invoke(
         app,
         [
             "--actor", "alice", "--role", "operator",
-            "boss", "init", "idea.md", "--run-id", "boss-run",
+            "boss", "init", "idea.md",
         ],
     )
     assert result.exit_code == 0, result.output

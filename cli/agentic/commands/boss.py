@@ -17,6 +17,8 @@ from agentic.commands._shell_helpers import (
     RunnerFactory,
     default_factory,
     invoke,
+    invoke_no_run,
+    invoke_without_run,
 )
 from agentic.shell import ScriptRunner
 
@@ -51,14 +53,22 @@ def _factory() -> RunnerFactory:
 def boss_init(
     ctx: typer.Context,
     idea_file: Annotated[str, typer.Argument(help="Path to the boss-idea markdown file.")],
-    run_id: Annotated[str | None, typer.Option("--run-id")] = None,
+    dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
 ) -> None:
-    """Initialize a boss-idea-response run from an idea markdown file."""
-    invoke(
+    """Initialize a boss-idea-response run from an idea markdown file.
+
+    The underlying ``init-boss-idea-run.sh`` script CREATES the run from the
+    idea file, so no pre-existing run context is required (and forcing one
+    would make a fresh repo unreachable).
+    """
+    args: list[str] = []
+    if dry_run:
+        args.append("--dry-run")
+    args.append(idea_file)
+    invoke_without_run(
         ctx,
         name="init-boss-idea-run.sh",
-        args=[idea_file],
-        run_id_flag=run_id,
+        args=args,
         factory=_factory(),
     )
 
@@ -66,22 +76,25 @@ def boss_init(
 @app.command("score")
 def boss_score(
     ctx: typer.Context,
+    scorecard: Annotated[
+        str,
+        typer.Option("--scorecard", help="Path to the boss-idea scorecard YAML."),
+    ],
     dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
-    run_id: Annotated[str | None, typer.Option("--run-id")] = None,
 ) -> None:
-    """Score boss-idea feasibility from collected research + competitor brief."""
-    def _args(rid: str) -> list[str]:
-        out: list[str] = []
-        if dry_run:
-            out.append("--dry-run")
-        out.append(rid)
-        return out
+    """Score boss-idea feasibility from a scorecard YAML.
 
-    invoke(
+    ``score-boss-idea-feasibility.sh`` takes ``[--dry-run] <scorecard.yaml>``
+    as its positional, not a run id.
+    """
+    args: list[str] = []
+    if dry_run:
+        args.append("--dry-run")
+    args.append(scorecard)
+    invoke_no_run(
         ctx,
         name="score-boss-idea-feasibility.sh",
-        args=_args,
-        run_id_flag=run_id,
+        args=args,
         factory=_factory(),
     )
 
@@ -150,16 +163,17 @@ def research_brief(
 
 
 @research.command("preflight")
-def research_preflight(
-    ctx: typer.Context,
-    run_id: Annotated[str | None, typer.Option("--run-id")] = None,
-) -> None:
-    """Run the SearXNG preflight check (no run context required)."""
-    invoke(
+def research_preflight(ctx: typer.Context) -> None:
+    """Run the SearXNG preflight check (no run context required).
+
+    ``boss-idea-searxng-preflight.sh`` reads BOSS_IDEA_SEARCH_SEARXNG_* env
+    vars; it does not consume RUN_ID. Resolving a run here would surface a
+    spurious exit-6 in repos with no runs.
+    """
+    invoke_no_run(
         ctx,
         name="boss-idea-searxng-preflight.sh",
         args=[],
-        run_id_flag=run_id,
         factory=_factory(),
     )
 
@@ -208,14 +222,30 @@ def memo_generate(
 @poc.command("plan")
 def poc_plan(
     ctx: typer.Context,
-    run_id: Annotated[str | None, typer.Option("--run-id")] = None,
+    work_type: Annotated[
+        str,
+        typer.Option(
+            "--work-type",
+            help="Work-type enum forwarded to plan-boss-idea-poc-mvp.sh (poc or mvp).",
+        ),
+    ] = "poc",
 ) -> None:
-    """Plan the boss-idea POC / MVP."""
-    invoke(
+    """Plan the boss-idea POC / MVP for the given work type.
+
+    ``plan-boss-idea-poc-mvp.sh`` takes ``[poc|mvp]`` as its positional, not
+    a run id. The script itself validates the value against the schema's
+    ``allowed_work_types``; the CLI keeps the surface narrow to {poc, mvp}.
+    """
+    if work_type not in {"poc", "mvp"}:
+        typer.echo(
+            f"x  --work-type must be 'poc' or 'mvp', got {work_type!r}",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    invoke_no_run(
         ctx,
         name="plan-boss-idea-poc-mvp.sh",
-        args=lambda rid: [rid],
-        run_id_flag=run_id,
+        args=[work_type],
         factory=_factory(),
     )
 
@@ -264,21 +294,20 @@ def provider_fallback(
     ctx: typer.Context,
     health_input: Annotated[str, typer.Argument(help="Path to the provider-health summary input.")],
     output: Annotated[str | None, typer.Option("--output")] = None,
-    run_id: Annotated[str | None, typer.Option("--run-id")] = None,
 ) -> None:
-    """Recommend a boss-idea provider fallback advisory."""
-    def _args(_rid: str) -> list[str]:
-        out: list[str] = []
-        if output:
-            out.extend(["--output", output])
-        out.append(health_input)
-        return out
+    """Recommend a boss-idea provider fallback advisory.
 
-    invoke(
+    ``recommend-boss-idea-provider-fallback.sh`` takes
+    ``--output <advisory.yaml> <provider-health.yaml>`` only; no run id.
+    """
+    args: list[str] = []
+    if output:
+        args.extend(["--output", output])
+    args.append(health_input)
+    invoke_no_run(
         ctx,
         name="recommend-boss-idea-provider-fallback.sh",
-        args=_args,
-        run_id_flag=run_id,
+        args=args,
         factory=_factory(),
     )
 
@@ -315,13 +344,16 @@ def validate_dispatch(
         str | None,
         typer.Argument(help="Optional second positional arg (used by a few validators)."),
     ] = None,
-    run_id: Annotated[str | None, typer.Option("--run-id")] = None,
 ) -> None:
     """Dispatch `boss validate <kind> <target> [<second>]` to the underlying script.
 
     Consolidates the 12 boss-idea validators (11 ``validate-boss-idea-*`` plus
     ``validate-boss-decision-memo``) under a single command so callers type
     ``agentic boss validate research <md>`` instead of a per-kind subcommand.
+
+    Validators take artifact paths as positionals (not a run id), so this
+    dispatcher uses ``invoke_no_run`` — a user can lint an artifact without
+    needing a run to exist.
     """
     if kind is None:
         typer.echo(
@@ -337,11 +369,16 @@ def validate_dispatch(
             err=True,
         )
         raise typer.Exit(code=2)
+    if target is None:
+        typer.echo(
+            f"x  validate {kind} requires a target artifact path",
+            err=True,
+        )
+        raise typer.Exit(code=2)
     args: list[str] = [a for a in (target, second) if a is not None]
-    invoke(
+    invoke_no_run(
         ctx,
         name=script,
         args=args,
-        run_id_flag=run_id,
         factory=_factory(),
     )
