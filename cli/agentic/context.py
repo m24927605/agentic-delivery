@@ -67,6 +67,56 @@ def resolve_repo(repo_flag: Path | None = None) -> Repo:
     )
 
 
+@dataclass(frozen=True)
+class Run:
+    id: str
+    source: str
+
+
+class RunNotFound(Exception):
+    """Raised when a run id cannot be resolved or does not exist on disk."""
+
+    exit_code = 6
+
+
+def _run_exists(repo: Path, run_id: str) -> bool:
+    return (
+        (repo / "agentic" / "runs" / run_id / "manifest.yaml").is_file()
+        or (repo / "agentic" / "runs" / run_id / "implementation-manifest.yaml").is_file()
+    )
+
+
+def resolve_run_id(*, repo: Path, flag: str | None) -> Run:
+    if flag:
+        if not _run_exists(repo, flag):
+            raise RunNotFound(f"run {flag!r} does not exist under {repo}/agentic/runs/")
+        return Run(id=flag, source="--run-id")
+
+    env = os.environ.get("AIT_RUN_ID")
+    if env:
+        if not _run_exists(repo, env):
+            raise RunNotFound(f"AIT_RUN_ID={env!r} does not exist under {repo}/agentic/runs/")
+        return Run(id=env, source="AIT_RUN_ID")
+
+    current_file = repo / ".agentic" / "current-run"
+    if current_file.is_file():
+        first = next(
+            (line.strip() for line in current_file.read_text().splitlines() if line.strip()),
+            None,
+        )
+        if first:
+            if not _run_exists(repo, first):
+                raise RunNotFound(
+                    f"run {first!r} from .agentic/current-run does not exist under "
+                    f"{repo}/agentic/runs/. Run 'agentic run clear' or 'agentic run use <id>'."
+                )
+            return Run(id=first, source="file:.agentic/current-run")
+
+    raise RunNotFound(
+        "no run context. Use --run-id, set AIT_RUN_ID, or 'agentic run use <id>'."
+    )
+
+
 _VERSION_RE = re.compile(r"^v?(\d+)\.(\d+)(?:\.(\d+))?$")
 
 CompatStatus = Literal["compatible", "patch-mismatch", "minor-mismatch", "skipped"]

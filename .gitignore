@@ -4,6 +4,7 @@
 .codex/
 
 # Local private delivery artifacts.
+.agentic/
 docs/*goal-prompt.md
 !docs/auto-docs-to-implementation-goal-prompt.md
 docs/*handoff.md

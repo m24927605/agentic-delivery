@@ -10,7 +10,8 @@ from typing import Annotated
 import typer
 
 from agentic import __version__
-from agentic.context import CompatError, RepoNotFound, check_compat, resolve_repo
+from agentic.commands import run as run_cmd
+from agentic.context import CompatError, RepoNotFound, RunNotFound, check_compat, resolve_repo
 
 app = typer.Typer(
     name="agentic",
@@ -18,6 +19,8 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=True,
 )
+
+app.add_typer(run_cmd.app, name="run")
 
 
 @app.callback()
@@ -27,11 +30,19 @@ def _root(
         Path | None,
         typer.Option("--repo", help="Path to agentic-delivery repo.", show_default=False),
     ] = None,
+    run_id: Annotated[
+        str | None,
+        typer.Option("--run-id", help="Run id for this invocation.", show_default=False),
+    ] = None,
     no_compat_check: Annotated[
         bool, typer.Option("--no-compat-check", help="Skip pipeline.yaml compatibility check.")
     ] = False,
 ) -> None:
-    ctx.obj = {"repo_flag": repo, "compat_check": not no_compat_check}
+    ctx.obj = {
+        "repo_flag": repo,
+        "run_id_flag": run_id,
+        "compat_check": not no_compat_check,
+    }
 
 
 @app.command()
@@ -63,6 +74,8 @@ def main() -> None:
     except CompatError as e:
         sys.exit(e.exit_code)
     except RepoNotFound as e:
+        sys.exit(e.exit_code)
+    except RunNotFound as e:
         sys.exit(e.exit_code)
 
 
