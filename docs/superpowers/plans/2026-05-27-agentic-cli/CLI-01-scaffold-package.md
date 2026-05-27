@@ -25,11 +25,15 @@
 
 ---
 
-## Task 1: pyproject + package skeleton
+## Task 1: pyproject + package skeleton + README/CHANGELOG stubs
+
+> **Staff-level amendment 2026-05-27** (recorded in commit message): README.md + CHANGELOG.md must exist before Task 2's `pip install -e cli/[dev]` because hatchling validates `readme = "README.md"` at build time. The original plan deferred them to Task 4; this amendment moves them to Task 1 so the install resolves. Task 4 keeps its lint/type/test verification but no longer creates the docs.
 
 **Files:**
 - Create: `cli/pyproject.toml`
 - Create: `cli/agentic/__init__.py`
+- Create: `cli/README.md`
+- Create: `cli/CHANGELOG.md`
 
 - [ ] **Step 1: Write `cli/pyproject.toml`**
 
@@ -95,11 +99,49 @@ strict = true
 __version__ = "0.1.0"
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Write `cli/README.md`** (the final content; Task 4 will no longer touch this file)
+
+```markdown
+# agentic-delivery CLI
+
+A state-aware wrapper over the `scripts/*.sh` pipeline of the
+[agentic-delivery](../README.md) repo.
+
+## Install
+
+    pipx install agentic-delivery
+
+Or, in this repo:
+
+    pip install -e cli/
+
+## Usage
+
+    agentic --help
+    agentic version
+
+Run inside (or anywhere under) a checked-out `agentic-delivery` repo.
+
+See `docs/superpowers/specs/2026-05-27-agentic-cli-design.md` for the design.
+```
+
+- [ ] **Step 4: Write `cli/CHANGELOG.md`** (Task 4 will append more entries as features land in later slices)
+
+```markdown
+# Changelog
+
+All notable changes to the `agentic-delivery` CLI.
+
+## [0.1.0] — unreleased
+
+- Initial scaffold: Typer root, `version`, `--help`.
+```
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add cli/pyproject.toml cli/agentic/__init__.py
-git commit -m "feat(cli): pyproject + package marker"
+git add cli/pyproject.toml cli/agentic/__init__.py cli/README.md cli/CHANGELOG.md
+git commit -m "feat(cli): pyproject + package marker + readme/changelog stubs"
 ```
 
 ---
@@ -277,51 +319,13 @@ git commit -m "feat(cli): agentic version command"
 
 ---
 
-## Task 4: README + CHANGELOG + lint clean
+## Task 4: Final validation (lint + type + tests)
 
-**Files:**
-- Create: `cli/README.md`
-- Create: `cli/CHANGELOG.md`
+> README.md and CHANGELOG.md were already created in Task 1 (Staff-level amendment 2026-05-27). This task is verification-only.
 
-- [ ] **Step 1: Write `cli/README.md`**
+**Files:** none modified — only verification commands.
 
-```markdown
-# agentic-delivery CLI
-
-A state-aware wrapper over the `scripts/*.sh` pipeline of the
-[agentic-delivery](../README.md) repo.
-
-## Install
-
-    pipx install agentic-delivery
-
-Or, in this repo:
-
-    pip install -e cli/
-
-## Usage
-
-    agentic --help
-    agentic version
-
-Run inside (or anywhere under) a checked-out `agentic-delivery` repo.
-
-See `docs/superpowers/specs/2026-05-27-agentic-cli-design.md` for the design.
-```
-
-- [ ] **Step 2: Write `cli/CHANGELOG.md`**
-
-```markdown
-# Changelog
-
-All notable changes to the `agentic-delivery` CLI.
-
-## [0.1.0] — unreleased
-
-- Initial scaffold: Typer root, `version`, `--help`.
-```
-
-- [ ] **Step 3: Lint clean**
+- [ ] **Step 1: Lint clean**
 
 ```bash
 cd cli && ruff check agentic tests
@@ -329,7 +333,7 @@ cd cli && ruff check agentic tests
 
 Expected: exit 0.
 
-- [ ] **Step 4: Type clean**
+- [ ] **Step 2: Type clean**
 
 ```bash
 cd cli && mypy --strict agentic
@@ -337,7 +341,7 @@ cd cli && mypy --strict agentic
 
 Expected: exit 0. Fix any complaints inline (likely `typer.echo` and `app` annotations).
 
-- [ ] **Step 5: Final test pass**
+- [ ] **Step 3: Final test pass**
 
 ```bash
 cd cli && pytest -q
@@ -345,12 +349,7 @@ cd cli && pytest -q
 
 Expected: 4 passed.
 
-- [ ] **Step 6: Commit**
-
-```bash
-git add cli/README.md cli/CHANGELOG.md
-git commit -m "docs(cli): readme + changelog for 0.1.0 scaffold"
-```
+No commit for this task — Task 1 already committed the scaffold; Tasks 2/3 committed the Typer root and version command; if Tasks 2/3 produced lint/type fixups, those go in a separate `chore(cli): lint fixups` commit only if there are file changes.
 
 ---
 
