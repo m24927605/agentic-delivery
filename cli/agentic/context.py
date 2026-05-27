@@ -79,6 +79,24 @@ class RunNotFound(Exception):
     exit_code = 6
 
 
+# Per spec §7.1.1: run ids must be ASCII alphanumeric, with optional `_`/`-` after
+# the first char, length 1-128. The leading-char restriction blocks leading dashes
+# (argv parsing confusion) and the character class blocks path traversal, command
+# substitution, NUL/newline injection, and Unicode-confusable lookalikes.
+_VALID_RUN_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$")
+
+
+def _validate_run_id(value: str, source: str) -> None:
+    """Refuse a run id that fails the regex. Raises RunNotFound (exit_code=6)."""
+    if not _VALID_RUN_ID.fullmatch(value):
+        raise RunNotFound(
+            f"invalid run id from {source}: {value!r}. "
+            f"Run ids must match {_VALID_RUN_ID.pattern} "
+            f"(ASCII letters/digits, optional underscore/hyphen, 1-128 chars, "
+            f"no leading dash, no whitespace, no path separators)."
+        )
+
+
 def _run_exists(repo: Path, run_id: str) -> bool:
     return (
         (repo / "agentic" / "runs" / run_id / "manifest.yaml").is_file()
@@ -86,31 +104,51 @@ def _run_exists(repo: Path, run_id: str) -> bool:
     )
 
 
+def _read_current_run_file(current_file: Path) -> str | None:
+    """Read .agentic/current-run, refusing multi-line content.
+
+    Returns the raw single non-blank line (no strip), or None if the file is
+    empty/whitespace-only (per §7.5: "treat as unset, fall through").
+    Raises RunNotFound when the file has >1 non-blank line (§7.5 tightening).
+    """
+    lines = current_file.read_text().splitlines()
+    nonblank = [ln for ln in lines if ln.strip()]
+    if not nonblank:
+        return None
+    if len(nonblank) > 1:
+        raise RunNotFound(
+            ".agentic/current-run has multiple non-blank lines; refuse per spec §7.1.1. "
+            "Run 'agentic run clear' then 'agentic run use <id>'."
+        )
+    # Return raw (no strip) so the validator regex catches any leading whitespace.
+    return nonblank[0]
+
+
 def resolve_run_id(*, repo: Path, flag: str | None) -> Run:
     if flag:
+        _validate_run_id(flag, source="--run-id")
         if not _run_exists(repo, flag):
             raise RunNotFound(f"run {flag!r} does not exist under {repo}/agentic/runs/")
         return Run(id=flag, source="--run-id")
 
     env = os.environ.get("AIT_RUN_ID")
     if env:
+        _validate_run_id(env, source="AIT_RUN_ID")
         if not _run_exists(repo, env):
             raise RunNotFound(f"AIT_RUN_ID={env!r} does not exist under {repo}/agentic/runs/")
         return Run(id=env, source="AIT_RUN_ID")
 
     current_file = repo / ".agentic" / "current-run"
     if current_file.is_file():
-        first = next(
-            (line.strip() for line in current_file.read_text().splitlines() if line.strip()),
-            None,
-        )
-        if first:
-            if not _run_exists(repo, first):
+        candidate = _read_current_run_file(current_file)
+        if candidate is not None:
+            _validate_run_id(candidate, source="file:.agentic/current-run")
+            if not _run_exists(repo, candidate):
                 raise RunNotFound(
-                    f"run {first!r} from .agentic/current-run does not exist under "
+                    f"run {candidate!r} from .agentic/current-run does not exist under "
                     f"{repo}/agentic/runs/. Run 'agentic run clear' or 'agentic run use <id>'."
                 )
-            return Run(id=first, source="file:.agentic/current-run")
+            return Run(id=candidate, source="file:.agentic/current-run")
 
     raise RunNotFound(
         "no run context. Use --run-id, set AIT_RUN_ID, or 'agentic run use <id>'."
