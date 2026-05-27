@@ -41,14 +41,23 @@ class ScriptRunner:
         name: str,
         args: list[str],
         env_overrides: dict[str, str | None],
+        script_path: Path | None = None,
     ) -> ShellResult:
         if not _SCRIPT_NAME_RE.match(name):
             raise ScriptError(
                 f"refused script name {name!r}: must match {_SCRIPT_NAME_RE.pattern}"
             )
-        script = self.repo / "scripts" / name
-        if not script.is_file():
-            raise ScriptError(f"no such script: scripts/{name}")
+        # When ``script_path`` is supplied the caller has already resolved and
+        # validated it (see ``agentic raw`` — spec §11.5 TOCTOU closure). Trust
+        # that path verbatim so the exec'd file is the same one that was
+        # checked, rather than re-resolving via ``self.repo / "scripts" / name``
+        # which would reopen the swap window.
+        if script_path is not None:
+            script = script_path
+        else:
+            script = self.repo / "scripts" / name
+            if not script.is_file():
+                raise ScriptError(f"no such script: scripts/{name}")
 
         env = os.environ.copy()
         for k, v in env_overrides.items():

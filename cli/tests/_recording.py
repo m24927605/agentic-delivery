@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from agentic.shell import ShellResult
 
@@ -12,6 +13,7 @@ class _Call:
     name: str
     args: tuple[str, ...]
     env: dict[str, str]
+    script_path: Path | None = None
 
 
 @dataclass
@@ -22,7 +24,19 @@ class RecordingRunner:
     )
 
     def run(
-        self, *, name: str, args: list[str], env_overrides: dict[str, str]
+        self,
+        *,
+        name: str,
+        args: list[str],
+        env_overrides: dict[str, str],
+        script_path: Path | None = None,
     ) -> ShellResult:
-        self.calls.append(_Call(name=name, args=tuple(args), env=dict(env_overrides)))
+        self.calls.append(
+            _Call(
+                name=name,
+                args=tuple(args),
+                env=dict(env_overrides),
+                script_path=script_path,
+            )
+        )
         return self.next_result
