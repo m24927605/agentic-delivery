@@ -1,0 +1,8 @@
+run:
+  id: x
+  mode: planning
+  profile: default-delivery
+  state: artifacts_drafting
+artifacts:
+  - { path: a.md, status: drafted }
+  - { path: b.md, status: planned }

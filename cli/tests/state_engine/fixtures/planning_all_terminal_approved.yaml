@@ -1,0 +1,9 @@
+run:
+  id: demo
+  mode: planning
+  profile: default-delivery
+  state: ready_for_implementation
+artifacts:
+  - { path: a.md, status: approved }
+  - { path: b.md, status: approved }
+  - { path: c.md, status: deferred }

@@ -1,0 +1,9 @@
+run:
+  id: x
+  mode: planning
+  profile: default-delivery
+  state: artifacts_settled
+artifacts:
+  - { path: a.md, status: rejected }
+  - { path: b.md, status: rejected }
+  - { path: c.md, status: deferred }

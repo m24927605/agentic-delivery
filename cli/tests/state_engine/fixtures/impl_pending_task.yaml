@@ -1,0 +1,10 @@
+run:
+  id: x
+  mode: implementation
+  profile: default-delivery
+  state: tasks_planned
+artifacts:
+  - { path: a.md, status: approved }
+tasks:
+  - { id: T-1, status: pending }
+  - { id: T-2, status: pending }

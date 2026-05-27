@@ -1,0 +1,6 @@
+run:
+  id: x
+  mode: planning
+  profile: boss-idea
+  state: boss_initialised
+artifacts: []

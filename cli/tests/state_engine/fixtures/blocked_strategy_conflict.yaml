@@ -1,0 +1,7 @@
+run:
+  id: x
+  mode: planning
+  profile: default-delivery
+  state: blocked_strategy_conflict
+artifacts:
+  - { path: a.md, status: drafted }

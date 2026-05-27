@@ -1,0 +1,124 @@
+schema_version: v1
+
+# Rule structure (ids, priorities, applies_to, when clauses) matches the spec
+# §6.2 DSL block verbatim. Template strings use the flat-identifier forms
+# required by §6.4 / §6.4.1 (restricted rendering forbids dotted attribute
+# walks like `{first_drafted.path}`).
+
+rules:
+  - id: blocked-state
+    priority: 0
+    when:
+      - state_matches: "blocked_*"
+    suggest: "agentic doctor"
+    reason: "Run is blocked ({state}). Resolve before continuing."
+
+  - id: planning-need-drafts
+    priority: 100
+    applies_to: planning
+    when:
+      - has_artifact_with_status: planned
+      - not_has_artifact_with_status: drafted
+    suggest: "agentic plan generate"
+    reason: |
+      {count_planned} artifact(s) still 'planned':
+      {list_planned_paths}
+
+  - id: planning-need-review
+    priority: 200
+    applies_to: planning
+    when:
+      - has_artifact_with_status: drafted
+    suggest: "agentic plan review --artifact {first_drafted_path}"
+    reason: "Draft awaiting review: {first_drafted_path}"
+
+  - id: planning-need-approval
+    priority: 300
+    applies_to: planning
+    when:
+      - has_artifact_with_status: reviewed
+    suggest: 'agentic plan artifact {first_reviewed_path} approve --reason "..."'
+    reason: "Reviewed artifact ready for approval: {first_reviewed_path}"
+
+  - id: planning-changes-requested
+    priority: 400
+    applies_to: planning
+    when:
+      - has_artifact_with_status: changes_requested
+    suggest: "agentic plan revisions"
+    reason: "Artifact returned with changes_requested: {first_changes_requested_path}"
+
+  - id: planning-ready-for-impl
+    priority: 500
+    applies_to: planning
+    when:
+      - all_artifacts_terminal: true
+      - count_artifacts_with_status: { status: approved, min: 1 }
+    suggest: "agentic impl init --from {run_id}"
+    reason: "All artifacts settled, {count_approved} approved — ready for implementation."
+
+  - id: impl-need-task-graph
+    priority: 600
+    applies_to: implementation
+    when:
+      - task_graph_exists: false
+    suggest: "agentic impl tasks"
+    reason: "Implementation run has no task graph yet."
+
+  - id: impl-dispatch
+    priority: 700
+    applies_to: implementation
+    when:
+      - has_task_with_status: pending
+    suggest: "agentic impl dispatch {first_pending_task_id}"
+    reason: "Pending task ready for dispatch: {first_pending_task_id}"
+
+  - id: impl-execute
+    priority: 800
+    applies_to: implementation
+    when:
+      - has_task_with_status: dispatched
+    suggest: "agentic impl execute {first_dispatched_task_id}"
+    reason: "Dispatched task awaiting execution: {first_dispatched_task_id}"
+
+  - id: impl-review
+    priority: 900
+    applies_to: implementation
+    when:
+      - has_task_with_status: executed
+    suggest: "agentic impl review {first_executed_task_id}"
+    reason: "Executed task awaiting code review: {first_executed_task_id}"
+
+  - id: impl-validate
+    priority: 1000
+    applies_to: implementation
+    when:
+      - all_tasks_reviewed: true
+    suggest: "agentic impl validate"
+    reason: "All tasks reviewed — run final validation."
+
+  - id: boss-need-research
+    priority: 1100
+    applies_to: boss-idea
+    when:
+      - not_has_artifact_at: market-research.md
+    suggest: 'agentic boss research collect --search-results <yaml> --output market-research.md'
+    reason: "Market research evidence missing."
+
+  - id: boss-need-brief
+    priority: 1200
+    applies_to: boss-idea
+    when:
+      - has_artifact_at: market-research.md
+      - not_has_artifact_at: competitor-brief.md
+    suggest: "agentic boss research brief"
+    reason: "Competitor brief not yet generated."
+
+  # Additional boss-idea rules (score, memo, poc, decision) follow the same
+  # pattern. They will land in a follow-up slice alongside their fixtures.
+
+  - id: fallback
+    priority: 9999
+    when: []
+    suggest: "agentic status"
+    reason: "No rule matched. Inspect run state manually."

@@ -1,0 +1,8 @@
+run:
+  id: x
+  mode: planning
+  profile: default-delivery
+  state: artifacts_under_review
+artifacts:
+  - { path: a.md, status: reviewed }
+  - { path: b.md, status: approved }

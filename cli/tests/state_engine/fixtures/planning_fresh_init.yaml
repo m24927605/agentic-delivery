@@ -1,0 +1,8 @@
+run:
+  id: x
+  mode: planning
+  profile: default-delivery
+  state: artifact_plan_created
+artifacts:
+  - { path: a.md, status: planned }
+  - { path: b.md, status: planned }
