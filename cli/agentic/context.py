@@ -4,16 +4,14 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-try:
-    import tomllib  # type: ignore[import-not-found, import-untyped, unused-ignore]
-except ModuleNotFoundError:  # 3.10
-    import tomli as tomllib  # type: ignore[import-not-found, import-untyped, unused-ignore]
-
 import yaml  # type: ignore[import-untyped]
+
+from agentic import COMPATIBLE_PIPELINE_VERSIONS
 
 
 RepoSource = Literal["--repo", "AGENTIC_HOME", "walk-up", "config-file"]
@@ -21,6 +19,8 @@ RepoSource = Literal["--repo", "AGENTIC_HOME", "walk-up", "config-file"]
 
 class RepoNotFound(Exception):
     """Raised when no agentic-delivery repo can be located."""
+
+    exit_code = 6
 
 
 @dataclass(frozen=True)
@@ -69,15 +69,40 @@ def resolve_repo(repo_flag: Path | None = None) -> Repo:
 
 _VERSION_RE = re.compile(r"^v?(\d+)\.(\d+)(?:\.(\d+))?$")
 
+CompatStatus = Literal["compatible", "patch-mismatch", "minor-mismatch", "skipped"]
+
 
 class CompatError(Exception):
-    """Raised when pipeline.yaml.version is outside the CLI's compat range."""
+    """Raised when pipeline.yaml.version differs from the CLI's compat range by a major bump."""
+
+    exit_code = 5
+
+    def __init__(self, message: str, *, actual: str = "?", ranges: list[str] | None = None):
+        super().__init__(message)
+        self.actual = actual
+        self.ranges = list(ranges or [])
+
+
+@dataclass(frozen=True)
+class CompatResult:
+    actual: str
+    ranges: tuple[str, ...]
+    status: CompatStatus
+
+    @property
+    def display(self) -> str:
+        if self.status == "compatible":
+            return f"compatible: {','.join(self.ranges)} ✓"
+        if self.status == "skipped":
+            return "compat check disabled"
+        kind = self.status.split("-")[0]
+        return f"{kind} mismatch: {','.join(self.ranges)} ⚠"
 
 
 def _parse_version(raw: str) -> tuple[int, int, int]:
     m = _VERSION_RE.match(raw.strip())
     if not m:
-        raise CompatError(f"unrecognised version string: {raw!r}")
+        raise CompatError(f"unrecognised version string: {raw!r}", actual=raw)
     major, minor, patch = m.group(1), m.group(2), m.group(3) or "0"
     return int(major), int(minor), int(patch)
 
@@ -93,31 +118,86 @@ def _parse_range(spec: str) -> tuple[tuple[int, int, int] | None, tuple[int, int
     return lo, hi
 
 
-def _compat_ranges_from_pyproject() -> list[str]:
-    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
-    if not pyproject.is_file():
-        return []
-    data = tomllib.loads(pyproject.read_text())
-    tool = data.get("tool", {}).get("agentic", {})
-    return list(tool.get("compatible_pipeline_versions", []))
+def _ranges() -> list[str]:
+    if not COMPATIBLE_PIPELINE_VERSIONS:
+        raise RuntimeError("CLI is misconfigured: COMPATIBLE_PIPELINE_VERSIONS empty")
+    return list(COMPATIBLE_PIPELINE_VERSIONS)
 
 
-def check_compat(*, repo: Path, enabled: bool = True) -> None:
+_SEVERITY: dict[str, int] = {"major": 0, "minor": 1, "patch": 2, "compatible": 3}
+
+
+def _classify_single(
+    actual: tuple[int, int, int],
+    lo: tuple[int, int, int] | None,
+    hi: tuple[int, int, int] | None,
+) -> str:
+    lo_eff = lo if lo is not None else (0, 0, 0)
+    if (hi is None or actual < hi) and lo_eff <= actual:
+        return "compatible"
+
+    if actual < lo_eff:
+        if actual[0] != lo_eff[0]:
+            return "major"
+        if actual[1] != lo_eff[1]:
+            return "minor"
+        return "patch"
+
+    # actual >= hi (hi is exclusive). hi cannot be None here.
+    assert hi is not None
+    if actual[0] != hi[0]:
+        return "major"
+    # If hi.patch == 0, then minor hi.minor is entirely excluded at this major,
+    # so reaching minor==hi.minor is a minor-level bump, not a patch one.
+    if hi[2] == 0:
+        return "minor"
+    if actual[1] != hi[1]:
+        return "minor"
+    return "patch"
+
+
+def _classify(actual: tuple[int, int, int], ranges: list[str]) -> str:
+    best = "major"
+    for spec in ranges:
+        lo, hi = _parse_range(spec)
+        status = _classify_single(actual, lo, hi)
+        if _SEVERITY[status] > _SEVERITY[best]:
+            best = status
+        if best == "compatible":
+            return best
+    return best
+
+
+def check_compat(*, repo: Path, enabled: bool = True) -> CompatResult | None:
+    """Verify the repo's pipeline.yaml version against CLI compat ranges.
+
+    Returns None when disabled. Returns a CompatResult for compatible/patch/minor cases.
+    Raises CompatError on major mismatch.
+    Tiered behaviour per spec §8.4: patch/minor mismatches warn on stderr and continue.
+    """
     if not enabled:
-        return
+        return None
     pipeline = repo / "agentic" / "pipeline.yaml"
     data = yaml.safe_load(pipeline.read_text())
     actual_raw = data["pipeline"]["version"]
     actual = _parse_version(actual_raw)
-    ranges = _compat_ranges_from_pyproject() or [">=0.0,<99.0"]
-    for spec in ranges:
-        lo, hi = _parse_range(spec)
-        if lo is not None and actual < lo:
-            continue
-        if hi is not None and actual >= hi:
-            continue
-        return  # within at least one range
-    raise CompatError(
-        f"pipeline {actual_raw} is outside CLI compat: {ranges}. "
-        f"Upgrade CLI or pass --no-compat-check."
+    ranges = _ranges()
+    status = _classify(actual, ranges)
+
+    if status == "compatible":
+        return CompatResult(actual=actual_raw, ranges=tuple(ranges), status="compatible")
+    if status == "major":
+        raise CompatError(
+            f"pipeline {actual_raw} major mismatch with CLI compat {ranges}. "
+            f"Upgrade CLI or pass --no-compat-check.",
+            actual=actual_raw,
+            ranges=ranges,
+        )
+    # patch or minor: warn and continue.
+    msg = f"pipeline {status} mismatch: pipeline.yaml.version={actual_raw} vs CLI {ranges}"
+    print(msg, file=sys.stderr)
+    return CompatResult(
+        actual=actual_raw,
+        ranges=tuple(ranges),
+        status="patch-mismatch" if status == "patch" else "minor-mismatch",
     )

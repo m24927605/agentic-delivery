@@ -10,7 +10,7 @@ from typing import Annotated
 import typer
 
 from agentic import __version__
-from agentic.context import RepoNotFound, resolve_repo
+from agentic.context import CompatError, RepoNotFound, check_compat, resolve_repo
 
 app = typer.Typer(
     name="agentic",
@@ -45,10 +45,25 @@ def version(ctx: typer.Context) -> None:
         typer.echo(f"  repo:     {repo.path}  (source: {repo.source})")
     except RepoNotFound as e:
         typer.echo(f"  repo:     not found ({e})")
+        return
+    try:
+        result = check_compat(
+            repo=repo.path, enabled=bool(ctx.obj.get("compat_check", True))
+        )
+    except CompatError as e:
+        typer.echo(f"  pipeline: {e.actual}  (major mismatch: {','.join(e.ranges)} ✗)")
+        raise typer.Exit(code=e.exit_code) from e
+    if result is not None:
+        typer.echo(f"  pipeline: {result.actual}  ({result.display})")
 
 
 def main() -> None:
-    app()
+    try:
+        app()
+    except CompatError as e:
+        sys.exit(e.exit_code)
+    except RepoNotFound as e:
+        sys.exit(e.exit_code)
 
 
 if __name__ == "__main__":

@@ -23,7 +23,6 @@ dependencies = [
   "typer >= 0.12",
   "rich  >= 13",
   "pyyaml >= 6",
-  "tomli >= 2 ; python_version < '3.11'",
 ]
 
 [project.scripts]
@@ -36,9 +35,6 @@ dev = [
   "ruff",
   "mypy",
 ]
-
-[tool.agentic]
-compatible_pipeline_versions = [">=0.6,<0.7"]
 
 [tool.hatch.version]
 source = "regex"
