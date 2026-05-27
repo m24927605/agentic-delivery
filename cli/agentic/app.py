@@ -10,7 +10,9 @@ from typing import Annotated
 import typer
 
 from agentic import __version__
+from agentic.commands import init as init_cmd
 from agentic.commands import next as next_cmd
+from agentic.commands import plan as plan_cmd
 from agentic.commands import run as run_cmd
 from agentic.commands import status as status_cmd
 from agentic.context import CompatError, RepoNotFound, RunNotFound, check_compat, resolve_repo
@@ -25,6 +27,8 @@ app = typer.Typer(
 app.add_typer(run_cmd.app, name="run")
 app.add_typer(status_cmd.app, name="status")
 app.add_typer(next_cmd.app, name="next")
+app.add_typer(plan_cmd.app, name="plan")
+app.command(name="init", help=init_cmd.init_command.__doc__)(init_cmd.init_command)
 
 
 @app.callback()
@@ -38,6 +42,14 @@ def _root(
         str | None,
         typer.Option("--run-id", help="Run id for this invocation.", show_default=False),
     ] = None,
+    actor: Annotated[
+        str | None,
+        typer.Option("--actor", help="Actor id propagated to scripts as AIT_ACTOR."),
+    ] = None,
+    role: Annotated[
+        str | None,
+        typer.Option("--role", help="Actor role propagated to scripts as AIT_ACTOR_ROLE."),
+    ] = None,
     json_mode: Annotated[
         bool,
         typer.Option("--json", help="Emit structured JSON (envelope per spec §9.5)."),
@@ -49,6 +61,8 @@ def _root(
     ctx.obj = {
         "repo_flag": repo,
         "run_id_flag": run_id,
+        "actor": actor,
+        "role": role,
         "json": json_mode,
         "compat_check": not no_compat_check,
     }
