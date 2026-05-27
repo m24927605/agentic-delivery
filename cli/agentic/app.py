@@ -11,6 +11,7 @@ import typer
 
 from agentic import __version__
 from agentic.commands import run as run_cmd
+from agentic.commands import status as status_cmd
 from agentic.context import CompatError, RepoNotFound, RunNotFound, check_compat, resolve_repo
 
 app = typer.Typer(
@@ -21,6 +22,7 @@ app = typer.Typer(
 )
 
 app.add_typer(run_cmd.app, name="run")
+app.add_typer(status_cmd.app, name="status")
 
 
 @app.callback()
@@ -34,6 +36,10 @@ def _root(
         str | None,
         typer.Option("--run-id", help="Run id for this invocation.", show_default=False),
     ] = None,
+    json_mode: Annotated[
+        bool,
+        typer.Option("--json", help="Emit structured JSON (envelope per spec §9.5)."),
+    ] = False,
     no_compat_check: Annotated[
         bool, typer.Option("--no-compat-check", help="Skip pipeline.yaml compatibility check.")
     ] = False,
@@ -41,6 +47,7 @@ def _root(
     ctx.obj = {
         "repo_flag": repo,
         "run_id_flag": run_id,
+        "json": json_mode,
         "compat_check": not no_compat_check,
     }
 

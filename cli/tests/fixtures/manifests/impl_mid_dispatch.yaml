@@ -1,0 +1,15 @@
+run:
+  id: demo-impl
+  mode: implementation
+  profile: default-delivery
+  state: implementation_planned
+  updated_at: "2026-05-27T11:00:00Z"
+approved_inputs:
+  - docs/architecture/z.md
+tasks:
+  - id: T1
+    status: dispatched
+    updated_at: "2026-05-27T10:30:00Z"
+  - id: T2
+    status: pending
+    updated_at: "2026-05-27T10:30:00Z"

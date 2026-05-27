@@ -1,0 +1,16 @@
+run:
+  id: demo-planning
+  mode: planning
+  profile: default-delivery
+  state: artifact_plan_created
+  updated_at: "2026-05-27T10:00:00Z"
+artifacts:
+  - path: docs/architecture/x.md
+    status: planned
+    updated_at: "2026-05-27T09:00:00Z"
+  - path: docs/architecture/y.md
+    status: drafted
+    updated_at: "2026-05-27T09:30:00Z"
+  - path: docs/architecture/z.md
+    status: approved
+    updated_at: "2026-05-27T09:45:00Z"
