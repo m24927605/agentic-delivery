@@ -1136,3 +1136,29 @@ CLI-07 / CLI-08 / CLI-09 / CLI-10 are independent after CLI-06 and may run in pa
 - **Brew formula vs. PEX.** Both possible; defer to v1.0+.
 - **i18n.** CLI strings in English only at v1. Localisation deferred.
 - **Review board composition.** If agency-agents catalog gains roles more relevant to CLI work (e.g. `cli-ux-reviewer`), add them to the reviewer roster for the relevant slices.
+
+---
+
+## Purpose
+
+Define the v0.1 design of the `agentic` CLI: a state-aware Python wrapper over `scripts/*.sh` that becomes the primary user interface for the agentic-delivery pipeline while leaving the shell scripts as authoritative.
+
+## Scope
+
+In scope: a `cli/` package inside this repo (Python 3.10+, Typer + Rich + PyYAML); a state engine reading `agentic/runs/<id>/manifest.yaml`; full coverage of the 55 existing `scripts/*.sh` (named subcommands + `agentic raw` escape hatch); install via `pipx install agentic-delivery`; compatibility matrix against `agentic/pipeline.yaml::pipeline.version`; CI workflow and PyPI publish flow. Out of scope: rewriting any script in Python, Hermes adapter changes, telemetry, brew/PEX distribution before v1.0. The full goal/non-goal list is in §2.
+
+## Acceptance Criteria
+
+The spec is accepted when, taken together: (1) the locked decisions in §3 reflect user confirmation; (2) the command tree in §5 covers all 55 scripts (verified via the coverage check at §5.6); (3) §6 contains the full declarative rule table and primitive set; (4) §10 commits to coverage ≥ 85 with state-engine ≥ 95 and snapshot-locked `--json` schema; (5) §11 preserves the three red lines (scripts authoritative, automation unaffected, no silent schema mutation); (6) §12 mandates AIT + Claude Code CLI adversarial review for every slice, with no direct Anthropic API calls allowed; and (7) §13 decomposes the work into CLI-00 .. CLI-15 implementation slices.
+
+## Validation
+
+Spec validation runs at three levels. (a) Repo-local: `scripts/validate-manifest-schema.sh`, `scripts/validate-artifact-templates.sh`, and `scripts/privacy-scan-tracked.sh` must pass against the planning run that owns this artifact. (b) Adversarial review: AIT + Claude Code CLI rounds with `engineering-software-architect`, `engineering-security-engineer`, `engineering-code-reviewer`, `engineering-technical-writer`, and `product-manager` agents must record approving evidence under `agentic/reviews/agentic-cli/`. (c) Implementation reality check: each CLI-NN slice's tests, coverage gate, and adversarial review must pass as defined in its per-slice plan under `docs/superpowers/plans/2026-05-27-agentic-cli/`.
+
+## Rollback
+
+If this spec needs to be retracted before any slice ships: mark its artifact entry `rejected` (with public-safe reason) in the planning manifest, then delete `cli/` if any scaffold has landed. Because the spec touches no production code on its own, rollback is a documentation revert. If a downstream slice has already landed and needs reversal, follow that slice's own Rollback section in its plan file; reverts are per-slice and isolated to `cli/**` plus the documented coexistence touchpoints in §11.
+
+## Review Expectations
+
+Every slice CLI-00 .. CLI-15 goes through AIT + Claude Code CLI adversarial review per §12.3 — no exceptions, no direct Anthropic API calls, `--apply never --review never --sandbox read-only --format json`. Review evidence lives under `agentic/reviews/agentic-cli/CLI-NN/round-N.json`. The review board for each slice is fixed in its plan file's "Reviewer agents" section. The spec itself is reviewed with the agents listed under §12.3 (architect, security, code reviewer, tech writer, PM); review findings either revise this spec or are deferred to a follow-up ADR.
