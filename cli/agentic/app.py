@@ -11,15 +11,19 @@ import typer
 
 from agentic import __version__
 from agentic.commands import boss as boss_cmd
+from agentic.commands import evidence as evidence_cmd
+from agentic.commands import fixtures as fixtures_cmd
 from agentic.commands import hermes as hermes_cmd
 from agentic.commands import identity as identity_cmd
 from agentic.commands import impl as impl_cmd
 from agentic.commands import init as init_cmd
+from agentic.commands import manifest_cmd
 from agentic.commands import next as next_cmd
 from agentic.commands import plan as plan_cmd
 from agentic.commands import raw as raw_cmd
 from agentic.commands import run as run_cmd
 from agentic.commands import status as status_cmd
+from agentic.commands import validate as validate_cmd
 from agentic.context import CompatError, RepoNotFound, RunNotFound, check_compat, resolve_repo
 
 app = typer.Typer(
@@ -37,6 +41,10 @@ app.add_typer(impl_cmd.app, name="impl")
 app.add_typer(boss_cmd.app, name="boss")
 app.add_typer(hermes_cmd.app, name="hermes")
 app.add_typer(identity_cmd.app, name="identity")
+app.add_typer(evidence_cmd.app, name="evidence")
+app.add_typer(fixtures_cmd.app, name="fixtures")
+app.add_typer(manifest_cmd.app, name="manifest")
+app.add_typer(validate_cmd.app, name="validate")
 app.add_typer(raw_cmd.app, name="raw")
 app.command(name="init", help=init_cmd.init_command.__doc__)(init_cmd.init_command)
 
