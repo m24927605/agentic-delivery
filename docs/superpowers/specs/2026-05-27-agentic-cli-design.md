@@ -13,9 +13,10 @@
 
 `agentic-delivery` exposes its pipeline as 55 `scripts/*.sh` plus a Hermes action runner.
 
-**Lifecycles.** The pipeline supports two implementation lifecycles plus a third research-track lifecycle:
+**Lifecycles.** The pipeline supports **three lifecycles** that map 1:1 to the state engine's `applies_to: planning | implementation | boss-idea` triad in §6.2:
 
-- *Planning + implementation* (default-delivery profile): produces approved planning artifacts and dispatches implementation tasks against them. This is what most CLI commands serve.
+- *Planning* (default-delivery profile, planning mode): produces approved planning artifacts (specs, ADRs, backlogs) under the review-fix loop.
+- *Implementation* (default-delivery profile, implementation mode): consumes approved artifacts, generates a task graph, and dispatches implementation slices.
 - *Boss-idea response* (boss-idea-response profile): a research/feasibility track for triaging executive ideas into market research, competitor briefs, feasibility scoring, decision memos, POC/MVP plans, and explicit go/no-go decisions. It uses the same approval gate but its artifact set differs. The `agentic boss` namespace (§5.4) wraps the 24 scripts that drive it.
 
 **AIT.** Throughout this spec, *AIT* means the Agentic Invocation Toolkit — the local adapter runner (`ait run --adapter <name>`) used to invoke external LLM CLIs (Claude Code, Codex) under isolated-worktree / read-only-sandbox constraints. AIT is what makes adversarial code review reproducible: each invocation produces a trace, an attempt id, and machine-classifiable evidence.
@@ -141,15 +142,38 @@ agentic-delivery/
 - CLI falls back to printing the underlying `scripts/<name>.sh` command line whenever something fails — users always have a recovery path.
 - Python ≥ 3.10. Runtime dependencies kept minimal: `typer`, `rich`, `pyyaml`. No optional heavy deps in v1.
 
-#### 4.2.1 Read-only enforcement gate (machine-checkable)
+#### 4.2.1 Read-only enforcement gate (machine-checkable, with honest scope)
 
-The "CLI never writes manifests" rule is enforced by a unit test, not by naming convention:
+The "CLI never writes manifests" rule is enforced by a layered gate. **No single check below proves the invariant by itself** — they overlap to make a violation hard to land:
 
-1. **AST scan test** (`cli/tests/test_no_manifest_writes.py`) parses every module under `cli/agentic/` with `ast` and asserts that no `open(...)` call with mode `'w'` / `'a'` / `'x'` / `'wb'` / `'r+'` / `'w+'` targets a path matching `*manifest*.yaml`, and that no `yaml.dump` / `yaml.safe_dump` / `Path.write_text` / `Path.write_bytes` call sites take a manifest path as their target. The test fails the build on any new write path that bypasses `scripts/update-*.sh`.
-2. **`Manifest` dataclass is `frozen=True`**; tests assert that attempting `manifest.artifacts.append(...)` or `dataclasses.replace()` on tuples raises.
-3. **CI ruff rule**: `pyproject.toml` `[tool.ruff.lint.per-file-ignores]` does not silence ruff's `T201`/`T100`/etc. on the `manifest.py` module, and a custom ruff plugin (or alternatively a grep gate in CI) refuses commits that introduce `yaml.dump` inside `cli/agentic/`.
+1. **Structural grep gate (CI)** — the strongest gate in v0.1. CI runs:
 
-The same gate stands behind the §7.7 and §11.2 invariants — without it, the three red lines are aspirational. CLI-04 lands the test fixture; CLI-13 wires it into CI.
+   ```bash
+   ! grep -rnE '\b(yaml\.(dump|safe_dump)|Path\.write_(text|bytes)|os\.rename|shutil\.(copy|move)|open\([^,]+,\s*['\''\"](w|a|x|r\+|w\+|wb|ab))' cli/agentic/
+   ```
+
+   Any write-mode `open(...)`, `yaml.dump` / `yaml.safe_dump`, `Path.write_*`, `os.rename`, or `shutil.copy/move` inside `cli/agentic/` fails the build. Allow-listed paths (e.g., a future `cli/agentic/schemas/`-style cache writer) live in `cli/.write-allowlist.txt` with a one-line comment per entry; the grep gate consults that file and the CI job prints which allowlist lines matched.
+
+   **Limits explicitly named**: the grep gate catches literal call sites; aliasing (`from yaml import dump as d`) and dynamic dispatch (`getattr(yaml, "dump")`) bypass it. Items 2 and 3 close the most common bypasses; the residual hostile-code surface is acknowledged and is out of scope for v0.1.
+
+2. **`Manifest` immutability via collection types** — the dataclass is `frozen=True` AND every collection field is typed `tuple[...]` / `frozenset[...]` / `types.MappingProxyType[...]` (never `list` / `dict` / `set`). Tests assert:
+
+   ```python
+   from agentic.manifest import Manifest
+   m = load_manifest(...)
+   assert isinstance(m.artifacts, tuple)
+   assert isinstance(m.tasks, tuple)
+   with pytest.raises(AttributeError):
+       m.artifacts.append(...)        # tuple has no append
+   with pytest.raises(dataclasses.FrozenInstanceError):
+       m.artifacts = ()                # frozen blocks reassignment
+   ```
+
+   `frozen=True` blocks attribute *reassignment*; tuple/frozenset blocks attribute *mutation*. Both checks are required — `frozen=True` alone is insufficient.
+
+3. **AST scan as additional belt-and-braces (not the primary gate)** — `cli/tests/test_no_manifest_writes.py` AST-scans literal `open('manifest*.yaml', 'w'|...)` and literal `yaml.dump(..., 'manifest*.yaml')` patterns. This catches the easiest, most-likely accidental violation pattern but is **not** the gate that proves the invariant. The §11.2 red line "CLI never silently mutates schema" is upheld by the layered combination of items 1 + 2; item 3 is regression insurance against the most common pattern.
+
+CLI-04 lands the immutable-collection types and item-2 tests; CLI-13 wires items 1 (grep gate + allowlist file) and 3 (AST regression test) into CI. The §7.7 and §11.2 invariants remain aspirational only if all three layers are skipped.
 
 ---
 
@@ -494,7 +518,7 @@ agentic-h27-cli-design
 | `--run-id` references missing run | Exit 6 with hint `agentic run list`. |
 | flag and env both set | Flag wins; no warning (flag is the explicit override). |
 | File empty or whitespace | Treat as unset, fall through to next source. |
-| File has multiple lines | Use first non-empty trimmed line; warn. |
+| File has multiple lines | **Refuse with exit 6** (per §7.1.1 hard-tightening; the v0.1-draft "warn and use first line" rule is superseded). |
 
 ### 7.6 Subprocess propagation
 
@@ -1228,7 +1252,7 @@ In scope: a `cli/` package inside this repo (Python 3.10+, Typer + Rich + PyYAML
 
 ## Acceptance Criteria
 
-The spec is accepted when, taken together: (1) the locked decisions in §3 reflect user confirmation; (2) the command tree in §5 covers all 55 scripts (verified via the coverage check at §5.6); (3) §6 contains the full declarative rule table and primitive set; (4) §10 commits to coverage ≥ 85 with state-engine ≥ 95 and snapshot-locked `--json` schema; (5) §11 preserves the three red lines (scripts authoritative, automation unaffected, no silent schema mutation); (6) §12 mandates AIT + Claude Code CLI adversarial review for every slice, with no direct Anthropic API calls allowed; and (7) §13 decomposes the work into CLI-00 .. CLI-15 implementation slices.
+The spec is accepted when, taken together: (1) the locked decisions in §3 reflect user confirmation; (2) the command tree in §5 covers all 55 scripts (verified via the coverage check at §5.6); (3) §6 contains the full declarative rule table and primitive set; (4) §10 commits to coverage ≥ 85 with state-engine ≥ 95 and snapshot-locked `--json` schema; (5) §11 preserves the three red lines (scripts authoritative, automation unaffected, no silent schema mutation); (6) §12 mandates AIT + Claude Code CLI adversarial review for every slice, with no direct Anthropic API calls allowed; and (7) §13 decomposes the work into the slices enumerated under §13 (CLI-00 bootstrap plus CLI-01 through CLI-15, with CLI-09 split into CLI-09a and CLI-09b — 17 implementation slices total).
 
 ## Validation
 
@@ -1240,4 +1264,4 @@ If this spec needs to be retracted before any slice ships: mark its artifact ent
 
 ## Review Expectations
 
-Every slice CLI-00 .. CLI-15 goes through AIT + Claude Code CLI adversarial review per §12.3 — no exceptions, no direct Anthropic API calls, `--apply never --review never --sandbox read-only --format json`. Review evidence lives under `agentic/reviews/agentic-cli/CLI-NN/round-N.json`. The review board for each slice is fixed in its plan file's "Reviewer agents" section. The spec itself is reviewed with the agents listed under §12.3 (architect, security, code reviewer, tech writer, PM); review findings either revise this spec or are deferred to a follow-up ADR.
+Every slice listed in §13 (CLI-00 bootstrap, CLI-01 through CLI-08, CLI-09a, CLI-09b, CLI-10 through CLI-15) goes through AIT + Claude Code CLI adversarial review per §12.3 — no exceptions, no direct Anthropic API calls, `--apply never --review never --sandbox read-only --format json`. Review evidence lives under `agentic/reviews/agentic-cli/CLI-NN/round-N.json`. The review board for each slice is fixed in its plan file's "Reviewer agents" section. The spec itself is reviewed with the agents listed under §12.3 (architect, security, code reviewer, tech writer, PM); review findings either revise this spec or are deferred to a follow-up ADR.

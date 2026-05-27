@@ -124,7 +124,7 @@ Authority: planning-run manifest only. Hermes memory is execution context only.
 - write_scope: .github/workflows/cli.yml, cli/tests/smoke/**, cli/pyproject.toml (cov config)
 - dependencies: [CLI-12]
 - implementer: agency-agents/senior-developer
-- reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-code-reviewer]
+- reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-security-engineer (mandatory: .github/workflows/* is a supply-chain trust boundary), engineering-code-reviewer]
 - evidence: agentic/reviews/agentic-cli/CLI-13/
 
 ## CLI-14 — README + goal-prompt footnotes
