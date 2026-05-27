@@ -4,16 +4,11 @@
 .codex/
 
 # Local private delivery artifacts.
-docs/*strategy*.md
 docs/*goal-prompt.md
 !docs/auto-docs-to-implementation-goal-prompt.md
 docs/*handoff.md
-docs/proposals/
-docs/reviews/
 docs/connectors/
 docs/backlog/*roadmap.md
-docs/adr/001-product-boundary.md
-docs/adr/002-crawl4ai-doc-ingestion.md
 agentic/reviews/
 agentic/runs/*
 !agentic/runs/.gitkeep
