@@ -4,6 +4,15 @@ Source spec: `docs/superpowers/specs/2026-05-27-agentic-cli-design.md`
 Per-slice plans: `docs/superpowers/plans/2026-05-27-agentic-cli/CLI-NN-*.md`
 Authority: planning-run manifest only. Hermes memory is execution context only.
 
+## CLI-00 — Bootstrap slice tracking (operational, completed during CLI design approval)
+- plan: docs/superpowers/plans/2026-05-27-agentic-cli/CLI-00-bootstrap-slice-tracking.md
+- write_scope: docs/backlog/agentic-cli-slices.md, agentic/runs/agentic-cli-v0.1-planning/manifest.yaml, agentic/runs/agentic-cli-v0.1-impl/implementation-manifest.yaml
+- dependencies: []
+- status: in-progress (this revision)
+- implementer: local-operator (operational bootstrap — chicken-and-egg, cannot dispatch through the very pipeline being seeded)
+- reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-security-engineer, engineering-code-reviewer, engineering-technical-writer, product-manager]
+- evidence: agentic/reviews/agentic-cli/CLI-00/
+
 ## CLI-01 — Scaffold `cli/` package
 - plan: docs/superpowers/plans/2026-05-27-agentic-cli/CLI-01-scaffold-package.md
 - write_scope: cli/**
@@ -44,50 +53,60 @@ Authority: planning-run manifest only. Hermes memory is execution context only.
 - reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-code-reviewer, product-manager]
 - evidence: agentic/reviews/agentic-cli/CLI-05/
 
-## CLI-06 — shell.py + agentic plan namespace
+## CLI-06 — shell.py + agentic plan namespace + agentic init
 - plan: docs/superpowers/plans/2026-05-27-agentic-cli/CLI-06-shell-plan-namespace.md
 - write_scope: cli/**
 - dependencies: [CLI-05]
 - implementer: agency-agents/senior-developer
 - reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-security-engineer, engineering-code-reviewer]
 - evidence: agentic/reviews/agentic-cli/CLI-06/
+- notes: Also wires top-level `agentic init "goal"` per spec §5.1 (closes coverage gap flagged in round-1 review)
 
-## CLI-07 — agentic impl namespace
-- plan: docs/superpowers/plans/2026-05-27-agentic-cli/CLI-07-impl-namespace.md
-- write_scope: cli/**
-- dependencies: [CLI-06]
-- implementer: agency-agents/senior-developer
-- reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-security-engineer, engineering-code-reviewer]
-- evidence: agentic/reviews/agentic-cli/CLI-07/
-
-## CLI-08 — agentic boss namespace
-- plan: docs/superpowers/plans/2026-05-27-agentic-cli/CLI-08-boss-namespace.md
-- write_scope: cli/**
-- dependencies: [CLI-06]
-- implementer: agency-agents/senior-developer
-- reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-code-reviewer]
-- evidence: agentic/reviews/agentic-cli/CLI-08/
-
-## CLI-09 — Remaining namespaces (hermes, identity, evidence, fixtures, manifest, validate)
-- plan: docs/superpowers/plans/2026-05-27-agentic-cli/CLI-09-remaining-namespaces.md
-- write_scope: cli/**
-- dependencies: [CLI-06]
-- implementer: agency-agents/senior-developer
-- reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-security-engineer, engineering-code-reviewer]
-- evidence: agentic/reviews/agentic-cli/CLI-09/
-
-## CLI-10 — agentic raw escape hatch
+## CLI-10 — agentic raw escape hatch (floor of wrapper coverage)
 - plan: docs/superpowers/plans/2026-05-27-agentic-cli/CLI-10-raw-escape-hatch.md
 - write_scope: cli/**
 - dependencies: [CLI-06]
 - implementer: agency-agents/senior-developer
-- reviewer: claude-code-cli-via-ait [engineering-security-engineer, engineering-code-reviewer]
+- reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-security-engineer, engineering-code-reviewer]
 - evidence: agentic/reviews/agentic-cli/CLI-10/
+- notes: Lands BEFORE CLI-07/08/09a/09b so `agentic raw` is available throughout the rest of the rollout (spec §5.7 promise)
 
-## CLI-11 — --json mode + structured errors
+## CLI-07 — agentic impl namespace
+- plan: docs/superpowers/plans/2026-05-27-agentic-cli/CLI-07-impl-namespace.md
+- write_scope: cli/**
+- dependencies: [CLI-10]
+- implementer: agency-agents/senior-developer
+- reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-security-engineer, engineering-code-reviewer]
+- evidence: agentic/reviews/agentic-cli/CLI-07/
+
+## CLI-08 — agentic boss namespace (24 scripts, 12 validators)
+- plan: docs/superpowers/plans/2026-05-27-agentic-cli/CLI-08-boss-namespace.md
+- write_scope: cli/**
+- dependencies: [CLI-10]
+- implementer: agency-agents/senior-developer
+- reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-security-engineer, engineering-code-reviewer]
+- evidence: agentic/reviews/agentic-cli/CLI-08/
+
+## CLI-09a — hermes + identity namespaces (security-heavy)
+- plan: docs/superpowers/plans/2026-05-27-agentic-cli/CLI-09-remaining-namespaces.md  (will be split during implementation)
+- write_scope: cli/**
+- dependencies: [CLI-10]
+- implementer: agency-agents/senior-developer
+- reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-security-engineer (mandatory), engineering-code-reviewer]
+- evidence: agentic/reviews/agentic-cli/CLI-09a/
+
+## CLI-09b — evidence + fixtures + manifest + validate namespaces
+- plan: docs/superpowers/plans/2026-05-27-agentic-cli/CLI-09-remaining-namespaces.md  (will be split during implementation)
+- write_scope: cli/**
+- dependencies: [CLI-10]
+- implementer: agency-agents/senior-developer
+- reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-code-reviewer]
+- evidence: agentic/reviews/agentic-cli/CLI-09b/
+
+## CLI-11 — --json mode + structured errors + cli_v1.schema.json
 - plan: docs/superpowers/plans/2026-05-27-agentic-cli/CLI-11-json-mode-structured-errors.md
 - write_scope: cli/**
-- dependencies: [CLI-07, CLI-08, CLI-09, CLI-10]
+- dependencies: [CLI-07, CLI-08, CLI-09a, CLI-09b]
 - implementer: agency-agents/senior-developer
 - reviewer: claude-code-cli-via-ait [engineering-software-architect, engineering-code-reviewer, engineering-technical-writer, product-manager]
 - evidence: agentic/reviews/agentic-cli/CLI-11/
@@ -132,7 +151,17 @@ Track the public-safe slice backlog for the agentic CLI v0.1 implementation, map
 
 ## Scope
 
-In scope: 15 implementation slices CLI-01 .. CLI-15 that build the `agentic` CLI inside this repo, plus the CLI-00 bootstrap that seeded the planning + implementation runs. Each slice's full file-by-file plan lives at `docs/superpowers/plans/2026-05-27-agentic-cli/CLI-NN-*.md`. Out of scope here: anything not under `cli/**` (except the two documented exceptions — `.gitignore` line in CLI-03 and the README/goal-prompt footnotes in CLI-14), Hermes adapter changes, distribution channels beyond PyPI, and post-v0.1 features.
+In scope: the 15 implementation slices CLI-01 .. CLI-15 that build the `agentic` CLI inside this repo, the operational CLI-00 bootstrap that seeded the planning + implementation runs, and the post-round-1 split of CLI-09 into CLI-09a (hermes + identity, security-heavy) and CLI-09b (evidence + fixtures + manifest + validate). Each slice's full file-by-file plan lives at `docs/superpowers/plans/2026-05-27-agentic-cli/CLI-NN-*.md`. CLI-09a/09b will share the existing `CLI-09-remaining-namespaces.md` plan, split into two halves during implementation.
+
+Documented `cli/**` write_scope exceptions:
+
+- `.gitignore` — one line, CLI-03 (`.agentic/` for the run-context file).
+- `agentic/README.md`, `docs/auto-docs-to-implementation-goal-prompt.md`, `docs/hermes-adapter-slices-goal-prompt.md` (if tracked) — CLI-14 footnotes.
+- `.github/workflows/cli.yml` — CLI-13 (CI workflow; supply-chain boundary, mandatory security review).
+- `.github/workflows/cli-publish.yml` — CLI-15 (PyPI publish trust root; supply-chain boundary, mandatory security review).
+- `cli/pyproject.toml` re-opened for coverage configuration in CLI-13 (technically inside `cli/**` so not really an exception; called out here for clarity).
+
+Out of scope here: any path not under `cli/**` or the documented exceptions above, Hermes adapter changes, distribution channels beyond PyPI, and post-v0.1 features.
 
 ## Acceptance Criteria
 

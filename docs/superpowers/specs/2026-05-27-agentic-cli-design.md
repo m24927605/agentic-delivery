@@ -11,7 +11,16 @@
 
 ## 1. Context & Motivation
 
-`agentic-delivery` exposes its pipeline as 55 `scripts/*.sh` plus a Hermes action runner. Documented use looks like:
+`agentic-delivery` exposes its pipeline as 55 `scripts/*.sh` plus a Hermes action runner.
+
+**Lifecycles.** The pipeline supports two implementation lifecycles plus a third research-track lifecycle:
+
+- *Planning + implementation* (default-delivery profile): produces approved planning artifacts and dispatches implementation tasks against them. This is what most CLI commands serve.
+- *Boss-idea response* (boss-idea-response profile): a research/feasibility track for triaging executive ideas into market research, competitor briefs, feasibility scoring, decision memos, POC/MVP plans, and explicit go/no-go decisions. It uses the same approval gate but its artifact set differs. The `agentic boss` namespace (§5.4) wraps the 24 scripts that drive it.
+
+**AIT.** Throughout this spec, *AIT* means the Agentic Invocation Toolkit — the local adapter runner (`ait run --adapter <name>`) used to invoke external LLM CLIs (Claude Code, Codex) under isolated-worktree / read-only-sandbox constraints. AIT is what makes adversarial code review reproducible: each invocation produces a trace, an attempt id, and machine-classifiable evidence.
+
+Documented use looks like:
 
 ```bash
 RUN_ID=<id> scripts/init-agentic-run.sh "goal"
@@ -132,6 +141,16 @@ agentic-delivery/
 - CLI falls back to printing the underlying `scripts/<name>.sh` command line whenever something fails — users always have a recovery path.
 - Python ≥ 3.10. Runtime dependencies kept minimal: `typer`, `rich`, `pyyaml`. No optional heavy deps in v1.
 
+#### 4.2.1 Read-only enforcement gate (machine-checkable)
+
+The "CLI never writes manifests" rule is enforced by a unit test, not by naming convention:
+
+1. **AST scan test** (`cli/tests/test_no_manifest_writes.py`) parses every module under `cli/agentic/` with `ast` and asserts that no `open(...)` call with mode `'w'` / `'a'` / `'x'` / `'wb'` / `'r+'` / `'w+'` targets a path matching `*manifest*.yaml`, and that no `yaml.dump` / `yaml.safe_dump` / `Path.write_text` / `Path.write_bytes` call sites take a manifest path as their target. The test fails the build on any new write path that bypasses `scripts/update-*.sh`.
+2. **`Manifest` dataclass is `frozen=True`**; tests assert that attempting `manifest.artifacts.append(...)` or `dataclasses.replace()` on tuples raises.
+3. **CI ruff rule**: `pyproject.toml` `[tool.ruff.lint.per-file-ignores]` does not silence ruff's `T201`/`T100`/etc. on the `manifest.py` module, and a custom ruff plugin (or alternatively a grep gate in CI) refuses commits that introduce `yaml.dump` inside `cli/agentic/`.
+
+The same gate stands behind the §7.7 and §11.2 invariants — without it, the three red lines are aspirational. CLI-04 lands the test fixture; CLI-13 wires it into CI.
+
 ---
 
 ## 5. Command Tree (covers all 55 scripts)
@@ -172,7 +191,7 @@ agentic impl review   <task-id> [--actor ...]             → run-implementation
 agentic impl validate                                     → validate-implementation-run.sh
 ```
 
-### 5.4 `boss` — boss-idea response profile (28 scripts)
+### 5.4 `boss` — boss-idea response profile (24 scripts)
 ```
 agentic boss init <idea-file>                             → init-boss-idea-run.sh
 agentic boss research collect [--search-results] [--output]   → collect-boss-idea-research.sh
@@ -225,10 +244,13 @@ agentic validate system                                   → validate-agentic-s
 ### 5.6 Coverage check
 
 All 55 scripts mapped:
-- 1 special-cased to 4 sugar verbs: `update-artifact-status.sh` → `plan artifact … approve|reject|defer|reviewed|drafted|changes_requested`.
-- 11 `validate-boss-idea-*.sh` collapsed under `boss validate <kind>`.
-- `report-run-status.sh` is consumed by `agentic status` (not exposed as direct command — `status` reads manifest directly and uses report logic as reference).
-- 53 named subcommands + 1 sugar group + `agentic raw` covers the remainder and any future script additions.
+- 1 script (`update-artifact-status.sh`) is special-cased and reached via **6 sugar verbs** under `plan artifact … <verb>`: `approve|reject|defer|reviewed|drafted|changes_requested`. The literal canonical statuses are `drafted | reviewed | changes_requested | approved | rejected | deferred`; the verbs `approve / reject / defer` are CLI-side syntactic sugar that map to the past-tense canonical status before invoking the script.
+- **12 validators are collapsed under `boss validate <kind>`**: 11 `validate-boss-idea-*.sh` plus `validate-boss-decision-memo.sh` (which lacks the `-idea` infix in its filename but belongs to the same boss-idea lifecycle).
+- `report-run-status.sh` is consumed by `agentic status` (not exposed as a separate named command — `status` reads `manifest.yaml` directly and uses the report logic as a reference for what counts as "next action").
+- 1 top-level command (`agentic init "goal"` per §5.1) routes to `scripts/init-agentic-run.sh`.
+- 53 named subcommands across the namespaces + the 1 sugar group + `agentic raw` cover the remaining 53 scripts and any future additions.
+
+A canonical 1-row-per-`.sh` mapping table lives next to the code at `cli/agentic/commands/_coverage.py` (one Python literal dict) and is asserted by `cli/tests/test_script_coverage.py` against `ls scripts/*.sh`. If a script is added under `scripts/` without an entry, the test fails until a wrapper or an `agentic raw` route is documented.
 
 ### 5.7 Design rules
 - Verbs at the first sublevel (`init`, `dispatch`, `validate`) for ergonomic tab completion.
@@ -389,14 +411,25 @@ Adding a new primitive: register in `cli/agentic/state_engine/primitives.py` and
 
 ### 6.4 Template variables
 
-`str.format()` against a context dict built from the manifest:
+Templates render against a **flat, whitelisted dict of pre-built scalar/string values** — never against arbitrary Python objects. Allowed identifiers (no `.`, no `[`, no attribute walks):
+
 - `{run_id}`, `{state}`, `{mode}`
-- `{count_planned}`, `{count_drafted}`, `{count_approved}`, etc.
-- `{first_drafted.path}`, `{first_reviewed.path}`, `{first_changes_requested.path}`
-- `{first_pending_task.id}`, `{first_dispatched_task.id}`, `{first_executed_task.id}`
+- `{count_planned}`, `{count_drafted}`, `{count_approved}`, `{count_reviewed}`, `{count_rejected}`, `{count_deferred}`, `{count_changes_requested}`
+- `{first_drafted_path}`, `{first_reviewed_path}`, `{first_changes_requested_path}` (string paths, **not** dotted attribute access)
+- `{first_pending_task_id}`, `{first_dispatched_task_id}`, `{first_executed_task_id}`
 - `{list_planned_paths}` (newline-joined bullet list)
 
-Missing template variable → CLI logs a structured warning and falls back to the rule's literal template (no crash).
+#### 6.4.1 Restricted rendering (no `str.format` on raw objects)
+
+`str.format()` is **not** used directly. Instead, `cli/agentic/state_engine/render.py::render(template, ctx)`:
+
+1. Validates the template by regex-scanning for `{<identifier>}` patterns where `<identifier>` matches `^[a-z_][a-z0-9_]*$`. Any template containing `.`, `[`, `]`, `:`, `!`, `__`, or whitespace inside the braces is rejected and the rule falls back to its literal `reason` string.
+2. Validates that every referenced identifier exists in the allowed key set above. Unknown keys cause the rule to be skipped (with structured warning) — never to crash or to expose object internals.
+3. Renders by simple substitution against the flat ctx dict, with no Python expression evaluation.
+
+This closes the `str.format` attack surface — a hostile `$XDG_CONFIG_HOME/agentic/state_rules.yaml` override cannot reach `{x.__class__.__init__.__globals__[...]}` or any other Python-object walk. Security tests (`cli/tests/state_engine/test_render_sandbox.py`) prove that `"{x.__class__}"`, `"{x[0]}"`, `"{x!r}"`, and `"{x:0}"` all fail to render and are logged as rejected.
+
+Missing template variable → CLI logs a structured warning and falls back to the rule's literal template (no crash, no leak).
 
 ### 6.5 Invariants
 - Engine is read-only against the manifest.
@@ -415,6 +448,18 @@ Missing template variable → CLI logs a structured warning and falls back to th
 3. .agentic/current-run           repo-local persistent file
 4. error: "no run context"        with hints
 ```
+
+#### 7.1.1 Run-id validation (mandatory, applied to every source)
+
+Every resolved run id — regardless of source — is matched against:
+
+```
+^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$
+```
+
+Sources that fail (multi-line `.agentic/current-run`, leading whitespace, NUL, newline, command-substitution metacharacters, path-traversal segments, env values containing `$(...)` / `\`...\`` / `;` / `&&`) are **rejected with exit 6** before any filesystem path join or subprocess invocation. The `.agentic/current-run` file rule from §7.5 ("warn on multi-line") is tightened: multi-line files now refuse the value entirely instead of warning-and-using.
+
+Tests in `cli/tests/test_run_id_validation.py` cover `../../etc`, `$(rm -rf .)`, leading dash, embedded newline, NUL byte, empty string, 200-char string, and Unicode-confusable lookalikes. CLI-03 lands this regex; CLI-13 keeps it gated by snapshot diff.
 
 ### 7.2 File format
 
@@ -520,13 +565,20 @@ Walk-up is bounded at the filesystem root; symlink loops are not followed.
 
 ### 8.4 Compatibility check
 
-On every CLI invocation that resolves a repo, read `<repo>/agentic/pipeline.yaml`'s `version`, compare against `tool.agentic.compatible_pipeline_versions`.
+On every CLI invocation that resolves a repo, read `<repo>/agentic/pipeline.yaml`'s `version`, compare against `tool.agentic.compatible_pipeline_versions`, and additionally read the optional `<repo>/agentic/runs/<id>/manifest.yaml::manifest_schema_version` field where applicable.
 
 | Result | Behaviour |
 |--------|-----------|
 | Compatible | Silent. |
 | Patch mismatch | Warn on stderr, continue. |
-| Minor / major mismatch | Hard fail with exit 5 and upgrade hint. `--no-compat-check` overrides. |
+| **Minor mismatch** | **Warn on stderr, continue with best-effort read.** The CLI's `Manifest` reader is schema-aware (§4.2) and tolerates additive minor-version changes. |
+| Major mismatch | Hard fail with exit 5 and upgrade hint. `--no-compat-check` overrides. |
+
+The strict-on-minor behaviour from the v0.1 draft was rejected because §11.4 explicitly requires CLI 0.2.x to read both `v0.6` and `v0.7`. Minor bumps are warn-and-continue; the supporting machinery is:
+
+1. `Manifest.from_dict()` uses `manifest_schema_version` (default `1` for legacy manifests without the field) and the per-version field readers in `cli/agentic/manifest_schema/v1.py`, `v2.py`, etc.
+2. Adding a new minor version requires landing both (a) a new schema reader and (b) golden fixture(s) under `cli/tests/manifest_schema/fixtures/`. CI test `test_schema_compatibility.py` asserts every declared `compatible_pipeline_versions` range has a matching reader.
+3. The schema-version field is also persisted in artifacts the CLI produces (e.g., `cli/.coveragerc`-style markers), so downstream tools can verify what was assumed.
 
 ### 8.5 `agentic version` output
 
@@ -660,6 +712,16 @@ Every error includes **what / why / what-to-do-next**:
 ```
 
 Schema versioned via `_schema` field. v1 may add fields; renames or deletions require a CLI major bump.
+
+#### 9.5.1 Machine-checkable schema gate
+
+`pytest-snapshot` strict mode alone is insufficient — a PR that renames a field can also rebaseline the snapshot in the same commit. The locked envelope lives at `cli/agentic/schemas/cli_v1.schema.json` (JSON Schema draft 2020-12). CI enforces:
+
+1. **Produced JSON validates against the schema.** `cli/tests/test_json_schema_conformance.py` runs every command's `--json` output through `jsonschema.validate(..., schema=v1)`. Failure means the code drifted from the schema.
+2. **Schema file diff-stability.** The CI job `cli-schema-stability` runs `git diff origin/main -- cli/agentic/schemas/cli_v1.schema.json` and fails the PR if any non-additive change appears (any property removed, renamed, or having `type`/`enum` narrowed) unless the same PR also bumps the CLI major version in `cli/pyproject.toml` or introduces `cli_v2.schema.json`.
+3. **State-rule fixture coverage.** A parallel CI job diff-asserts that every rule id in `cli/agentic/state_engine/rules.yaml` has a matching fixture under `cli/tests/state_engine/fixtures/`.
+
+Without these three gates the §10.8 invariants are aspirational. CLI-11 ships `cli_v1.schema.json` and the conformance test; CLI-13 wires the stability gate into CI.
 
 ### 9.6 Accessibility
 - Colour is never the only signal — glyphs (`✗ ▲ ✓`) and explicit labels always present.
@@ -813,12 +875,17 @@ Schema changes affecting manifest fields require a CLI minor that reads both old
 ### 11.5 `agentic raw` scope lock
 
 ```python
-raw(name) → run(repo / "scripts" / name, *args)
+raw(name) → run(realpath(repo/"scripts"/name), *args_after_dashdash)
 ```
 
-- `name` must match `^[a-z0-9-]+\.sh$`.
-- File must exist under `<repo>/scripts/`.
-- Anything else (paths, absolute paths, non-`.sh`) refused.
+Hardened validation (all four checks must pass before exec):
+
+1. **Name regex**: `name` must match `^[a-z0-9][a-z0-9-]*\.sh$` — *leading dash forbidden* to prevent argv parsing confusion in downstream subprocess shells.
+2. **Realpath containment**: `os.path.realpath(scripts/name)` must be a regular file whose `os.path.commonpath([realpath, scripts_realpath])` equals `scripts_realpath`. Symlinks that escape `<repo>/scripts/` (out-of-repo, parent traversal, dangling) are refused. Symlinks where the resolved file is itself a symlink are refused.
+3. **Argument delimiter**: arguments after `<name>` are only forwarded if the user supplied them after a literal `--` token (e.g., `agentic raw foo.sh -- --verbose --flag value`). Typer's context passthrough enforces this; without `--`, args are parsed by Typer and rejected as unknown flags. Documented in `--help` and CLI-10 acceptance tests.
+4. **TOCTOU closure**: the realpath computed at validation time is the exact path passed to `subprocess.run([...])`; the original constructed path is not re-resolved before exec.
+
+Tests in `cli/tests/test_commands_raw.py` cover: leading-dash name (`-rf.sh`), absolute path, `..` traversal, symlink to `/etc/passwd`, symlink loop, symlink to outside-repo file, missing file, non-`.sh` extension, the `--` boundary requirement, and that `subprocess.run` receives the realpath-resolved string.
 
 ### 11.6 Deprecation policy (post v1.0)
 
@@ -1030,11 +1097,11 @@ reviewer:
 - **Dependencies:** CLI-04.
 - **Reviewer agents:** `engineering-software-architect`, `engineering-code-reviewer`, `product-manager`.
 
-### CLI-06 — `shell.py` + `agentic plan` namespace
+### CLI-06 — `shell.py` + `agentic plan` namespace + `agentic init`
 
-- **Scope:** Subprocess wrapper with env propagation (`RUN_ID`, `AIT_ACTOR`, `AIT_ACTOR_ROLE`), exit-code mapping (§9.3), log capture; all `plan` subcommands routed to scripts.
-- **Files:** `cli/agentic/shell.py`, `cli/agentic/commands/plan.py`, `cli/tests/test_shell.py`, `cli/tests/test_commands_plan.py`.
-- **Acceptance:** `RecordingRunner` tests prove argv + env; real call to `scripts/generate-artifacts.sh` works in smoke; `plan artifact … approve` sugar verbs work.
+- **Scope:** Subprocess wrapper with env propagation (`RUN_ID`, `AIT_ACTOR`, `AIT_ACTOR_ROLE`), exit-code mapping (§9.3), log capture; all `plan` subcommands routed to scripts. **Also wires the top-level `agentic init "goal" [--goal-file <f>] [--profile <id>]` command per §5.1**, routing to `scripts/init-agentic-run.sh`. This closes the §5.1 hot-path coverage gap that earlier draft sequencing left to CLI-13's smoke test.
+- **Files:** `cli/agentic/shell.py`, `cli/agentic/commands/plan.py`, `cli/agentic/commands/init.py`, `cli/tests/test_shell.py`, `cli/tests/test_commands_plan.py`, `cli/tests/test_commands_init.py`.
+- **Acceptance:** `RecordingRunner` tests prove argv + env; real call to `scripts/generate-artifacts.sh` works in smoke; `plan artifact … approve` sugar verbs work; `agentic init "goal"` creates a run via `scripts/init-agentic-run.sh` and the run id round-trips through `agentic status`.
 - **Dependencies:** CLI-05.
 - **Reviewer agents:** `engineering-software-architect`, `engineering-security-engineer`, `engineering-code-reviewer`.
 
@@ -1043,40 +1110,48 @@ reviewer:
 - **Scope:** All `impl` subcommands (init/tasks/dispatch/execute/review/validate); forward `--actor` / `--role`.
 - **Files:** `cli/agentic/commands/impl.py`, `cli/tests/test_commands_impl.py`.
 - **Acceptance:** Each subcommand maps to its script; tests assert env passthrough and exit-code mapping.
-- **Dependencies:** CLI-06.
+- **Dependencies:** CLI-10.
 - **Reviewer agents:** `engineering-software-architect`, `engineering-security-engineer`, `engineering-code-reviewer`.
 
 ### CLI-08 — `agentic boss` namespace
 
-- **Scope:** All 28 boss-idea subcommands per §5.4; `boss validate <kind>` consolidates 11 validators.
+- **Scope:** All **24** boss-idea subcommands per §5.4; `boss validate <kind>` consolidates **12 validators** (11 `validate-boss-idea-*.sh` + `validate-boss-decision-memo.sh`).
 - **Files:** `cli/agentic/commands/boss.py`, `cli/tests/test_commands_boss.py`.
-- **Acceptance:** 100 % of boss-idea scripts reachable via CLI; fixtures cover happy path + at least one error.
-- **Dependencies:** CLI-06.
-- **Reviewer agents:** `engineering-software-architect`, `engineering-code-reviewer`.
+- **Acceptance:** 100 % of the 24 boss-idea scripts reachable via CLI; fixtures cover happy path + at least one error per subcommand group. The script→command mapping table at `cli/agentic/commands/_coverage.py` (per §5.6) accurately reflects this slice's deliveries.
+- **Dependencies:** CLI-10.
+- **Reviewer agents:** `engineering-software-architect`, `engineering-security-engineer` (boss-idea scripts perform outbound HTTP via crawl / live-smoke / provider-health), `engineering-code-reviewer`.
 
-### CLI-09 — Remaining namespaces
+### CLI-09a — Security-heavy namespaces (hermes + identity)
 
-- **Scope:** `hermes`, `identity`, `evidence`, `fixtures`, `manifest`, `validate` per §5.5.
-- **Files:** `cli/agentic/commands/{hermes,identity,evidence,fixtures,manifest_cmd,validate}.py`, matching tests.
+- **Scope:** `hermes` and `identity` namespaces per §5.5. These handle outbound action invocation (`run-hermes-action.sh`, `hermes-gateway-dry-run.sh`) and authorization (`authorize-agentic-action.sh`, `validate-identity-policy.sh`) — both flow trust into `agentic/identity-policy.yaml` boundary.
+- **Files:** `cli/agentic/commands/hermes.py`, `cli/agentic/commands/identity.py`, matching tests.
+- **Acceptance:** Both namespaces cover every script listed under hermes/identity in §5.5 with named subcommands. Tests assert authorization env (`AIT_ACTOR`, `AIT_ACTOR_ROLE`) propagates and that hermes scripts receive `RUN_ID` when needed.
+- **Dependencies:** CLI-10.
+- **Reviewer agents:** `engineering-software-architect`, **`engineering-security-engineer` (mandatory)**, `engineering-code-reviewer`.
+
+### CLI-09b — Lower-risk namespaces (evidence + fixtures + manifest + validate)
+
+- **Scope:** `evidence`, `fixtures`, `manifest`, `validate` namespaces per §5.5.
+- **Files:** `cli/agentic/commands/{evidence,fixtures,manifest_cmd,validate}.py`, matching tests.
 - **Acceptance:** Coverage check — every remaining `scripts/*.sh` is reachable via a named command (or explicitly routed to `agentic raw`).
-- **Dependencies:** CLI-06.
-- **Reviewer agents:** `engineering-software-architect`, `engineering-security-engineer`, `engineering-code-reviewer`.
+- **Dependencies:** CLI-10.
+- **Reviewer agents:** `engineering-software-architect`, `engineering-code-reviewer`.
 
 ### CLI-10 — `agentic raw` escape hatch
 
-- **Scope:** Validate `name ^[a-z0-9-]+\.sh$`; refuse paths; refuse non-existent scripts; pass args + env transparently.
-- **Files:** `cli/agentic/commands/raw.py`, `cli/tests/test_commands_raw.py`.
-- **Acceptance:** Security tests prove the validator rejects `..`, absolute paths, non-`.sh`; happy path forwards exit code.
+- **Scope:** Validate `name ^[a-z0-9][a-z0-9-]*\.sh$` (leading-dash forbidden per §11.5); refuse path traversal, absolute paths, non-`.sh`, non-existent scripts; resolve via `realpath` and refuse if the resolved path leaves `<repo>/scripts/`; refuse symlinks-to-symlinks; require `--` boundary before forwarding extra args. Acts as the floor of wrapper coverage — landed immediately after CLI-06 so §5.7's "always available" guarantee holds for the rest of the rollout.
+- **Files:** `cli/agentic/commands/raw.py`, `cli/tests/test_commands_raw.py` (tests for: leading dash, absolute path, `..` traversal, symlink-out-of-repo, symlink-loop, symlink-to-symlink, missing file, non-`.sh`, `--` boundary, realpath-vs-constructed-path passed to subprocess).
+- **Acceptance:** All security tests pass; happy path forwards exit code through the §9.3 mapping; running `agentic raw foo.sh -- --verbose` invokes `scripts/foo.sh --verbose` with no Typer interception.
 - **Dependencies:** CLI-06.
-- **Reviewer agents:** `engineering-security-engineer`, `engineering-code-reviewer`.
+- **Reviewer agents:** `engineering-software-architect`, **`engineering-security-engineer` (mandatory)**, `engineering-code-reviewer`.
 
 ### CLI-11 — `--json` mode + structured errors
 
-- **Scope:** Global `--json` flag; structured stderr errors (§9.2); `_schema: agentic.cli/v1` envelope; snapshot tests strict mode.
-- **Files:** `cli/agentic/ui/render.py`, `cli/agentic/ui/errors.py`, snapshot updates.
-- **Acceptance:** Every public command supports `--json`; schema regression tests block accidental rename/delete.
-- **Dependencies:** CLI-06 … CLI-09.
-- **Reviewer agents:** `engineering-software-architect`, `engineering-code-reviewer`, `engineering-technical-writer`.
+- **Scope:** Global `--json` flag; structured stderr errors (§9.2); `_schema: agentic.cli/v1` envelope codified at `cli/agentic/schemas/cli_v1.schema.json` (per §9.5.1); snapshot tests strict mode; CI schema-stability gate.
+- **Files:** `cli/agentic/ui/render.py`, `cli/agentic/ui/errors.py`, `cli/agentic/schemas/cli_v1.schema.json`, `cli/tests/test_json_schema_conformance.py`, snapshot updates.
+- **Acceptance:** Every public command supports `--json`; `cli_v1.schema.json` validates every command's output; CI schema-stability gate detects non-additive changes.
+- **Dependencies:** CLI-07, CLI-08, CLI-09a, CLI-09b.
+- **Reviewer agents:** `engineering-software-architect`, `engineering-code-reviewer`, `engineering-technical-writer`, `product-manager`.
 
 ### CLI-12 — Tab completion + `agentic doctor`
 
@@ -1115,15 +1190,19 @@ reviewer:
 ```
 CLI-00 → CLI-01 → CLI-02 → CLI-03 → CLI-04 → CLI-05
                                      │
-                                     └─→ CLI-06 ─┬─→ CLI-07
-                                                  ├─→ CLI-08
-                                                  ├─→ CLI-09
-                                                  └─→ CLI-10
-                                                          │
-                                                          └─→ CLI-11 → CLI-12 → CLI-13 → CLI-14 → CLI-15
+                                     └─→ CLI-06 → CLI-10 ─┬─→ CLI-07
+                                                          ├─→ CLI-08
+                                                          ├─→ CLI-09a (hermes + identity, security-heavy)
+                                                          └─→ CLI-09b (evidence + fixtures + manifest + validate)
+                                                                  │
+                                                                  └─→ CLI-11 → CLI-12 → CLI-13 → CLI-14 → CLI-15
 ```
 
-CLI-07 / CLI-08 / CLI-09 / CLI-10 are independent after CLI-06 and may run in parallel (separate agency-agents workers, separate review rounds, separate PRs).
+**CLI-10 lands immediately after CLI-06** — not in the parallel fan-out — because §5.7 promises `agentic raw` is "always available so missing wrapper coverage never blocks a user." Until CLI-10 ships, that floor does not exist; landing it before CLI-07/08/09 makes the promise true throughout the rest of the rollout.
+
+**CLI-09 is split** into CLI-09a (hermes + identity — outbound action invocation and authorization; mandatory security review) and CLI-09b (evidence + fixtures + manifest + validate — lower risk). The two halves are independent after CLI-10 and may run in parallel.
+
+CLI-07 / CLI-08 / CLI-09a / CLI-09b are independent after CLI-10 and may run in parallel (separate agency-agents workers, separate review rounds, separate PRs).
 
 ---
 
