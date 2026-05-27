@@ -109,3 +109,40 @@ def test_artifact_and_task_are_frozen() -> None:
         a.path = "y.md"  # type: ignore[misc]
     with pytest.raises(Exception):
         t.id = "T2"  # type: ignore[misc]
+
+
+def test_load_real_implementation_manifest(tmp_path: Path) -> None:
+    """Regression: real implementation manifests have dict-shape approved_inputs
+    and tasks under the `implementation_tasks` key (CLI-04 round-1 review)."""
+    repo = _seed_repo(tmp_path, "agentic-cli-v0.1-impl", "impl_real_v01.yaml", impl=True)
+    m = load_manifest(repo=repo, run_id="agentic-cli-v0.1-impl")
+    assert m.mode == "implementation"
+    assert len(m.artifacts) == 12
+    assert all(a.status == "approved" for a in m.artifacts)
+    assert len(m.tasks) == 12
+    assert m.tasks[0].id.startswith("impl-")
+
+
+def test_approved_inputs_as_dicts(tmp_path: Path) -> None:
+    """Regression: approved_inputs entries can be dicts carrying artifact_status."""
+    repo = _seed_repo(
+        tmp_path, "demo-impl-dict", "impl_approved_inputs_dict.yaml", impl=True
+    )
+    m = load_manifest(repo=repo, run_id="demo-impl-dict")
+    assert len(m.artifacts) == 2
+    assert m.artifacts[0] == Artifact(
+        path="docs/architecture/a.md", status="approved"
+    )
+    assert m.artifacts[1].path == "docs/architecture/b.md"
+    assert m.artifacts[1].status == "approved"
+
+
+def test_implementation_tasks_field(tmp_path: Path) -> None:
+    """Regression: tasks live under `implementation_tasks` with task_id/state keys."""
+    repo = _seed_repo(
+        tmp_path, "demo-impl-tasks", "impl_implementation_tasks.yaml", impl=True
+    )
+    m = load_manifest(repo=repo, run_id="demo-impl-tasks")
+    assert len(m.tasks) == 2
+    assert m.tasks[0] == Task(id="impl-001", status="planned")
+    assert m.tasks[1] == Task(id="impl-002", status="dispatched")

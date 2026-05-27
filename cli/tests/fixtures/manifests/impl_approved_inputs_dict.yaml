@@ -1,0 +1,19 @@
+run:
+  id: demo-impl-dict
+  mode: implementation
+  profile: default-delivery
+  state: implementation_planned
+  updated_at: "2026-05-27T11:00:00Z"
+approved_inputs:
+  - path: docs/architecture/a.md
+    role: architecture
+    approval_source: parent_planning_run
+    approval_state: approved_for_implementation
+    artifact_status: approved
+    approval_reason: Inherited.
+  - path: docs/architecture/b.md
+    role: architecture
+    approval_source: parent_planning_run
+    approval_state: approved_for_implementation
+    artifact_status: approved
+    approval_reason: Inherited.

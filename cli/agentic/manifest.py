@@ -91,10 +91,20 @@ def load_manifest(*, repo: Path, run_id: str) -> Manifest:
 
     artifacts_raw = cast(list[dict[str, Any]], data.get("artifacts") or [])
     if mode == "implementation" and not artifacts_raw:
-        artifacts_raw = [
-            {"path": p, "status": "approved"}
-            for p in cast(list[str], data.get("approved_inputs") or [])
-        ]
+        # Real implementation manifests store approved_inputs as dicts carrying
+        # artifact_status; legacy fixtures used plain path strings. Accept both.
+        synthesised: list[dict[str, Any]] = []
+        for entry in cast(list[Any], data.get("approved_inputs") or []):
+            if isinstance(entry, str):
+                synthesised.append({"path": entry, "status": "approved"})
+            elif isinstance(entry, dict):
+                synthesised.append(
+                    {
+                        "path": entry["path"],
+                        "status": entry.get("artifact_status", "approved"),
+                    }
+                )
+        artifacts_raw = synthesised
     artifacts = tuple(
         Artifact(
             path=str(a["path"]),
@@ -103,13 +113,19 @@ def load_manifest(*, repo: Path, run_id: str) -> Manifest:
         )
         for a in artifacts_raw
     )
+    # Real implementation manifests use `implementation_tasks` with task_id/state;
+    # planning fixtures use `tasks` with id/status. Prefer the real shape.
+    tasks_raw = cast(
+        list[dict[str, Any]],
+        data.get("implementation_tasks") or data.get("tasks") or [],
+    )
     tasks = tuple(
         Task(
-            id=str(t["id"]),
-            status=str(t["status"]),
+            id=str(t.get("task_id", t.get("id"))),
+            status=str(t.get("state", t.get("status"))),
             updated_at=t.get("updated_at"),
         )
-        for t in cast(list[dict[str, Any]], data.get("tasks") or [])
+        for t in tasks_raw
     )
     return Manifest(
         id=str(run.get("id", run_id)),

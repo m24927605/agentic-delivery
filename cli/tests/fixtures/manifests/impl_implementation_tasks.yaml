@@ -1,0 +1,20 @@
+run:
+  id: demo-impl-tasks
+  mode: implementation
+  profile: default-delivery
+  state: implementation_task_graph_ready
+  updated_at: "2026-05-27T11:00:00Z"
+approved_inputs:
+  - path: docs/architecture/a.md
+    artifact_status: approved
+implementation_tasks:
+  - task_id: impl-001
+    title: Implement docs/architecture/a.md
+    owner: implementation_agent
+    state: planned
+    source_artifact: docs/architecture/a.md
+  - task_id: impl-002
+    title: Implement docs/architecture/b.md
+    owner: implementation_agent
+    state: dispatched
+    source_artifact: docs/architecture/b.md

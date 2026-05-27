@@ -1,0 +1,529 @@
+---
+schema_version: 1
+run:
+  id: agentic-cli-v0.1-impl
+  profile: default-delivery
+  profile_path: agentic/profiles/default-delivery.yaml
+  mode: implementation
+  state: implementation_task_graph_ready
+  parent_planning_run: agentic-cli-v0.1-planning
+  created_at: '2026-05-27T13:31:45Z'
+  updated_at: '2026-05-27T13:31:46Z'
+  state_history:
+  - state: implementation_planned
+    at: '2026-05-27T13:31:45Z'
+  - state: implementation_task_graph_ready
+    at: '2026-05-27T13:31:46Z'
+source_of_truth:
+- agentic/pipeline.yaml
+- agentic/hermes-actions.yaml
+- docs/architecture/agentic-delivery-system.md
+- docs/architecture/agentic-delivery-automation-roadmap.md
+- docs/architecture/hermes-orchestration-adapter.md
+- docs/standards/agentic-delivery-quality-standard.md
+- docs/adr/003-agentic-delivery-boundary.md
+- docs/adr/004-hermes-orchestration-adapter.md
+- docs/adr/005-artifact-approval-gate.md
+approved_inputs:
+- path: docs/architecture/agentic-delivery-system.md
+  role: architecture
+  approval_source: parent_planning_run
+  approval_state: approved_for_implementation
+  artifact_status: approved
+  approval_reason: Inherited canonical artifact from prior agentic-delivery planning
+    runs; unchanged in this CLI v0.1 planning run.
+- path: docs/architecture/agentic-delivery-automation-roadmap.md
+  role: architecture
+  approval_source: parent_planning_run
+  approval_state: approved_for_implementation
+  artifact_status: approved
+  approval_reason: Inherited canonical artifact from prior agentic-delivery planning
+    runs; unchanged in this CLI v0.1 planning run.
+- path: docs/architecture/hermes-orchestration-adapter.md
+  role: architecture
+  approval_source: parent_planning_run
+  approval_state: approved_for_implementation
+  artifact_status: approved
+  approval_reason: Inherited canonical artifact from prior agentic-delivery planning
+    runs; unchanged in this CLI v0.1 planning run.
+- path: docs/standards/agentic-delivery-quality-standard.md
+  role: other
+  approval_source: parent_planning_run
+  approval_state: approved_for_implementation
+  artifact_status: approved
+  approval_reason: Inherited canonical artifact from prior agentic-delivery planning
+    runs; unchanged in this CLI v0.1 planning run.
+- path: docs/adr/004-hermes-orchestration-adapter.md
+  role: adr
+  approval_source: parent_planning_run
+  approval_state: approved_for_implementation
+  artifact_status: approved
+  approval_reason: Inherited canonical artifact from prior agentic-delivery planning
+    runs; unchanged in this CLI v0.1 planning run.
+- path: docs/adr/005-artifact-approval-gate.md
+  role: adr
+  approval_source: parent_planning_run
+  approval_state: approved_for_implementation
+  artifact_status: approved
+  approval_reason: Inherited canonical artifact from prior agentic-delivery planning
+    runs; unchanged in this CLI v0.1 planning run.
+- path: docs/backlog/agentic-delivery-automation-slices.md
+  role: roadmap
+  approval_source: parent_planning_run
+  approval_state: approved_for_implementation
+  artifact_status: approved
+  approval_reason: Inherited canonical artifact from prior agentic-delivery planning
+    runs; unchanged in this CLI v0.1 planning run.
+- path: docs/backlog/hermes-adapter-implementation-slices.md
+  role: roadmap
+  approval_source: parent_planning_run
+  approval_state: approved_for_implementation
+  artifact_status: approved
+  approval_reason: Inherited canonical artifact from prior agentic-delivery planning
+    runs; unchanged in this CLI v0.1 planning run.
+- path: docs/connectors/interface-spec.schema.yaml
+  role: schema
+  approval_source: parent_planning_run
+  approval_state: approved_for_implementation
+  artifact_status: approved
+  approval_reason: Inherited canonical artifact from prior agentic-delivery planning
+    runs; unchanged in this CLI v0.1 planning run.
+- path: agentic/README.md
+  role: other
+  approval_source: parent_planning_run
+  approval_state: approved_for_implementation
+  artifact_status: approved
+  approval_reason: Inherited canonical artifact from prior agentic-delivery planning
+    runs; unchanged in this CLI v0.1 planning run.
+- path: docs/superpowers/specs/2026-05-27-agentic-cli-design.md
+  role: other
+  approval_source: parent_planning_run
+  approval_state: approved_for_implementation
+  artifact_status: approved
+  approval_reason: Approved after 3-round AIT + Claude Code CLI adversarial review
+    (5 agents x 2 artifacts in r1+r2, 3 agents in r3); all 13 r1 blockers + 7 r2 blockers
+    resolved; residual non-blocker findings deferred to slice-time implementer.
+- path: docs/backlog/agentic-cli-slices.md
+  role: roadmap
+  approval_source: parent_planning_run
+  approval_state: approved_for_implementation
+  artifact_status: approved
+  approval_reason: Approved after 3-round AIT + Claude Code CLI adversarial review;
+    backlog reflects CLI-09 split, CLI-10 reorder, workflow exception enumeration.
+implementation_tasks:
+- task_id: impl-001
+  title: Implement approved artifact docs/architecture/agentic-delivery-system.md
+  owner: implementation_agent
+  state: planned
+  source_artifact: docs/architecture/agentic-delivery-system.md
+  scope: Apply the approved requirements in docs/architecture/agentic-delivery-system.md
+    without expanding the delivery boundary.
+  files_touched:
+  - docs/architecture/agentic-delivery-system.md
+  write_scope: &1
+  - docs/architecture/agentic-delivery-system.md
+  acceptance_criteria:
+  - Implementation traces back to approved artifact docs/architecture/agentic-delivery-system.md.
+  - No private profile identifiers, customer details, secrets, or review trace metadata
+    are introduced.
+  - Validation command passes before PR package preparation.
+  validation_command: scripts/validate-agentic-system.sh && scripts/validate-implementation-run.sh
+    agentic-cli-v0.1-impl
+  rollback_notes: Revert files touched by impl-001 and rerun implementation validation.
+  ait_review_path: agentic/reviews/auto-doc-to-implementation/h18/agentic-cli-v0.1-impl/impl-001/round-<n>.json
+  dependencies: []
+  risks: []
+  public_safety:
+    repo_local_paths_only: true
+    private_profile_identifiers_allowed: false
+- task_id: impl-002
+  title: Implement approved artifact docs/architecture/agentic-delivery-automation-roadmap.md
+  owner: implementation_agent
+  state: planned
+  source_artifact: docs/architecture/agentic-delivery-automation-roadmap.md
+  scope: Apply the approved requirements in docs/architecture/agentic-delivery-automation-roadmap.md
+    without expanding the delivery boundary.
+  files_touched:
+  - docs/architecture/agentic-delivery-automation-roadmap.md
+  write_scope: &2
+  - docs/architecture/agentic-delivery-automation-roadmap.md
+  acceptance_criteria:
+  - Implementation traces back to approved artifact docs/architecture/agentic-delivery-automation-roadmap.md.
+  - No private profile identifiers, customer details, secrets, or review trace metadata
+    are introduced.
+  - Validation command passes before PR package preparation.
+  validation_command: scripts/validate-agentic-system.sh && scripts/validate-implementation-run.sh
+    agentic-cli-v0.1-impl
+  rollback_notes: Revert files touched by impl-002 and rerun implementation validation.
+  ait_review_path: agentic/reviews/auto-doc-to-implementation/h18/agentic-cli-v0.1-impl/impl-002/round-<n>.json
+  dependencies:
+  - impl-001
+  risks: []
+  public_safety:
+    repo_local_paths_only: true
+    private_profile_identifiers_allowed: false
+- task_id: impl-003
+  title: Implement approved artifact docs/architecture/hermes-orchestration-adapter.md
+  owner: implementation_agent
+  state: planned
+  source_artifact: docs/architecture/hermes-orchestration-adapter.md
+  scope: Apply the approved requirements in docs/architecture/hermes-orchestration-adapter.md
+    without expanding the delivery boundary.
+  files_touched:
+  - docs/architecture/hermes-orchestration-adapter.md
+  write_scope: &3
+  - docs/architecture/hermes-orchestration-adapter.md
+  acceptance_criteria:
+  - Implementation traces back to approved artifact docs/architecture/hermes-orchestration-adapter.md.
+  - No private profile identifiers, customer details, secrets, or review trace metadata
+    are introduced.
+  - Validation command passes before PR package preparation.
+  validation_command: scripts/validate-agentic-system.sh && scripts/validate-implementation-run.sh
+    agentic-cli-v0.1-impl
+  rollback_notes: Revert files touched by impl-003 and rerun implementation validation.
+  ait_review_path: agentic/reviews/auto-doc-to-implementation/h18/agentic-cli-v0.1-impl/impl-003/round-<n>.json
+  dependencies:
+  - impl-002
+  risks: []
+  public_safety:
+    repo_local_paths_only: true
+    private_profile_identifiers_allowed: false
+- task_id: impl-004
+  title: Implement approved artifact docs/standards/agentic-delivery-quality-standard.md
+  owner: implementation_agent
+  state: planned
+  source_artifact: docs/standards/agentic-delivery-quality-standard.md
+  scope: Apply the approved requirements in docs/standards/agentic-delivery-quality-standard.md
+    without expanding the delivery boundary.
+  files_touched:
+  - docs/standards/agentic-delivery-quality-standard.md
+  write_scope: &4
+  - docs/standards/agentic-delivery-quality-standard.md
+  acceptance_criteria:
+  - Implementation traces back to approved artifact docs/standards/agentic-delivery-quality-standard.md.
+  - No private profile identifiers, customer details, secrets, or review trace metadata
+    are introduced.
+  - Validation command passes before PR package preparation.
+  validation_command: scripts/validate-agentic-system.sh && scripts/validate-implementation-run.sh
+    agentic-cli-v0.1-impl
+  rollback_notes: Revert files touched by impl-004 and rerun implementation validation.
+  ait_review_path: agentic/reviews/auto-doc-to-implementation/h18/agentic-cli-v0.1-impl/impl-004/round-<n>.json
+  dependencies:
+  - impl-003
+  risks: []
+  public_safety:
+    repo_local_paths_only: true
+    private_profile_identifiers_allowed: false
+- task_id: impl-005
+  title: Implement approved artifact docs/adr/004-hermes-orchestration-adapter.md
+  owner: implementation_agent
+  state: planned
+  source_artifact: docs/adr/004-hermes-orchestration-adapter.md
+  scope: Apply the approved requirements in docs/adr/004-hermes-orchestration-adapter.md
+    without expanding the delivery boundary.
+  files_touched:
+  - docs/adr/004-hermes-orchestration-adapter.md
+  write_scope: &5
+  - docs/adr/004-hermes-orchestration-adapter.md
+  acceptance_criteria:
+  - Implementation traces back to approved artifact docs/adr/004-hermes-orchestration-adapter.md.
+  - No private profile identifiers, customer details, secrets, or review trace metadata
+    are introduced.
+  - Validation command passes before PR package preparation.
+  validation_command: scripts/validate-agentic-system.sh && scripts/validate-implementation-run.sh
+    agentic-cli-v0.1-impl
+  rollback_notes: Revert files touched by impl-005 and rerun implementation validation.
+  ait_review_path: agentic/reviews/auto-doc-to-implementation/h18/agentic-cli-v0.1-impl/impl-005/round-<n>.json
+  dependencies:
+  - impl-004
+  risks: []
+  public_safety:
+    repo_local_paths_only: true
+    private_profile_identifiers_allowed: false
+- task_id: impl-006
+  title: Implement approved artifact docs/adr/005-artifact-approval-gate.md
+  owner: implementation_agent
+  state: planned
+  source_artifact: docs/adr/005-artifact-approval-gate.md
+  scope: Apply the approved requirements in docs/adr/005-artifact-approval-gate.md
+    without expanding the delivery boundary.
+  files_touched:
+  - docs/adr/005-artifact-approval-gate.md
+  write_scope: &6
+  - docs/adr/005-artifact-approval-gate.md
+  acceptance_criteria:
+  - Implementation traces back to approved artifact docs/adr/005-artifact-approval-gate.md.
+  - No private profile identifiers, customer details, secrets, or review trace metadata
+    are introduced.
+  - Validation command passes before PR package preparation.
+  validation_command: scripts/validate-agentic-system.sh && scripts/validate-implementation-run.sh
+    agentic-cli-v0.1-impl
+  rollback_notes: Revert files touched by impl-006 and rerun implementation validation.
+  ait_review_path: agentic/reviews/auto-doc-to-implementation/h18/agentic-cli-v0.1-impl/impl-006/round-<n>.json
+  dependencies:
+  - impl-005
+  risks: []
+  public_safety:
+    repo_local_paths_only: true
+    private_profile_identifiers_allowed: false
+- task_id: impl-007
+  title: Implement approved artifact docs/backlog/agentic-delivery-automation-slices.md
+  owner: implementation_agent
+  state: planned
+  source_artifact: docs/backlog/agentic-delivery-automation-slices.md
+  scope: Apply the approved requirements in docs/backlog/agentic-delivery-automation-slices.md
+    without expanding the delivery boundary.
+  files_touched:
+  - docs/backlog/agentic-delivery-automation-slices.md
+  write_scope: &7
+  - docs/backlog/agentic-delivery-automation-slices.md
+  acceptance_criteria:
+  - Implementation traces back to approved artifact docs/backlog/agentic-delivery-automation-slices.md.
+  - No private profile identifiers, customer details, secrets, or review trace metadata
+    are introduced.
+  - Validation command passes before PR package preparation.
+  validation_command: scripts/validate-agentic-system.sh && scripts/validate-implementation-run.sh
+    agentic-cli-v0.1-impl
+  rollback_notes: Revert files touched by impl-007 and rerun implementation validation.
+  ait_review_path: agentic/reviews/auto-doc-to-implementation/h18/agentic-cli-v0.1-impl/impl-007/round-<n>.json
+  dependencies:
+  - impl-006
+  risks: []
+  public_safety:
+    repo_local_paths_only: true
+    private_profile_identifiers_allowed: false
+- task_id: impl-008
+  title: Implement approved artifact docs/backlog/hermes-adapter-implementation-slices.md
+  owner: implementation_agent
+  state: planned
+  source_artifact: docs/backlog/hermes-adapter-implementation-slices.md
+  scope: Apply the approved requirements in docs/backlog/hermes-adapter-implementation-slices.md
+    without expanding the delivery boundary.
+  files_touched:
+  - docs/backlog/hermes-adapter-implementation-slices.md
+  write_scope: &8
+  - docs/backlog/hermes-adapter-implementation-slices.md
+  acceptance_criteria:
+  - Implementation traces back to approved artifact docs/backlog/hermes-adapter-implementation-slices.md.
+  - No private profile identifiers, customer details, secrets, or review trace metadata
+    are introduced.
+  - Validation command passes before PR package preparation.
+  validation_command: scripts/validate-agentic-system.sh && scripts/validate-implementation-run.sh
+    agentic-cli-v0.1-impl
+  rollback_notes: Revert files touched by impl-008 and rerun implementation validation.
+  ait_review_path: agentic/reviews/auto-doc-to-implementation/h18/agentic-cli-v0.1-impl/impl-008/round-<n>.json
+  dependencies:
+  - impl-007
+  risks: []
+  public_safety:
+    repo_local_paths_only: true
+    private_profile_identifiers_allowed: false
+- task_id: impl-009
+  title: Implement approved artifact docs/connectors/interface-spec.schema.yaml
+  owner: implementation_agent
+  state: planned
+  source_artifact: docs/connectors/interface-spec.schema.yaml
+  scope: Apply the approved requirements in docs/connectors/interface-spec.schema.yaml
+    without expanding the delivery boundary.
+  files_touched:
+  - docs/connectors/interface-spec.schema.yaml
+  write_scope: &9
+  - docs/connectors/interface-spec.schema.yaml
+  acceptance_criteria:
+  - Implementation traces back to approved artifact docs/connectors/interface-spec.schema.yaml.
+  - No private profile identifiers, customer details, secrets, or review trace metadata
+    are introduced.
+  - Validation command passes before PR package preparation.
+  validation_command: scripts/validate-agentic-system.sh && scripts/validate-implementation-run.sh
+    agentic-cli-v0.1-impl
+  rollback_notes: Revert files touched by impl-009 and rerun implementation validation.
+  ait_review_path: agentic/reviews/auto-doc-to-implementation/h18/agentic-cli-v0.1-impl/impl-009/round-<n>.json
+  dependencies:
+  - impl-008
+  risks: []
+  public_safety:
+    repo_local_paths_only: true
+    private_profile_identifiers_allowed: false
+- task_id: impl-010
+  title: Implement approved artifact agentic/README.md
+  owner: implementation_agent
+  state: planned
+  source_artifact: agentic/README.md
+  scope: Apply the approved requirements in agentic/README.md without expanding the
+    delivery boundary.
+  files_touched:
+  - agentic/README.md
+  write_scope: &10
+  - agentic/README.md
+  acceptance_criteria:
+  - Implementation traces back to approved artifact agentic/README.md.
+  - No private profile identifiers, customer details, secrets, or review trace metadata
+    are introduced.
+  - Validation command passes before PR package preparation.
+  validation_command: scripts/validate-agentic-system.sh && scripts/validate-implementation-run.sh
+    agentic-cli-v0.1-impl
+  rollback_notes: Revert files touched by impl-010 and rerun implementation validation.
+  ait_review_path: agentic/reviews/auto-doc-to-implementation/h18/agentic-cli-v0.1-impl/impl-010/round-<n>.json
+  dependencies:
+  - impl-009
+  risks: []
+  public_safety:
+    repo_local_paths_only: true
+    private_profile_identifiers_allowed: false
+- task_id: impl-011
+  title: Implement approved artifact docs/superpowers/specs/2026-05-27-agentic-cli-design.md
+  owner: implementation_agent
+  state: planned
+  source_artifact: docs/superpowers/specs/2026-05-27-agentic-cli-design.md
+  scope: Apply the approved requirements in docs/superpowers/specs/2026-05-27-agentic-cli-design.md
+    without expanding the delivery boundary.
+  files_touched:
+  - docs/superpowers/specs/2026-05-27-agentic-cli-design.md
+  write_scope: &11
+  - docs/superpowers/specs/2026-05-27-agentic-cli-design.md
+  acceptance_criteria:
+  - Implementation traces back to approved artifact docs/superpowers/specs/2026-05-27-agentic-cli-design.md.
+  - No private profile identifiers, customer details, secrets, or review trace metadata
+    are introduced.
+  - Validation command passes before PR package preparation.
+  validation_command: scripts/validate-agentic-system.sh && scripts/validate-implementation-run.sh
+    agentic-cli-v0.1-impl
+  rollback_notes: Revert files touched by impl-011 and rerun implementation validation.
+  ait_review_path: agentic/reviews/auto-doc-to-implementation/h18/agentic-cli-v0.1-impl/impl-011/round-<n>.json
+  dependencies:
+  - impl-010
+  risks: []
+  public_safety:
+    repo_local_paths_only: true
+    private_profile_identifiers_allowed: false
+- task_id: impl-012
+  title: Implement approved artifact docs/backlog/agentic-cli-slices.md
+  owner: implementation_agent
+  state: planned
+  source_artifact: docs/backlog/agentic-cli-slices.md
+  scope: Apply the approved requirements in docs/backlog/agentic-cli-slices.md without
+    expanding the delivery boundary.
+  files_touched:
+  - docs/backlog/agentic-cli-slices.md
+  write_scope: &12
+  - docs/backlog/agentic-cli-slices.md
+  acceptance_criteria:
+  - Implementation traces back to approved artifact docs/backlog/agentic-cli-slices.md.
+  - No private profile identifiers, customer details, secrets, or review trace metadata
+    are introduced.
+  - Validation command passes before PR package preparation.
+  validation_command: scripts/validate-agentic-system.sh && scripts/validate-implementation-run.sh
+    agentic-cli-v0.1-impl
+  rollback_notes: Revert files touched by impl-012 and rerun implementation validation.
+  ait_review_path: agentic/reviews/auto-doc-to-implementation/h18/agentic-cli-v0.1-impl/impl-012/round-<n>.json
+  dependencies:
+  - impl-011
+  risks: []
+  public_safety:
+    repo_local_paths_only: true
+    private_profile_identifiers_allowed: false
+implementation_task_graph:
+  generated_at: '2026-05-27T13:31:46Z'
+  generated_by: scripts/generate-implementation-task-graph.sh
+  approved_input_count: 12
+  task_count: 12
+  tasks:
+  - impl-001
+  - impl-002
+  - impl-003
+  - impl-004
+  - impl-005
+  - impl-006
+  - impl-007
+  - impl-008
+  - impl-009
+  - impl-010
+  - impl-011
+  - impl-012
+branch_plan:
+  base_branch: 
+  working_branch: agentic/agentic-cli-v0.1-impl
+  commit_strategy: Keep implementation commits scoped to approved inputs.
+  pr_target: 
+code_ownership:
+- owner: implementation_agent
+  task_id: impl-001
+  paths: *1
+  source_artifacts:
+  - docs/architecture/agentic-delivery-system.md
+- owner: implementation_agent
+  task_id: impl-002
+  paths: *2
+  source_artifacts:
+  - docs/architecture/agentic-delivery-automation-roadmap.md
+- owner: implementation_agent
+  task_id: impl-003
+  paths: *3
+  source_artifacts:
+  - docs/architecture/hermes-orchestration-adapter.md
+- owner: implementation_agent
+  task_id: impl-004
+  paths: *4
+  source_artifacts:
+  - docs/standards/agentic-delivery-quality-standard.md
+- owner: implementation_agent
+  task_id: impl-005
+  paths: *5
+  source_artifacts:
+  - docs/adr/004-hermes-orchestration-adapter.md
+- owner: implementation_agent
+  task_id: impl-006
+  paths: *6
+  source_artifacts:
+  - docs/adr/005-artifact-approval-gate.md
+- owner: implementation_agent
+  task_id: impl-007
+  paths: *7
+  source_artifacts:
+  - docs/backlog/agentic-delivery-automation-slices.md
+- owner: implementation_agent
+  task_id: impl-008
+  paths: *8
+  source_artifacts:
+  - docs/backlog/hermes-adapter-implementation-slices.md
+- owner: implementation_agent
+  task_id: impl-009
+  paths: *9
+  source_artifacts:
+  - docs/connectors/interface-spec.schema.yaml
+- owner: implementation_agent
+  task_id: impl-010
+  paths: *10
+  source_artifacts:
+  - agentic/README.md
+- owner: implementation_agent
+  task_id: impl-011
+  paths: *11
+  source_artifacts:
+  - docs/superpowers/specs/2026-05-27-agentic-cli-design.md
+- owner: implementation_agent
+  task_id: impl-012
+  paths: *12
+  source_artifacts:
+  - docs/backlog/agentic-cli-slices.md
+test_plan:
+- test_id: agentic-system-validation
+  command: scripts/validate-agentic-system.sh
+  coverage_goal: Validate delivery system scaffold, profile files, YAML, and shell
+    syntax.
+  required: true
+pr_checklist:
+- Approved inputs are referenced in the PR description.
+- Implementation tasks have acceptance criteria and validation evidence.
+- Tests and rollback notes are included.
+- No profile source-of-truth boundary is changed without human approval.
+review_attempts: []
+worker_dispatches: []
+worker_results: []
+write_scope_leases: []
+validation: []
+release_notes:
+  path: agentic/runs/agentic-cli-v0.1-impl/release-notes.md
+  status: draft_pending
+  summary: 
+  operator_notes: []
