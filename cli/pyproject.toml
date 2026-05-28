@@ -32,6 +32,7 @@ agentic = "agentic.app:main"
 dev = [
   "pytest >= 8",
   "pytest-snapshot",
+  "pytest-cov",
   "ruff",
   "mypy",
   "jsonschema >= 4",
@@ -44,6 +45,18 @@ pattern = "^__version__ = \"(?P<version>[^\"]+)\""
 
 [tool.hatch.build.targets.wheel]
 packages = ["agentic"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+branch = true
+source = ["agentic"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
 
 [tool.ruff]
 target-version = "py310"
