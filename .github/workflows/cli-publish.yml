@@ -1,3 +1,28 @@
+# cli-publish — CLI release workflow
+#
+# SUPPLY-CHAIN HARDENING (CLI-15):
+# Every third-party and first-party action is pinned to a full 40-char commit SHA
+# instead of a mutable tag/branch. This protects against tag-hijack / branch-push
+# attacks where an attacker rewrites a published ref to point at malicious code.
+#
+# How to update a pinned SHA:
+#   1. Visit the action's GitHub Releases page and pick the new release tag.
+#   2. Resolve that tag to its commit SHA (e.g. `gh api repos/<owner>/<repo>/git/refs/tags/<tag>`
+#      or copy the SHA shown on the release page).
+#   3. Read the release notes; confirm there are no unexpected changes.
+#   4. Replace BOTH the `uses: owner/repo@<sha>` line AND the trailing
+#      `# vX.Y.Z` comment so future readers know what version that SHA maps to.
+#   5. Run `python -c "import yaml; yaml.safe_load(open('.github/workflows/cli-publish.yml'))"`
+#      to confirm the file still parses.
+#
+# Pinned versions (verify against release notes before bumping):
+#   actions/checkout              v4.2.2  -> 11bd71901bbe5b1630ceea73d27597364c9af683
+#   actions/setup-python          v5.3.0  -> f677139bbe7f9c59b41e40162b753c062f5d49a3
+#   actions/upload-artifact       v4.4.3  -> b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+#   actions/download-artifact     v4.1.8  -> fa0a91b85d4f404e444e00e005971372dc801d16
+#   pypa/gh-action-pypi-publish   v1.12.4 -> 76f52bc884231f62b9a034ebfe128415bbaabdfc
+#   softprops/action-gh-release   v2.0.5  -> c062e08bd532815e2082a85e87e3ef29c3e6d191
+
 name: cli-publish
 
 on:
@@ -5,16 +30,19 @@ on:
     tags:
       - "cli-v*"
 
+# Default to least-privilege at the workflow level. id-token: write is granted
+# ONLY to the publish jobs (testpypi, pypi) that need OIDC trusted publishing.
 permissions:
   contents: read
-  id-token: write   # required for OIDC trusted publishing
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.3.0
         with:
           python-version: "3.12"
       - name: Install build tooling
@@ -24,53 +52,75 @@ jobs:
           cd cli
           python -m build
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: dist
           path: cli/dist/*
 
   testpypi:
-    if: contains(github.ref, '-rc')
+    # Release candidates only: cli-v*-rc1 .. cli-v*-rc5
+    if: >-
+      endsWith(github.ref, '-rc1') ||
+      endsWith(github.ref, '-rc2') ||
+      endsWith(github.ref, '-rc3') ||
+      endsWith(github.ref, '-rc4') ||
+      endsWith(github.ref, '-rc5')
     needs: build
     runs-on: ubuntu-latest
     environment: testpypi
+    permissions:
+      contents: read
+      id-token: write   # required for OIDC trusted publishing to TestPyPI
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: dist
           path: dist
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.12.4
         with:
           repository-url: https://test.pypi.org/legacy/
           attestations: true
 
   pypi:
-    if: ${{ !contains(github.ref, '-rc') }}
+    # Stable tags only: refuse any pre-release suffix (-rc, -alpha, -beta, -dev).
+    if: >-
+      !(contains(github.ref, '-rc') ||
+        contains(github.ref, '-alpha') ||
+        contains(github.ref, '-beta') ||
+        contains(github.ref, '-dev'))
     needs: build
     runs-on: ubuntu-latest
     environment: pypi
+    permissions:
+      contents: read
+      id-token: write   # required for OIDC trusted publishing to PyPI
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: dist
           path: dist
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.12.4
         with:
           attestations: true
 
   github-release:
     needs: pypi
-    if: ${{ !contains(github.ref, '-rc') }}
+    # Mirror the pypi job predicate: only stable tags get a GitHub Release.
+    if: >-
+      !(contains(github.ref, '-rc') ||
+        contains(github.ref, '-alpha') ||
+        contains(github.ref, '-beta') ||
+        contains(github.ref, '-dev'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: dist
           path: dist
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.5
         with:
           files: dist/*
           name: ${{ github.ref_name }}
