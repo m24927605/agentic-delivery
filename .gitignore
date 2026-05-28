@@ -13,3 +13,4 @@ docs/backlog/*roadmap.md
 agentic/reviews/
 agentic/runs/*
 !agentic/runs/.gitkeep
+__pycache__/

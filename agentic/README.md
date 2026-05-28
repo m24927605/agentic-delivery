@@ -40,6 +40,28 @@ Related architecture:
 - `docs/backlog/agentic-delivery-automation-slices.md`
 - `docs/backlog/hermes-adapter-implementation-slices.md`
 
+## Quick start (CLI)
+
+The `agentic` CLI is a state-aware wrapper over the `scripts/*.sh` pipeline.
+
+Install:
+
+```bash
+pipx install agentic-delivery
+```
+
+In any clone of this repo:
+
+```bash
+agentic init "Your delivery goal"
+agentic next                                                # see what to do next
+agentic status                                              # inspect current run
+agentic plan artifact docs/adr/008-xyz.md approve --reason "..."
+```
+
+The CLI shells out to the same scripts documented below; both forms remain valid.
+See `cli/README.md` for the full command reference.
+
 ## Validate
 
 Validate the scaffold and default profile:

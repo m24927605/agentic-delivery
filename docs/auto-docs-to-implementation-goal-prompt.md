@@ -363,3 +363,5 @@ When finished, report:
 - Commit SHA
 - Whether `ait merge --to main` succeeded
 - Remaining gaps toward full docs-to-implementation automation
+
+> **CLI equivalence note:** every `scripts/<x>.sh` reference in this prompt may also be invoked via the `agentic` CLI (see `agentic/README.md` "Quick start (CLI)"). The shell form remains canonical; the CLI is a thin wrapper.
