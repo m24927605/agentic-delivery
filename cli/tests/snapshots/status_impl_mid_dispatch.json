@@ -1,0 +1,28 @@
+{
+  "_schema": "agentic.cli/v1",
+  "artifacts": {
+    "approved": 1,
+    "deferred": 0,
+    "pending": 0,
+    "rejected": 0,
+    "total": 1
+  },
+  "run": {
+    "id": "demo-impl",
+    "mode": "implementation",
+    "profile": "default-delivery",
+    "source": "--run-id",
+    "state": "implementation_planned",
+    "updated_at": "2026-05-27T11:00:00Z"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "status": "dispatched"
+    },
+    {
+      "id": "T2",
+      "status": "pending"
+    }
+  ]
+}

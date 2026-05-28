@@ -1,0 +1,15 @@
+{
+  "_schema": "agentic.cli/v1",
+  "next": {
+    "reason": "Pending task ready for dispatch: T-1",
+    "rule_id": "impl-dispatch",
+    "suggest": "agentic impl dispatch T-1"
+  },
+  "run": {
+    "id": "x",
+    "mode": "implementation",
+    "profile": "default-delivery",
+    "source": "--run-id",
+    "state": "tasks_planned"
+  }
+}

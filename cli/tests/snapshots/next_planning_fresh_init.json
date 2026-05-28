@@ -1,0 +1,15 @@
+{
+  "_schema": "agentic.cli/v1",
+  "next": {
+    "reason": "2 artifact(s) still 'planned':\n  - a.md\n  - b.md\n",
+    "rule_id": "planning-need-drafts",
+    "suggest": "agentic plan generate"
+  },
+  "run": {
+    "id": "x",
+    "mode": "planning",
+    "profile": "default-delivery",
+    "source": "--run-id",
+    "state": "artifact_plan_created"
+  }
+}

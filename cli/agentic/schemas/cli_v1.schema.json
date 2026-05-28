@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-delivery.dev/schemas/cli_v1.schema.json",
+  "title": "agentic.cli/v1 envelope",
+  "description": "JSON envelope emitted by `agentic <cmd> --json`. Locked per spec §9.5.1: additions are allowed in v1; renames/deletions require a major version bump.",
+  "type": "object",
+  "required": ["_schema"],
+  "properties": {
+    "_schema": {
+      "type": "string",
+      "const": "agentic.cli/v1"
+    },
+    "run": { "$ref": "#/$defs/run" },
+    "artifacts": { "$ref": "#/$defs/artifacts" },
+    "tasks": { "$ref": "#/$defs/tasks" },
+    "next": { "$ref": "#/$defs/next" },
+    "checks": { "$ref": "#/$defs/checks" },
+    "error": { "$ref": "#/$defs/error" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "run": {
+      "type": "object",
+      "required": ["id", "mode", "profile", "state", "source"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "mode": { "enum": ["planning", "implementation"] },
+        "profile": { "type": "string" },
+        "state": { "type": "string" },
+        "updated_at": { "type": ["string", "null"] },
+        "source": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["total", "approved", "pending", "rejected", "deferred"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "approved": { "type": "integer", "minimum": 0 },
+        "pending": { "type": "integer", "minimum": 0 },
+        "rejected": { "type": "integer", "minimum": 0 },
+        "deferred": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "next": {
+      "type": "object",
+      "required": ["rule_id", "suggest", "reason"],
+      "properties": {
+        "rule_id": { "type": "string" },
+        "suggest": { "type": "string" },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "status"],
+        "properties": {
+          "name": { "type": "string" },
+          "status": { "type": "string" },
+          "detail": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": ["category", "message", "hints"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "description": "Error category per spec §9.3 (e.g. no_repo, no_run_context, validation_failed, compat_failed, script_failed)."
+        },
+        "message": { "type": "string" },
+        "hints": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

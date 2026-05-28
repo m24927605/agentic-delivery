@@ -1,0 +1,12 @@
+{
+  "_schema": "agentic.cli/v1",
+  "error": {
+    "category": "no_run_context",
+    "hints": [
+      "agentic run list",
+      "agentic run use <id>",
+      "agentic --run-id <id> next"
+    ],
+    "message": "no run context. Use --run-id, set AIT_RUN_ID, or 'agentic run use <id>'."
+  }
+}

@@ -5,7 +5,6 @@ Per spec §9.5, the `--json` form emits a `_schema: agentic.cli/v1` envelope.
 
 from __future__ import annotations
 
-import json as _json
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -15,6 +14,8 @@ from rich.table import Table
 
 from agentic.context import RepoNotFound, RunNotFound, resolve_repo, resolve_run_id
 from agentic.manifest import Manifest, load_manifest
+from agentic.ui import render
+from agentic.ui.errors import AgenticError
 
 app = typer.Typer(name="status", help="Show current run state, artifacts, and tasks.")
 _console = Console()
@@ -74,6 +75,19 @@ def _render_text(manifest: Manifest, source: str) -> None:
         _console.print(table)
 
 
+_REPO_HINTS = (
+    "agentic --repo <path> status",
+    "export AGENTIC_HOME=<path>",
+    "cd into a directory under an agentic-delivery repo",
+)
+
+_RUN_HINTS = (
+    "agentic run list",
+    "agentic run use <id>",
+    "agentic --run-id <id> status",
+)
+
+
 @app.callback(invoke_without_command=True)
 def status(
     ctx: typer.Context,
@@ -90,15 +104,22 @@ def status(
 
     try:
         repo = resolve_repo(repo_flag=repo_flag).path
+    except RepoNotFound as e:
+        raise AgenticError(
+            category="no_repo",
+            message=str(e),
+            hints=list(_REPO_HINTS),
+        ) from e
+
+    try:
         run = resolve_run_id(repo=repo, flag=run_id_flag)
-    except (RepoNotFound, RunNotFound) as e:
-        typer.echo(f"x  {e}", err=True)
-        raise typer.Exit(code=6) from e
+    except RunNotFound as e:
+        raise AgenticError(
+            category="no_run_context",
+            message=str(e),
+            hints=list(_RUN_HINTS),
+        ) from e
 
     manifest = load_manifest(repo=repo, run_id=run.id)
-
-    if json_mode:
-        typer.echo(_json.dumps(_json_payload(manifest, run.source), indent=2, sort_keys=False))
-        return
-
-    _render_text(manifest, run.source)
+    payload = _json_payload(manifest, run.source)
+    render(payload, json_mode=json_mode, text_fn=lambda: _render_text(manifest, run.source))

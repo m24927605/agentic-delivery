@@ -25,6 +25,7 @@ from agentic.commands import run as run_cmd
 from agentic.commands import status as status_cmd
 from agentic.commands import validate as validate_cmd
 from agentic.context import CompatError, RepoNotFound, RunNotFound, check_compat, resolve_repo
+from agentic.ui.errors import AgenticError, set_json_mode
 
 app = typer.Typer(
     name="agentic",
@@ -84,6 +85,9 @@ def _root(
         "json": json_mode,
         "compat_check": not no_compat_check,
     }
+    # Capture json_mode in the contextvar so any AgenticError raised downstream
+    # renders with the correct stderr format without needing ctx threaded through.
+    set_json_mode(json_mode)
 
 
 @app.command()
@@ -110,14 +114,36 @@ def version(ctx: typer.Context) -> None:
 
 
 def main() -> None:
+    """CLI entry point.
+
+    Normal failures inside command callbacks raise :class:`AgenticError`,
+    which itself extends :class:`typer.Exit` — click's standalone-mode
+    handler catches it and exits with the right code, after the
+    constructor has already written the structured stderr.
+
+    The ``except`` blocks below are defensive fallbacks for the small number
+    of code paths that still surface raw :class:`CompatError` /
+    :class:`RepoNotFound` / :class:`RunNotFound` (e.g. the ``version``
+    command's compat probe) or for a bare ``AgenticError`` that somehow
+    escapes the click boundary — in both cases we render via
+    :func:`render_error` and exit.
+    """
     try:
         app()
+    except AgenticError as e:
+        # Click normally swallows typer.Exit subclasses; this catches the
+        # rare case where the error bubbles past standalone mode (e.g.
+        # raised during typer's own setup, before invocation).
+        sys.exit(e.exit_code)
     except CompatError as e:
         sys.exit(e.exit_code)
     except RepoNotFound as e:
         sys.exit(e.exit_code)
     except RunNotFound as e:
         sys.exit(e.exit_code)
+
+
+__all__ = ["app", "main"]
 
 
 if __name__ == "__main__":

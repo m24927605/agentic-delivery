@@ -1,0 +1,12 @@
+{
+  "_schema": "agentic.cli/v1",
+  "error": {
+    "category": "no_repo",
+    "hints": [
+      "agentic --repo <path> status",
+      "export AGENTIC_HOME=<path>",
+      "cd into a directory under an agentic-delivery repo"
+    ],
+    "message": "<tmp>"
+  }
+}

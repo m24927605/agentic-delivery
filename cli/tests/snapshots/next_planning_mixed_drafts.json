@@ -1,0 +1,15 @@
+{
+  "_schema": "agentic.cli/v1",
+  "next": {
+    "reason": "Draft awaiting review: a.md",
+    "rule_id": "planning-need-review",
+    "suggest": "agentic plan review --artifact a.md"
+  },
+  "run": {
+    "id": "x",
+    "mode": "planning",
+    "profile": "default-delivery",
+    "source": "--run-id",
+    "state": "artifacts_drafting"
+  }
+}

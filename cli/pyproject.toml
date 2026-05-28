@@ -34,6 +34,7 @@ dev = [
   "pytest-snapshot",
   "ruff",
   "mypy",
+  "jsonschema >= 4",
 ]
 
 [tool.hatch.version]
