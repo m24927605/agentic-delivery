@@ -11,6 +11,7 @@ import typer
 
 from agentic import __version__
 from agentic.commands import boss as boss_cmd
+from agentic.commands import doctor as doctor_cmd
 from agentic.commands import evidence as evidence_cmd
 from agentic.commands import fixtures as fixtures_cmd
 from agentic.commands import hermes as hermes_cmd
@@ -46,6 +47,7 @@ app.add_typer(evidence_cmd.app, name="evidence")
 app.add_typer(fixtures_cmd.app, name="fixtures")
 app.add_typer(manifest_cmd.app, name="manifest")
 app.add_typer(validate_cmd.app, name="validate")
+app.add_typer(doctor_cmd.app, name="doctor")
 app.add_typer(raw_cmd.app, name="raw")
 app.command(name="init", help=init_cmd.init_command.__doc__)(init_cmd.init_command)
 

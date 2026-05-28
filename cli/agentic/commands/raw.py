@@ -24,17 +24,25 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, NoReturn
 
 import typer
 
 from agentic.commands._shell_helpers import default_factory
 from agentic.context import RepoNotFound, resolve_repo
 from agentic.shell import ScriptError, ScriptRunner
+from agentic.ui.errors import AgenticError
 
 app = typer.Typer()
 
 _SCRIPT_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*\.sh$")
+
+# Repo / run hints reused by the raw refusals so the structured error envelope
+# matches the rest of the CLI (`agentic plan` / `agentic init` / etc.).
+_RAW_REFUSE_HINTS = (
+    "agentic raw <script>.sh -- <args>",
+    "see agentic --help for first-class wrappers",
+)
 
 
 def _runner_factory(repo: Path) -> ScriptRunner:
@@ -42,9 +50,14 @@ def _runner_factory(repo: Path) -> ScriptRunner:
     return default_factory(repo)
 
 
-def _refuse(msg: str, code: int = 2) -> None:
-    typer.echo(f"x  {msg}", err=True)
-    raise typer.Exit(code=code)
+def _refuse(msg: str, *, category: str = "misuse", exit_code: int | None = None) -> NoReturn:
+    """Raise a structured refusal — never returns."""
+    raise AgenticError(
+        category=category,
+        message=msg,
+        hints=list(_RAW_REFUSE_HINTS),
+        exit_code=exit_code,
+    )
 
 
 @app.callback(invoke_without_command=True)
@@ -72,8 +85,15 @@ def raw(
     try:
         repo = resolve_repo(repo_flag=ctx.obj.get("repo_flag") if ctx.obj else None).path
     except RepoNotFound as e:
-        typer.echo(f"x  {e}", err=True)
-        raise typer.Exit(code=6) from e
+        raise AgenticError(
+            category="no_repo",
+            message=str(e),
+            hints=[
+                "agentic --repo <path> raw <script>.sh",
+                "export AGENTIC_HOME=<path>",
+                "cd into a directory under an agentic-delivery repo",
+            ],
+        ) from e
 
     # Check 2 — realpath containment.
     scripts_dir = repo / "scripts"
@@ -109,7 +129,10 @@ def raw(
     resolved_path = Path(resolved)
     if not resolved_path.is_file():
         # Realpath landed on a directory, socket, fifo, etc.
-        _refuse(f"refused {script!r}: not a regular file", code=1)
+        _refuse(
+            f"refused {script!r}: not a regular file",
+            category="generic",
+        )
 
     # Check 3 — '--' boundary. Click's variadic positional happily eats
     # unknown options and the literal ``--`` itself, so we enforce the boundary
@@ -138,8 +161,11 @@ def raw(
             script_path=resolved_path,
         )
     except ScriptError as e:
-        typer.echo(f"x  {e}", err=True)
-        raise typer.Exit(code=1) from e
+        raise AgenticError(
+            category="generic",
+            message=str(e),
+            hints=[f"verify scripts/{script} exists and matches the name regex"],
+        ) from e
 
     if result.stdout:
         typer.echo(result.stdout, nl=False)
@@ -147,4 +173,9 @@ def raw(
         typer.echo(result.stderr, err=True, nl=False)
     if result.exit_code != 0:
         # Spec §9.3: forwarded script exits occupy 64..79.
-        raise typer.Exit(code=64 + min(result.exit_code, 15))
+        raise AgenticError(
+            category="script_failed",
+            message=f"scripts/{script} exited {result.exit_code}",
+            hints=[f"agentic raw {script} -- ...  # rerun with -vv for child stderr"],
+            exit_code=64 + min(result.exit_code, 15),
+        )

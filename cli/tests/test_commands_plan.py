@@ -323,3 +323,36 @@ def test_plan_script_failure_clamps_exit_15(
     monkeypatch.chdir(repo)
     result = cli.invoke(app, ["plan", "generate", "--run-id", "demo"])
     assert result.exit_code == 79  # 64 + min(200, 15) = 79
+
+
+def test_plan_script_failure_emits_agentic_error_envelope(
+    cli: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CLI-11/CLI-12: a shelled-out non-zero exit produces a structured
+    ``script_failed`` envelope on stderr — not a bare ``typer.Exit``.
+
+    Without this the only signal on non-zero script exit is the exit code,
+    which is too narrow to distinguish ``invoke()`` raising AgenticError
+    from a pre-CLI-11-era ``typer.echo + Exit`` regression.
+    """
+    import json as _json
+
+    from agentic.shell import ShellResult
+
+    # Empty script stderr so the JSON envelope is the only thing on stderr —
+    # _execute() echoes child stderr verbatim before raising AgenticError, and
+    # mixing it with the envelope would break json.loads. The script_failed
+    # behaviour itself doesn't depend on the child producing stderr text.
+    rr = RecordingRunner(next_result=ShellResult(exit_code=2, stdout="", stderr=""))
+    monkeypatch.setattr(plan_cmd, "_runner_factory", lambda repo: rr)
+    repo = _seed(tmp_path, "demo")
+    monkeypatch.chdir(repo)
+    monkeypatch.delenv("AGENTIC_HOME", raising=False)
+    result = cli.invoke(app, ["--json", "plan", "generate", "--run-id", "demo"])
+    assert result.exit_code == 66  # 64 + 2
+    payload = _json.loads(result.stderr)
+    assert payload["_schema"] == "agentic.cli/v1"
+    assert payload["error"]["category"] == "script_failed"
+    assert "generate-artifacts.sh" in payload["error"]["message"]
