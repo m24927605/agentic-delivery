@@ -1,0 +1,69 @@
+name: cli
+
+on:
+  pull_request:
+    paths:
+      - "cli/**"
+      - ".github/workflows/cli.yml"
+  push:
+    branches: [main]
+    paths:
+      - "cli/**"
+      - ".github/workflows/cli.yml"
+
+jobs:
+  grep-gate:
+    name: §4.2.1 grep gate (no manifest writes)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Grep gate (no forbidden write patterns in cli/agentic/)
+        run: |
+          set -e
+          if grep -rnE "\b(yaml\.(dump|safe_dump)|Path\.write_(text|bytes)|os\.rename|shutil\.(copy|move)|open\([^,]+,\s*[\"'](w|a|x|r\+|w\+|wb|ab))" cli/agentic/; then
+            echo "::error::forbidden write pattern found in cli/agentic/ (see spec §4.2.1)"
+            exit 1
+          fi
+          echo "grep gate ok"
+
+  test:
+    name: ${{ matrix.os }} / py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    needs: grep-gate
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install
+        run: |
+          pip install --upgrade pip
+          pip install -e cli/[dev]
+      - name: Ruff
+        run: ruff check cli/agentic cli/tests
+      - name: Mypy
+        run: mypy --strict cli/agentic
+      - name: Pytest with coverage gate
+        run: |
+          cd cli && pytest --cov=agentic --cov-report=term-missing --cov-fail-under=85
+
+  e2e:
+    name: e2e smoke (ubuntu/py3.12)
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          pip install --upgrade pip
+          pip install -e cli/[dev]
+      - name: Run smoke
+        run: bash cli/tests/smoke/test_e2e.sh
