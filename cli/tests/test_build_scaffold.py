@@ -124,6 +124,76 @@ def test_hook_clears_existing_target(tmp_path):
     assert not (target / "stale.txt").exists()
 
 
+def test_version_in_range_lower_bound_inclusive():
+    from build_scaffold import _version_in_range
+
+    assert _version_in_range("v0.6", [">=0.6,<0.8"]) is True
+    assert _version_in_range("v0.6.0", [">=0.6,<0.8"]) is True
+
+
+def test_version_in_range_upper_bound_exclusive():
+    from build_scaffold import _version_in_range
+
+    assert _version_in_range("v0.8", [">=0.6,<0.8"]) is False
+    assert _version_in_range("v0.7.99", [">=0.6,<0.8"]) is True
+
+
+def test_version_in_range_multiple_ranges_or_semantics():
+    from build_scaffold import _version_in_range
+
+    assert _version_in_range("v1.2", [">=0.6,<0.8", ">=1.0,<2.0"]) is True
+    assert _version_in_range("v0.9", [">=0.6,<0.8", ">=1.0,<2.0"]) is False
+
+
+def test_version_in_range_rejects_unsupported_range_syntax():
+    from build_scaffold import _version_in_range
+
+    with pytest.raises(ValueError, match="unsupported compat range"):
+        _version_in_range("v0.6", ["==0.6"])
+
+
+def test_read_compat_versions_against_real_init():
+    """Lock in that _read_compat_versions can parse the actual cli/agentic/__init__.py
+    no matter how the COMPATIBLE_PIPELINE_VERSIONS assignment is formatted."""
+    from build_scaffold import HatchScaffoldBuildHook
+
+    repo_root = Path(__file__).resolve().parents[2]
+    assert HatchScaffoldBuildHook._read_compat_versions(repo_root) == [">=0.6,<0.8"]
+
+
+def test_hatch_glue_initialize_populates_and_registers_artifact(tmp_path):
+    """HatchScaffoldBuildHook.initialize must:
+    1. derive repo_root from self.root (cli/ -> repo root),
+    2. read compat versions via _read_compat_versions,
+    3. populate the scaffold bundle into self.root/agentic/scaffold/_scaffold,
+    4. register agentic/scaffold/_scaffold/** in build_data["artifacts"].
+    """
+    from build_scaffold import HatchScaffoldBuildHook
+
+    repo = _make_repo(tmp_path)
+    cli_dir = repo / "cli"
+    # _make_repo creates cli/scaffold_manifest.yaml etc.; also need cli/agentic/__init__.py
+    (cli_dir / "agentic").mkdir(parents=True, exist_ok=True)
+    (cli_dir / "agentic" / "__init__.py").write_text(
+        'COMPATIBLE_PIPELINE_VERSIONS: list[str] = [">=0.6,<0.8"]\n', encoding="utf-8"
+    )
+
+    class _FakeHook:
+        # _read_compat_versions is invoked as self._read_compat_versions(...) in
+        # production, so the stub forwards it to the real staticmethod.
+        _read_compat_versions = staticmethod(HatchScaffoldBuildHook._read_compat_versions)
+        root = str(cli_dir)
+
+    build_data: dict = {}
+    HatchScaffoldBuildHook.initialize(  # type: ignore[arg-type]
+        _FakeHook(), version="standard", build_data=build_data
+    )
+
+    bundle = cli_dir / "agentic" / "scaffold" / "_scaffold"
+    assert (bundle / "agentic" / "pipeline.yaml").exists()
+    assert "agentic/scaffold/_scaffold/**" in build_data["artifacts"]
+
+
 def test_scaffold_overlay_profile_drift_against_reference():
     """The trimmed overlay profile must match the reference profile minus
     exactly the two backlog paths in required_artifacts.deliverables and

@@ -146,16 +146,28 @@ class HatchScaffoldBuildHook(BuildHookInterface):  # type: ignore[misc]
 
     @staticmethod
     def _read_compat_versions(repo_root: Path) -> list[str]:
-        # Avoid importing the CLI package during build; parse __init__.py directly.
+        """Extract COMPATIBLE_PIPELINE_VERSIONS from cli/agentic/__init__.py without
+        importing the CLI package.
+
+        Uses ast.parse so source-level reformatting (dropping the type annotation,
+        splitting the list across multiple lines, re-ordering, etc.) cannot silently
+        break the build hook.
+        """
         init_py = repo_root / "cli" / "agentic" / "__init__.py"
-        text = init_py.read_text(encoding="utf-8")
-        match = re.search(
-            r"COMPATIBLE_PIPELINE_VERSIONS\s*:\s*list\[str\]\s*=\s*(\[[^\]]+\])",
-            text,
+        tree = ast.parse(init_py.read_text(encoding="utf-8"))
+        for node in tree.body:
+            targets: list[ast.Name] = []
+            value: ast.expr | None = None
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                targets = [node.target]
+                value = node.value
+            elif isinstance(node, ast.Assign):
+                targets = [t for t in node.targets if isinstance(t, ast.Name)]
+                value = node.value
+            if value is None:
+                continue
+            if any(t.id == "COMPATIBLE_PIPELINE_VERSIONS" for t in targets):
+                return list(ast.literal_eval(value))
+        raise RuntimeError(
+            "could not find COMPATIBLE_PIPELINE_VERSIONS in cli/agentic/__init__.py"
         )
-        if match is None:
-            raise RuntimeError(
-                "could not find COMPATIBLE_PIPELINE_VERSIONS in cli/agentic/__init__.py"
-            )
-        # ast.literal_eval safely parses the matched list-of-strings literal.
-        return list(ast.literal_eval(match.group(1)))
