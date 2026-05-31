@@ -19,6 +19,7 @@ from agentic.commands import identity as identity_cmd
 from agentic.commands import impl as impl_cmd
 from agentic.commands import init as init_cmd
 from agentic.commands import manifest_cmd
+from agentic.commands import new as new_cmd
 from agentic.commands import next as next_cmd
 from agentic.commands import plan as plan_cmd
 from agentic.commands import raw as raw_cmd
@@ -50,6 +51,7 @@ app.add_typer(validate_cmd.app, name="validate")
 app.add_typer(doctor_cmd.app, name="doctor")
 app.add_typer(raw_cmd.app, name="raw")
 app.command(name="init", help=init_cmd.init_command.__doc__)(init_cmd.init_command)
+app.command(name="new", help=new_cmd.new_command.__doc__)(new_cmd.new_command)
 
 
 @app.callback()
