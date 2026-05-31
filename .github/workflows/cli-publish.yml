@@ -47,10 +47,16 @@ jobs:
           python-version: "3.12"
       - name: Install build tooling
         run: pip install --upgrade pip build
-      - name: Build wheel + sdist
+      - name: Build wheel
         run: |
           cd cli
-          python -m build
+          # --wheel: build wheel directly from the source tree. Skips the
+          # default sdist -> wheel round-trip because the scaffold build
+          # hook reads `cli/../agentic/__init__.py` (repo root), which the
+          # sdist tarball doesn't contain. A self-contained sdist requires
+          # force-including files from outside the cli/ project root — a
+          # follow-up.
+          python -m build --wheel
       - name: Upload artifacts
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
