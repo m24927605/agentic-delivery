@@ -47,3 +47,11 @@ def test_missing_repo_raises(tmp_path, monkeypatch):
     monkeypatch.delenv("AGENTIC_HOME", raising=False)
     with pytest.raises(RepoNotFound):
         resolve_repo()
+
+
+def test_repo_not_found_mentions_agentic_new(tmp_path, monkeypatch):
+    monkeypatch.delenv("AGENTIC_HOME", raising=False)
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(RepoNotFound) as exc:
+        resolve_repo()
+    assert "agentic new" in str(exc.value)

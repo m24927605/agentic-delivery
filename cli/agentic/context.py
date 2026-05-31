@@ -63,7 +63,8 @@ def resolve_repo(repo_flag: Path | None = None) -> Repo:
         return Repo(path=walked, source="walk-up")
 
     raise RepoNotFound(
-        "no agentic-delivery repo found. Pass --repo, set AGENTIC_HOME, or cd into a repo."
+        "no agentic-delivery repo found. Pass --repo, set AGENTIC_HOME, "
+        "cd into a repo, or run `agentic new <name>` to scaffold a new project here."
     )
 
 
