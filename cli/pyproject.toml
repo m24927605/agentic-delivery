@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "pyyaml >= 6"]
 build-backend = "hatchling.build"
 
 [project]
@@ -45,6 +45,9 @@ pattern = "^__version__ = \"(?P<version>[^\"]+)\""
 
 [tool.hatch.build.targets.wheel]
 packages = ["agentic"]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "build_scaffold.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

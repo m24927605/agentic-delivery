@@ -13,7 +13,6 @@ from __future__ import annotations
 import ast
 import re
 import shutil
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
@@ -57,12 +56,12 @@ def _version_in_range(version: str, ranges: Sequence[str]) -> bool:
     return False
 
 
-@dataclass
 class ScaffoldBuildHook:
     """Populate the scaffold bundle from repo state."""
 
-    repo_root: Path
-    compat_versions: Sequence[str]
+    def __init__(self, repo_root: Path, compat_versions: Sequence[str]) -> None:
+        self.repo_root = repo_root
+        self.compat_versions = compat_versions
 
     @property
     def manifest_path(self) -> Path:

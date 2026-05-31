@@ -194,6 +194,29 @@ def test_hatch_glue_initialize_populates_and_registers_artifact(tmp_path):
     assert "agentic/scaffold/_scaffold/**" in build_data["artifacts"]
 
 
+def test_build_scaffold_loads_under_hatchling_style_import(tmp_path):
+    """Hatchling loads custom build hooks via importlib.util.spec_from_file_location +
+    exec_module, WITHOUT registering the module in sys.modules. CPython 3.12's
+    @dataclass crashes under this loader. This regression test re-exercises the
+    Hatchling path so a future @dataclass / @attrs / similar regression fails fast.
+    """
+    import importlib.util
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[1] / "build_scaffold.py"
+    spec = importlib.util.spec_from_file_location("hatch_build_under_test", src)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    # Deliberately NOT inserting into sys.modules — this mirrors Hatchling.
+    spec.loader.exec_module(module)
+
+    assert hasattr(module, "ScaffoldBuildHook")
+    assert hasattr(module, "HatchScaffoldBuildHook")
+    inst = module.ScaffoldBuildHook(repo_root=tmp_path, compat_versions=[">=0.6,<0.8"])
+    assert inst.repo_root == tmp_path
+    assert inst.compat_versions == [">=0.6,<0.8"]
+
+
 def test_scaffold_overlay_profile_drift_against_reference():
     """The trimmed overlay profile must match the reference profile minus
     exactly the two backlog paths in required_artifacts.deliverables and
