@@ -33,16 +33,29 @@ def _resource_root() -> Path:
     return root
 
 
+_SKIP_RELPATHS: frozenset[str] = frozenset({"__init__.py"})
+_SKIP_DIR_NAMES: frozenset[str] = frozenset({"__pycache__"})
+
+
 def iter_resource_paths() -> list[str]:
     """Walk the bundle and return every file path relative to the bundle root.
 
     Paths are POSIX-style with forward slashes so they're stable across platforms.
+    Filters out the bundle placeholder (`__init__.py` at root) and any
+    `__pycache__/...` entries so callers receive only real scaffold resources.
     """
     root = _resource_root()
     files: list[str] = []
     for path in root.rglob("*"):
-        if path.is_file():
-            files.append(path.relative_to(root).as_posix())
+        if not path.is_file():
+            continue
+        rel_parts = path.relative_to(root).parts
+        rel = path.relative_to(root).as_posix()
+        if rel in _SKIP_RELPATHS:
+            continue
+        if any(part in _SKIP_DIR_NAMES for part in rel_parts):
+            continue
+        files.append(rel)
     if not files:
         raise ScaffoldBundleMissing(
             f"scaffold bundle at {root} is empty — reinstall the CLI"
@@ -51,8 +64,16 @@ def iter_resource_paths() -> list[str]:
 
 
 def read_resource_bytes(relpath: str) -> bytes:
+    """Return the raw bytes of ``relpath`` within the bundle."""
     return (_resource_root() / relpath).read_bytes()
 
 
 def resource_mode(relpath: str) -> int:
-    return (_resource_root() / relpath).stat().st_mode
+    """Return the POSIX mode bits of ``relpath`` within the bundle.
+
+    Returns only the permission portion (``stat.S_IMODE``) so future callers
+    that compare against literal mode constants (e.g., ``0o644``) aren't
+    surprised by file-type bits.
+    """
+    import stat as _stat
+    return _stat.S_IMODE((_resource_root() / relpath).stat().st_mode)

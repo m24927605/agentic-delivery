@@ -307,3 +307,45 @@ def test_scaffold_resource_mode(tmp_path, monkeypatch):
 
     import stat as _stat
     assert scaffold_pkg.resource_mode("scripts/demo.sh") & _stat.S_IXUSR
+
+
+def test_scaffold_iter_resources_raises_when_bundle_empty(tmp_path, monkeypatch):
+    """An empty bundle dir (no real resources, no placeholder) must raise
+    ScaffoldBundleMissing — this is the contract Task 8 relies on to tell
+    a user 'reinstall the CLI'."""
+    from agentic import scaffold as scaffold_pkg
+    fake_root = tmp_path / "empty"
+    fake_root.mkdir()
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+    with pytest.raises(scaffold_pkg.ScaffoldBundleMissing, match="empty"):
+        scaffold_pkg.iter_resource_paths()
+
+
+def test_scaffold_iter_resources_treats_placeholder_only_as_empty(tmp_path, monkeypatch):
+    """A bundle containing ONLY the placeholder __init__.py (i.e., a fresh
+    source checkout where the build hook never ran) must also raise
+    ScaffoldBundleMissing — the placeholder is an implementation detail of
+    the packaging strategy, not a real resource."""
+    from agentic import scaffold as scaffold_pkg
+    fake_root = tmp_path / "placeholder_only"
+    fake_root.mkdir()
+    (fake_root / "__init__.py").write_text('"""placeholder."""')
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+    with pytest.raises(scaffold_pkg.ScaffoldBundleMissing, match="empty"):
+        scaffold_pkg.iter_resource_paths()
+
+
+def test_scaffold_iter_resources_skips_pycache(tmp_path, monkeypatch):
+    """`__pycache__/` is universally not-a-resource. The accessor must filter
+    it out at every depth."""
+    from agentic import scaffold as scaffold_pkg
+    fake_root = tmp_path / "with_cache"
+    (fake_root / "agentic").mkdir(parents=True)
+    (fake_root / "agentic" / "pipeline.yaml").write_text("pipeline:\n  version: v0.6\n")
+    (fake_root / "agentic" / "__pycache__").mkdir()
+    (fake_root / "agentic" / "__pycache__" / "stale.cpython-312.pyc").write_bytes(b"\x00")
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+
+    rels = scaffold_pkg.iter_resource_paths()
+    assert "agentic/pipeline.yaml" in rels
+    assert not any("__pycache__" in r for r in rels)
