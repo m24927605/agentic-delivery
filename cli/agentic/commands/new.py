@@ -26,6 +26,29 @@ def _validate_name(name: str) -> None:
         )
 
 
+def _check_target_state(target: Path, *, force: bool) -> None:
+    if not target.exists():
+        target.mkdir(parents=True)
+        return
+    entries = sorted(p.name for p in target.iterdir())
+    if entries:
+        sample = ", ".join(entries[:5])
+        raise AgenticError(
+            category="scaffold_target_exists",
+            message=(
+                f"target exists and is non-empty: {target} "
+                f"(contains: {sample})"
+            ),
+            hints=["choose a new <name>", "remove the existing files first"],
+        )
+    if not force:
+        raise AgenticError(
+            category="scaffold_target_exists",
+            message=f"target {target} exists; rerun with `--force` to materialize into it",
+            hints=["pass --force", "or choose a new <name>"],
+        )
+
+
 def new_command(
     name: Annotated[str, typer.Argument(help="Project directory name")],
     path: Annotated[
@@ -39,11 +62,12 @@ def new_command(
 ) -> None:
     """Scaffold a fresh agentic-delivery project at ``<path>/<name>``."""
     _validate_name(name)
-    # Task 7 replaces this body with target-state branching; Tasks 8-10 fill in
-    # the rest (copy, git, banner). The AgenticError here ensures that even a
-    # mid-build branch keeps the CLI's structured-error contract.
-    raise AgenticError(
-        category="generic",
-        message="agentic new is not yet implemented on this revision",
-        hints=["check out a revision with Tasks 6-10 landed"],
+    target = (path / name).resolve()
+    _check_target_state(target, force=force)
+    # Task 8 replaces this with the real _materialize_scaffold call; Tasks 9-10
+    # add git init + banner. The NotImplementedError keeps a clear marker for
+    # mid-build branches while still allowing the state-check tests to assert
+    # that valid inputs reach this point.
+    raise NotImplementedError(
+        f"agentic new: scaffold populate step lands in Task 8 (target={target})"
     )
