@@ -260,3 +260,50 @@ def test_scaffold_overlay_profile_drift_against_reference():
         "Add the new field(s) to cli/scaffold_templates/agentic/profiles/default-delivery.yaml "
         "or update the TRIMMED set in this test if the policy changes."
     )
+
+
+def test_scaffold_iter_resources_lists_bundled_files(tmp_path, monkeypatch):
+    # Materialize a fake _scaffold under the package and check iter_resources
+    # walks every relative path under it.
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = tmp_path / "pkg" / "_scaffold"
+    (fake_root / "agentic").mkdir(parents=True)
+    (fake_root / "agentic" / "pipeline.yaml").write_text("pipeline:\n  version: v0.6\n")
+    (fake_root / "scripts").mkdir()
+    (fake_root / "scripts" / "demo.sh").write_text("#!/usr/bin/env bash\n")
+    (fake_root / "scripts" / "demo.sh").chmod(0o755)
+
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+
+    rels = sorted(scaffold_pkg.iter_resource_paths())
+    assert "agentic/pipeline.yaml" in rels
+    assert "scripts/demo.sh" in rels
+
+
+def test_scaffold_read_bytes_returns_file_bytes(tmp_path, monkeypatch):
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = tmp_path / "pkg" / "_scaffold"
+    fake_root.mkdir(parents=True)
+    (fake_root / "marker.txt").write_bytes(b"hello\n")
+
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+
+    assert scaffold_pkg.read_resource_bytes("marker.txt") == b"hello\n"
+
+
+def test_scaffold_resource_mode(tmp_path, monkeypatch):
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = tmp_path / "pkg" / "_scaffold"
+    fake_root.mkdir(parents=True)
+    sh = fake_root / "scripts" / "demo.sh"
+    sh.parent.mkdir()
+    sh.write_text("#!/usr/bin/env bash\n")
+    sh.chmod(0o755)
+
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+
+    import stat as _stat
+    assert scaffold_pkg.resource_mode("scripts/demo.sh") & _stat.S_IXUSR
