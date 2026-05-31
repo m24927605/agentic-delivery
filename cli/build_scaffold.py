@@ -141,6 +141,13 @@ class HatchScaffoldBuildHook(BuildHookInterface):  # type: ignore[misc]
         compat = self._read_compat_versions(repo_root)
         target = Path(self.root) / "agentic" / "scaffold" / "_scaffold"
         ScaffoldBuildHook(repo_root=repo_root, compat_versions=compat).populate(target)
+        # Restore the source-tracked placeholder so a local `uv build` doesn't
+        # leave a dirty git tree. The placeholder is harmless in the wheel
+        # (iter_resource_paths filters root-level __init__.py).
+        (target / "__init__.py").write_text(
+            '"""Bundled scaffold tree — populated at wheel build time. Empty in source."""\n',
+            encoding="utf-8",
+        )
         build_data.setdefault("artifacts", []).append("agentic/scaffold/_scaffold/**")
 
     @staticmethod

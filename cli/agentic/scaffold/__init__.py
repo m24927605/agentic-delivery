@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agentic.scaffold import _scaffold  # type: ignore[attr-defined] # populated at build time
+from agentic.scaffold import _scaffold  # type: ignore[attr-defined,unused-ignore] # populated at build time
 
 
 class ScaffoldBundleMissing(RuntimeError):
