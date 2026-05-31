@@ -71,8 +71,8 @@ Execution:
 2. Decide whether to proceed based on target state:
    - `target` does not exist → create it.
    - `target` exists and is empty and `--force` is set → proceed.
-   - `target` exists and is empty and `--force` is **not** set → exit `5` with "target exists; rerun with `--force` to materialize into it".
-   - `target` exists and is non-empty (regardless of `--force`) → exit `5` and list up to 5 blocking entries.
+   - `target` exists and is empty and `--force` is **not** set → exit `9` with "target exists; rerun with `--force` to materialize into it".
+   - `target` exists and is non-empty (regardless of `--force`) → exit `9` and list up to 5 blocking entries.
 3. Iterate `importlib.resources.files("agentic.scaffold._scaffold")` and copy the entire tree to `target`:
    - Preserve POSIX file mode (so `scripts/*.sh` remain executable).
    - Render `{{PROJECT_NAME}}` and `{{CLI_VERSION}}` placeholders in the scaffold `README.md` template.
@@ -92,14 +92,15 @@ Execution:
      agentic next
    ```
 
-Exit codes:
+Exit codes (existing `EXIT_CODES` slots 5/7/8 are already taken by `compat_failed`/etc., so we add new categories):
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 2 | Invalid invocation (bad `<name>`, e.g. contains `/`, `..`, or empty) |
-| 5 | Target exists and is non-empty, or target exists empty without `--force` |
-| 7 | Git operation failed (only when `--no-git` not set) |
+| Code | Category | Meaning |
+|------|----------|---------|
+| 0 | — | Success |
+| 2 | `misuse` (existing) | Invalid invocation (bad `<name>`, e.g. contains `/`, `..`, or empty) |
+| 9 | `scaffold_target_exists` (new) | Target exists and is non-empty, or target exists empty without `--force` |
+| 10 | `scaffold_git_failed` (new) | Git operation failed (only when `--no-git` not set) |
+| 11 | `scaffold_bundle_missing` (new) | Bundled scaffold resources missing — reinstall CLI |
 
 ### Scaffold contents (Full)
 
@@ -200,12 +201,12 @@ run time:
 
 | Failure mode | Behavior |
 |--------------|----------|
-| `<name>` contains `/`, `..`, or null | Exit 2, "name must be a single path segment, got `<name>`" |
-| Target exists and non-empty | Exit 5, list first 5 entries blocking the operation |
-| Target exists, empty, no `--force` | Exit 5, "target exists; rerun with `--force` to materialize into it" |
-| Resource copy fails mid-flight | Exit 7 (IO), attempt best-effort cleanup of newly created `target` (only if we created it this run) |
-| `git init` / `git add` / `git commit` fails | Exit 7, leave target intact (no rollback), tell user how to redo manually |
-| Resource missing (build hook drift) | Exit 8, "scaffold bundle missing — please reinstall the CLI" |
+| `<name>` contains `/`, `..`, or null | Exit 2 (`misuse`), "name must be a single path segment, got `<name>`" |
+| Target exists and non-empty | Exit 9 (`scaffold_target_exists`), list first 5 entries blocking the operation |
+| Target exists, empty, no `--force` | Exit 9 (`scaffold_target_exists`), "target exists; rerun with `--force` to materialize into it" |
+| Resource copy fails mid-flight | Exit 1 (`generic`), attempt best-effort cleanup of newly created `target` (only if we created it this run) |
+| `git init` / `git add` / `git commit` fails | Exit 10 (`scaffold_git_failed`), leave target intact (no rollback), tell user how to redo manually |
+| Resource missing (build hook drift) | Exit 11 (`scaffold_bundle_missing`), "scaffold bundle missing — please reinstall the CLI" |
 
 All errors flow through the existing `AgenticError` class so `--json` mode emits structured output.
 
