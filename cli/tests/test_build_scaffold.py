@@ -349,3 +349,27 @@ def test_scaffold_iter_resources_skips_pycache(tmp_path, monkeypatch):
     rels = scaffold_pkg.iter_resource_paths()
     assert "agentic/pipeline.yaml" in rels
     assert not any("__pycache__" in r for r in rels)
+
+
+def test_scaffold_works_under_namespace_package_layout(tmp_path, monkeypatch):
+    """The shipped wheel layout has _scaffold/ WITHOUT an __init__.py (the
+    build hook wipes the placeholder). _resource_root must still work in
+    that namespace-package case — uses __path__, not __file__."""
+    from agentic import scaffold as scaffold_pkg
+
+    # Build a fake namespace-package-style root (no __init__.py at the root).
+    fake_root = tmp_path / "ns_root"
+    (fake_root / "agentic").mkdir(parents=True)
+    (fake_root / "agentic" / "pipeline.yaml").write_text("pipeline:\n  version: v0.6\n")
+
+    # Mock the _scaffold module's __path__ to point at the fake root and
+    # explicitly set __file__ to None to simulate a namespace package.
+    fake_module = type(scaffold_pkg._scaffold)(scaffold_pkg._scaffold.__name__)
+    fake_module.__path__ = [str(fake_root)]  # namespace packages keep __path__
+    fake_module.__file__ = None  # regular packages have __file__; namespace packages don't
+
+    monkeypatch.setattr(scaffold_pkg, "_scaffold", fake_module)
+
+    root = scaffold_pkg._resource_root()
+    assert root == fake_root
+    assert "agentic/pipeline.yaml" in scaffold_pkg.iter_resource_paths()

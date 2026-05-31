@@ -24,10 +24,17 @@ class ScaffoldBundleMissing(RuntimeError):
 def _resource_root() -> Path:
     """Return the on-disk root of the bundled scaffold.
 
-    The bundle ships as a regular package directory (not a zipfile), so
-    ``Path(_scaffold.__file__).parent`` is a stable, sandboxed location.
+    Uses ``_scaffold.__path__[0]`` rather than ``_scaffold.__file__.parent``
+    because the build hook wipes the placeholder ``__init__.py`` during
+    wheel packaging (the manifest allowlist doesn't include it). Without
+    a real ``__init__.py``, ``_scaffold`` ships as a namespace package and
+    ``__file__`` is None — but ``__path__`` is populated for both regular
+    and namespace packages.
     """
-    root = Path(_scaffold.__file__).parent
+    paths = list(_scaffold.__path__)
+    if not paths:  # pragma: no cover - defensive
+        raise ScaffoldBundleMissing("scaffold bundle namespace has no __path__")
+    root = Path(paths[0])
     if not root.is_dir():  # pragma: no cover - defensive
         raise ScaffoldBundleMissing(f"scaffold bundle root is not a directory: {root}")
     return root
