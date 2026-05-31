@@ -523,10 +523,11 @@ Append after the existing `[tool.hatch.build.targets.wheel]` block:
 ```toml
 [tool.hatch.build.targets.wheel.hooks.custom]
 path = "build_scaffold.py"
-
-[tool.hatch.build.targets.wheel.force-include]
-"agentic/scaffold/_scaffold" = "agentic/scaffold/_scaffold"
 ```
+
+Also add `pyyaml >= 6` to `[build-system].requires` so the hook can `import yaml` inside uv's PEP 517 build isolation.
+
+> **Note (Task 3 retrospective)** — an earlier draft of this plan also included a `[tool.hatch.build.targets.wheel.force-include]` block mapping `"agentic/scaffold/_scaffold" = "agentic/scaffold/_scaffold"`. That block is redundant because `HatchScaffoldBuildHook.initialize` already appends `agentic/scaffold/_scaffold/**` to `build_data["artifacts"]`. Including both produces 283 "Duplicate name" warnings (every scaffold file written twice into the wheel zip). Do not re-add it.
 
 Make sure `[tool.hatch.build.targets.wheel].packages` already includes `["agentic"]` (it does — confirm).
 
