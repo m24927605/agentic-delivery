@@ -21,6 +21,9 @@ Exit-code mapping (spec §9.3):
 - 4   authorization_denied
 - 5   compat_failed
 - 6   no_repo / no_run_context
+- 9   scaffold_target_exists
+- 10  scaffold_git_failed
+- 11  scaffold_bundle_missing
 - 64..79  forwarded script (``64 + min(child_exit, 15)``, set via ``exit_code=``)
 """
 
@@ -40,10 +43,10 @@ EXIT_CODES: dict[str, int] = {
     "compat_failed": 5,
     "no_repo": 6,
     "no_run_context": 6,
-    "script_failed": 64,
     "scaffold_target_exists": 9,
     "scaffold_git_failed": 10,
     "scaffold_bundle_missing": 11,
+    "script_failed": 64,
 }
 
 
