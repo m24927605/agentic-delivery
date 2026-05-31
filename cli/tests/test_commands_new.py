@@ -158,3 +158,33 @@ def test_new_raises_bundle_missing_when_empty(tmp_path, monkeypatch):
     result = runner.invoke(app, ["new", "proj", "--no-git"])
     assert result.exit_code == 11
     assert "scaffold bundle" in result.stderr
+    # I-1: target dir must NOT be created when the bundle is missing — otherwise
+    # a retry trips the misleading scaffold_target_exists path.
+    assert not (tmp_path / "proj").exists(), "target dir leaked on bundle-missing failure"
+
+
+def test_new_preserves_source_mode_literally(tmp_path, monkeypatch):
+    """The destination's mode must match the source's mode bits, not be coerced
+    to 0o755 for any file with the owner-exec bit set."""
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = tmp_path / "bundle"
+    fake_root.mkdir()
+    (fake_root / "agentic").mkdir()
+    (fake_root / "agentic" / "pipeline.yaml").write_text("pipeline:\n  version: v0.6\n")
+
+    # A file with an unusual mode — owner-only exec, group/world read.
+    weird = fake_root / "scripts"
+    weird.mkdir()
+    weird_sh = weird / "weird.sh"
+    weird_sh.write_text("#!/usr/bin/env bash\n")
+    weird_sh.chmod(0o744)
+
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["new", "proj", "--no-git"])
+    assert result.exit_code == 0
+
+    actual_mode = _stat.S_IMODE((tmp_path / "proj" / "scripts" / "weird.sh").stat().st_mode)
+    assert actual_mode == 0o744, f"expected 0o744, got {oct(actual_mode)}"

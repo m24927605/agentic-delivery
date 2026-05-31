@@ -9,7 +9,6 @@ Spec: docs/superpowers/specs/2026-05-29-agentic-new-scaffold-bootstrap-design.md
 """
 from __future__ import annotations
 
-import stat
 from pathlib import Path
 from typing import Annotated
 
@@ -67,12 +66,13 @@ def _check_target_state(target: Path, *, force: bool) -> None:
 def _materialize_scaffold(target: Path, *, project_name: str) -> None:
     """Copy the bundled scaffold tree into ``target``.
 
-    - Creates ``target`` if absent (idempotent for the empty-with-force case).
-    - Walks every file from the bundle, preserving the executable bit.
+    - Resolves the bundle BEFORE creating ``target`` so a missing bundle
+      doesn't leak an empty directory on disk (review I-1).
+    - Walks every file from the bundle, preserving the source mode bits
+      verbatim (``resource_mode`` already returns S_IMODE-masked bits).
     - Substitutes ``{{PROJECT_NAME}}`` / ``{{CLI_VERSION}}`` only in
       :data:`_TEMPLATE_FILES`. All other files are copied as raw bytes.
     """
-    target.mkdir(parents=True, exist_ok=True)
     try:
         rels = _scaffold_pkg.iter_resource_paths()
     except _scaffold_pkg.ScaffoldBundleMissing as exc:
@@ -82,6 +82,7 @@ def _materialize_scaffold(target: Path, *, project_name: str) -> None:
             hints=["reinstall the CLI: pipx reinstall agentic-delivery"],
         ) from exc
 
+    target.mkdir(parents=True, exist_ok=True)
     for rel in rels:
         dest = target / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -93,9 +94,10 @@ def _materialize_scaffold(target: Path, *, project_name: str) -> None:
             dest.write_text(text, encoding="utf-8")
         else:
             dest.write_bytes(data)
-        mode = _scaffold_pkg.resource_mode(rel)
-        if mode & stat.S_IXUSR:
-            dest.chmod(dest.stat().st_mode | 0o111)
+        # Preserve source mode verbatim (owner/group/world). ``resource_mode``
+        # already returns S_IMODE-masked permission bits, so a literal chmod
+        # round-trips the source's exact bits — not just coerce to 0o755.
+        dest.chmod(_scaffold_pkg.resource_mode(rel))
 
 
 def new_command(
