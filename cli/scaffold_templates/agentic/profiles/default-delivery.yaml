@@ -1,3 +1,12 @@
+# Scaffold-only overlay of agentic/profiles/default-delivery.yaml.
+# Kept in sync with the reference profile MINUS these two paths in both
+# `required_artifacts.deliverables` and `review_prompt.required_files`:
+#   - docs/backlog/agentic-delivery-automation-slices.md
+#   - docs/backlog/hermes-adapter-implementation-slices.md
+# Reason: those are this reference repo's roadmap, not generic to fresh
+# agentic-delivery projects. When the reference profile changes other
+# fields, mirror the change here. A structural-equivalence test is
+# planned in the Task 2 build-hook work.
 profile:
   id: default-delivery
   name: Default Delivery

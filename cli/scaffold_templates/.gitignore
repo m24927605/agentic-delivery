@@ -9,6 +9,7 @@ agentic/reviews/
 agentic/runs/*
 !agentic/runs/.gitkeep
 
+# Python
 .venv/
 .pytest_cache/
 .mypy_cache/

@@ -15,6 +15,7 @@ require_file() {
 }
 
 missing=0
+# core_files = files expected in EVERY profile. Profile-specific required_artifacts and review_prompt.required_files are enforced by the Ruby block below (see lines ~154-194).
 core_files=(
   agentic/README.md
   agentic/hermes-actions.yaml
