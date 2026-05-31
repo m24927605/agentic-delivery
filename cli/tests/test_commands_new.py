@@ -163,6 +163,55 @@ def test_new_raises_bundle_missing_when_empty(tmp_path, monkeypatch):
     assert not (tmp_path / "proj").exists(), "target dir leaked on bundle-missing failure"
 
 
+def test_new_initializes_git_repo_by_default(tmp_path, monkeypatch):
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = _fake_bundle(tmp_path)
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["new", "proj"])
+    assert result.exit_code == 0, result.stderr + (result.stdout or "")
+
+    target = tmp_path / "proj"
+    assert (target / ".git").is_dir()
+    # exactly one commit
+    import subprocess
+    log = subprocess.run(
+        ["git", "-C", str(target), "log", "--oneline"],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip().splitlines()
+    assert len(log) == 1
+    assert "bootstrap agentic-delivery scaffold" in log[0]
+
+
+def test_new_no_git_skips_repo(tmp_path, monkeypatch):
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = _fake_bundle(tmp_path)
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["new", "proj", "--no-git"])
+    assert result.exit_code == 0
+    assert not (tmp_path / "proj" / ".git").exists()
+
+
+def test_new_reports_git_failure(tmp_path, monkeypatch):
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = _fake_bundle(tmp_path)
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+    monkeypatch.chdir(tmp_path)
+
+    # Make git resolve to a non-existent path so subprocess.run fails with FileNotFoundError
+    monkeypatch.setenv("PATH", "/nonexistent")
+
+    result = runner.invoke(app, ["new", "proj"])
+    assert result.exit_code == 10
+    assert "git" in result.stderr.lower()
+
+
 def test_new_preserves_source_mode_literally(tmp_path, monkeypatch):
     """The destination's mode must match the source's mode bits, not be coerced
     to 0o755 for any file with the owner-exec bit set."""

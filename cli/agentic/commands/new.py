@@ -9,6 +9,8 @@ Spec: docs/superpowers/specs/2026-05-29-agentic-new-scaffold-bootstrap-design.md
 """
 from __future__ import annotations
 
+import os
+import subprocess
 from pathlib import Path
 from typing import Annotated
 
@@ -100,6 +102,57 @@ def _materialize_scaffold(target: Path, *, project_name: str) -> None:
         dest.chmod(_scaffold_pkg.resource_mode(rel))
 
 
+def _clean_git_env() -> dict[str, str]:
+    """Build an env for ``git`` subprocess calls.
+
+    Passes through PATH and HOME so git can find itself and resolve global
+    config, but strips any ``GIT_*`` variables that would override the ``-C
+    target`` directory (e.g. ``GIT_DIR``, ``GIT_WORK_TREE``).
+    """
+    return {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
+
+def _git_init_and_commit(target: Path, *, cli_version: str) -> None:
+    """Initialize ``target`` as a git repo with a single bootstrap commit.
+
+    On any failure (``git`` not on PATH, or any of init/add/commit returning
+    non-zero), raises :class:`AgenticError` with category
+    ``scaffold_git_failed`` (exit 10) and actionable hints.
+    """
+    commit_msg = f"chore: bootstrap agentic-delivery scaffold (CLI v{cli_version})"
+    base_env = _clean_git_env()
+    commit_env = {
+        **base_env,
+        "GIT_AUTHOR_NAME": "agentic",
+        "GIT_AUTHOR_EMAIL": "agentic@local",
+        "GIT_COMMITTER_NAME": "agentic",
+        "GIT_COMMITTER_EMAIL": "agentic@local",
+    }
+    try:
+        subprocess.run(
+            ["git", "-C", str(target), "init", "-b", "main"],
+            check=True, capture_output=True, text=True, env=base_env,
+        )
+        subprocess.run(
+            ["git", "-C", str(target), "add", "."],
+            check=True, capture_output=True, text=True, env=base_env,
+        )
+        subprocess.run(
+            ["git", "-C", str(target), "commit", "-m", commit_msg],
+            check=True, capture_output=True, text=True, env=commit_env,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        detail = getattr(exc, "stderr", "") or str(exc)
+        raise AgenticError(
+            category="scaffold_git_failed",
+            message=f"git initialization failed: {detail.strip()}",
+            hints=[
+                "rerun `agentic new <name> --no-git` to skip git",
+                "or fix the git environment and `git init` manually in the target dir",
+            ],
+        ) from exc
+
+
 def new_command(
     name: Annotated[str, typer.Argument(help="Project directory name")],
     path: Annotated[
@@ -116,4 +169,6 @@ def new_command(
     target = (path / name).resolve()
     _check_target_state(target, force=force)
     _materialize_scaffold(target, project_name=name)
-    # Tasks 9-10 add git init + success banner here.
+    if not no_git:
+        _git_init_and_commit(target, cli_version=_cli_version)
+    # Task 10 adds the success banner here.
