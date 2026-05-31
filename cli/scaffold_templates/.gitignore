@@ -1,0 +1,12 @@
+.ait/
+.envrc
+.claude/
+.codex/
+
+# Local private delivery artifacts.
+.agentic/
+docs/connectors/
+agentic/reviews/
+agentic/runs/*
+!agentic/runs/.gitkeep
+__pycache__/

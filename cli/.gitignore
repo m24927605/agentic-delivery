@@ -8,3 +8,5 @@ __pycache__/
 build/
 dist/
 .coverage
+agentic/scaffold/_scaffold/*
+!agentic/scaffold/_scaffold/__init__.py

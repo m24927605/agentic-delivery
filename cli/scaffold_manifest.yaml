@@ -1,0 +1,49 @@
+# Source of truth for what ships inside the wheel as the agentic-delivery
+# scaffold. Paths are relative to the repo root. Reviewed during PRs.
+#
+# include: copied as-is into _scaffold/
+# overlay: copied from cli/scaffold_templates/ and overwrites any include
+#          at the same target path (so the scaffold ships a sanitized
+#          .gitignore and a project-template README instead of this repo's
+#          own versions).
+include:
+  # Pipeline definition and profiles
+  - agentic/pipeline.yaml
+  - agentic/hermes-actions.yaml
+  - agentic/identity-policy.yaml
+  - agentic/profiles/default-delivery.yaml
+  - agentic/profiles/boss-idea-response.yaml
+  # Schemas, prompts, fixtures
+  - agentic/schemas/
+  - agentic/prompts/
+  - agentic/fixtures/
+  - agentic/runs/.gitkeep
+  # Scripts
+  - scripts/
+  # Architecture
+  - docs/architecture/agentic-delivery-system.md
+  - docs/architecture/agentic-delivery-automation-roadmap.md
+  - docs/architecture/hermes-orchestration-adapter.md
+  - docs/architecture/agentic-identity-authorization.md
+  - docs/architecture/boss-idea-response-system.md
+  - docs/architecture/boss-idea-modules/
+  - docs/architecture/boss-idea-productionization-roadmap.md
+  # Standards
+  - docs/standards/agentic-delivery-quality-standard.md
+  - docs/standards/boss-idea-response-quality-standard.md
+  # ADRs (only those needed by either profile's source_of_truth)
+  - docs/adr/003-agentic-delivery-boundary.md
+  - docs/adr/004-hermes-orchestration-adapter.md
+  - docs/adr/005-artifact-approval-gate.md
+  - docs/adr/006-boss-idea-crawl4ai-market-discovery.md
+  - docs/adr/007-boss-idea-no-paid-search-provider.md
+  # Runbooks
+  - docs/runbooks/
+  # Backlogs referenced by boss-idea-response profile source_of_truth
+  - docs/backlog/boss-idea-response-slices.md
+  - docs/backlog/boss-idea-productionization-slices.md
+
+overlay:
+  # Files written from cli/scaffold_templates/, overlaying any include.
+  - .gitignore
+  - README.md
