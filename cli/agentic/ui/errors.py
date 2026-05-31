@@ -41,6 +41,9 @@ EXIT_CODES: dict[str, int] = {
     "no_repo": 6,
     "no_run_context": 6,
     "script_failed": 64,
+    "scaffold_target_exists": 9,
+    "scaffold_git_failed": 10,
+    "scaffold_bundle_missing": 11,
 }
 
 

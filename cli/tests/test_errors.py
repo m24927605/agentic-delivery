@@ -106,3 +106,11 @@ def test_agentic_error_exit_code_override(
     )
     capsys.readouterr()
     assert err.exit_code == 71
+
+
+def test_new_scaffold_exit_codes():
+    from agentic.ui.errors import EXIT_CODES
+
+    assert EXIT_CODES["scaffold_target_exists"] == 9
+    assert EXIT_CODES["scaffold_git_failed"] == 10
+    assert EXIT_CODES["scaffold_bundle_missing"] == 11
