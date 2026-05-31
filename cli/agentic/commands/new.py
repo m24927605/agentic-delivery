@@ -64,10 +64,11 @@ def new_command(
     _validate_name(name)
     target = (path / name).resolve()
     _check_target_state(target, force=force)
-    # Task 8 replaces this with the real _materialize_scaffold call; Tasks 9-10
-    # add git init + banner. The NotImplementedError keeps a clear marker for
-    # mid-build branches while still allowing the state-check tests to assert
-    # that valid inputs reach this point.
-    raise NotImplementedError(
-        f"agentic new: scaffold populate step lands in Task 8 (target={target})"
+    # Tasks 8-10 fill in the rest (scaffold populate, git init, banner). The
+    # AgenticError here ensures that even a mid-build branch keeps the CLI's
+    # structured-error contract (see Task 5 review).
+    raise AgenticError(
+        category="generic",
+        message=f"scaffold populate step lands in Task 8 (target={target})",
+        hints=["check out a revision with Tasks 8-10 landed"],
     )
