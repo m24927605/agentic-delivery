@@ -33,6 +33,8 @@ def _check_target_state(target: Path, *, force: bool) -> None:
     entries = sorted(p.name for p in target.iterdir())
     if entries:
         sample = ", ".join(entries[:5])
+        if len(entries) > 5:
+            sample += f", ... ({len(entries) - 5} more)"
         raise AgenticError(
             category="scaffold_target_exists",
             message=(
@@ -45,7 +47,7 @@ def _check_target_state(target: Path, *, force: bool) -> None:
         raise AgenticError(
             category="scaffold_target_exists",
             message=f"target {target} exists; rerun with `--force` to materialize into it",
-            hints=["pass --force", "or choose a new <name>"],
+            hints=["pass --force", "choose a new <name>"],
         )
 
 
