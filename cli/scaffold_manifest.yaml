@@ -18,8 +18,11 @@ include:
   - agentic/prompts/
   - agentic/fixtures/
   - agentic/runs/.gitkeep
+  - agentic/README.md
   # Scripts
   - scripts/
+  # Connector interface schema
+  - docs/connectors/interface-spec.schema.yaml
   # Architecture
   - docs/architecture/agentic-delivery-system.md
   - docs/architecture/agentic-delivery-automation-roadmap.md
@@ -31,7 +34,7 @@ include:
   # Standards
   - docs/standards/agentic-delivery-quality-standard.md
   - docs/standards/boss-idea-response-quality-standard.md
-  # ADRs (only those needed by either profile's source_of_truth)
+  # ADRs (only those referenced by either profile's source_of_truth)
   - docs/adr/003-agentic-delivery-boundary.md
   - docs/adr/004-hermes-orchestration-adapter.md
   - docs/adr/005-artifact-approval-gate.md
@@ -39,7 +42,7 @@ include:
   - docs/adr/007-boss-idea-no-paid-search-provider.md
   # Runbooks
   - docs/runbooks/
-  # Backlogs referenced by boss-idea-response profile source_of_truth
+  # Backlogs (only those referenced by either profile's source_of_truth)
   - docs/backlog/boss-idea-response-slices.md
   - docs/backlog/boss-idea-productionization-slices.md
 
@@ -47,3 +50,4 @@ overlay:
   # Files written from cli/scaffold_templates/, overlaying any include.
   - .gitignore
   - README.md
+  - agentic/profiles/default-delivery.yaml

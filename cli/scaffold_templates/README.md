@@ -18,7 +18,7 @@ agentic status
 
 ## Profiles
 
-This project ships with two public-safe profiles:
+This project ships with two starter profiles:
 
 | Profile | Purpose |
 |---------|---------|
@@ -43,7 +43,7 @@ profile + goal
   → validation + PR/release preparation
 ```
 
-See `agentic/README.md` (if vendored) or the reference repo for the full pipeline reference. Run `agentic --help` for CLI commands.
+See `agentic/README.md` or the reference repo for the full pipeline reference. Run `agentic --help` for CLI commands.
 
 ## License
 

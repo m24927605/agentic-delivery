@@ -1,0 +1,101 @@
+profile:
+  id: default-delivery
+  name: Default Delivery
+  purpose: Public-safe scaffold profile for the Agentic Delivery System.
+  not_customer_facing: true
+  not_runtime_dependency: true
+
+source_of_truth:
+  - agentic/pipeline.yaml
+  - agentic/hermes-actions.yaml
+  - docs/architecture/agentic-delivery-system.md
+  - docs/architecture/agentic-delivery-automation-roadmap.md
+  - docs/architecture/hermes-orchestration-adapter.md
+  - docs/standards/agentic-delivery-quality-standard.md
+  - docs/adr/003-agentic-delivery-boundary.md
+  - docs/adr/004-hermes-orchestration-adapter.md
+  - docs/adr/005-artifact-approval-gate.md
+
+required_artifacts:
+  strategy:
+    - docs/architecture/agentic-delivery-system.md
+    - docs/adr/003-agentic-delivery-boundary.md
+  deliverables:
+    - docs/architecture/agentic-delivery-system.md
+    - docs/architecture/agentic-delivery-automation-roadmap.md
+    - docs/architecture/hermes-orchestration-adapter.md
+    - docs/standards/agentic-delivery-quality-standard.md
+    - docs/adr/004-hermes-orchestration-adapter.md
+    - docs/adr/005-artifact-approval-gate.md
+    - docs/connectors/interface-spec.schema.yaml
+    - agentic/README.md
+
+memory:
+  notes:
+    - Manifest files are authoritative.
+    - Hermes memory is execution context only.
+    - Review evidence remains local and ignored.
+
+review_board:
+  required_agents:
+    - product-manager
+    - engineering-software-architect
+    - engineering-security-engineer
+    - engineering-technical-writer
+    - engineering-code-reviewer
+
+domain:
+  product_positioning: Public-safe internal delivery automation scaffold.
+  primary_strategy_doc: docs/architecture/agentic-delivery-system.md
+  required_questions:
+    - Does the artifact preserve manifest authority?
+    - Does the artifact keep Hermes memory non-authoritative?
+    - Does the artifact avoid private strategy, product names, customer details, secrets, and review ownership tokens?
+    - Does implementation consume only approved artifacts?
+    - Does every Hermes action map to a repo-local command?
+  strategy_gate_checks:
+    - Manifest is the source of truth for planning and implementation run state.
+    - Approval decisions are explicit artifact status transitions.
+    - Review evidence stays in ignored local paths.
+    - Implementation inputs are filtered to approved artifacts.
+    - Runtime and delivery-system boundaries remain separate.
+  rejected_directions:
+    - stores_authoritative_state_in_hermes_memory
+    - simulates_agency_review_instead_of_ait_codex_staff_reviewer
+    - commits_private_strategy_or_review_evidence
+    - allows_unapproved_artifacts_to_drive_implementation
+    - introduces_customer_facing_runtime_behavior
+
+review_prompt:
+  required_files:
+    - docs/architecture/agentic-delivery-system.md
+    - docs/architecture/agentic-delivery-automation-roadmap.md
+    - docs/architecture/hermes-orchestration-adapter.md
+    - docs/standards/agentic-delivery-quality-standard.md
+    - docs/adr/003-agentic-delivery-boundary.md
+    - docs/adr/004-hermes-orchestration-adapter.md
+    - docs/adr/005-artifact-approval-gate.md
+    - agentic/hermes-actions.yaml
+    - agentic/README.md
+  output_sections:
+    - Overall assessment
+    - Contract mismatch risks
+    - Approval gate risks
+    - Security and privacy risks
+    - Validation gaps
+    - Recommendation
+
+strategy_gate:
+  anchor_patterns:
+    - manifest authority
+    - artifact approval
+    - approved artifacts
+    - repo-local command
+  platform_risk_patterns:
+    - customer-facing product
+    - runtime dependency
+    - external state store
+  internal_tool_terms:
+    - Hermes
+    - AIT
+    - Codex CLI Staff+ review

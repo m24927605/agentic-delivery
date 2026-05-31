@@ -5,8 +5,12 @@
 
 # Local private delivery artifacts.
 .agentic/
-docs/connectors/
 agentic/reviews/
 agentic/runs/*
 !agentic/runs/.gitkeep
+
+.venv/
+.pytest_cache/
+.mypy_cache/
+*.py[cod]
 __pycache__/

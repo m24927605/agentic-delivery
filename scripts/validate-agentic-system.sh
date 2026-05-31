@@ -37,7 +37,6 @@ core_files=(
   agentic/schemas/boss-idea-intake.schema.yaml
   docs/architecture/hermes-orchestration-adapter.md
   docs/adr/004-hermes-orchestration-adapter.md
-  docs/backlog/hermes-adapter-implementation-slices.md
   agentic/fixtures/h8-generate-artifacts/README.md
   agentic/fixtures/h13-hermes-native/README.md
   agentic/fixtures/h20-golden-regression/README.md
