@@ -39,4 +39,11 @@ def new_command(
 ) -> None:
     """Scaffold a fresh agentic-delivery project at ``<path>/<name>``."""
     _validate_name(name)
-    raise NotImplementedError("populate / git / banner happen in later tasks")
+    # Task 7 replaces this body with target-state branching; Tasks 8-10 fill in
+    # the rest (copy, git, banner). The AgenticError here ensures that even a
+    # mid-build branch keeps the CLI's structured-error contract.
+    raise AgenticError(
+        category="generic",
+        message="agentic new is not yet implemented on this revision",
+        hints=["check out a revision with Tasks 6-10 landed"],
+    )
