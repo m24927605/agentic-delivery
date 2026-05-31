@@ -9,6 +9,7 @@ Spec: docs/superpowers/specs/2026-05-29-agentic-new-scaffold-bootstrap-design.md
 """
 from __future__ import annotations
 
+import json as _json
 import os
 import subprocess
 from pathlib import Path
@@ -18,7 +19,7 @@ import typer
 
 from agentic import __version__ as _cli_version
 from agentic import scaffold as _scaffold_pkg
-from agentic.ui.errors import AgenticError
+from agentic.ui.errors import AgenticError, get_json_mode
 
 
 # Files that get ``{{PROJECT_NAME}}`` / ``{{CLI_VERSION}}`` substitution at
@@ -137,8 +138,20 @@ def _git_init_and_commit(target: Path, *, cli_version: str) -> None:
             ["git", "-C", str(target), "add", "."],
             check=True, capture_output=True, text=True, env=base_env,
         )
+        # Pass ``-c commit.gpgsign=false`` (and the tag-sign sibling) BEFORE the
+        # ``-C target`` flag (git option ordering rule) so users with a global
+        # ``commit.gpgsign=true`` don't trip the bootstrap commit on a missing
+        # or misconfigured signing key. Deterministic provenance over verified
+        # signature for this one commit — re-author with
+        # ``git commit --amend --reset-author`` to claim it.
         subprocess.run(
-            ["git", "-C", str(target), "commit", "-m", commit_msg],
+            [
+                "git",
+                "-c", "commit.gpgsign=false",
+                "-c", "tag.gpgsign=false",
+                "-C", str(target),
+                "commit", "-m", commit_msg,
+            ],
             check=True, capture_output=True, text=True, env=commit_env,
         )
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
@@ -171,4 +184,43 @@ def new_command(
     _materialize_scaffold(target, project_name=name)
     if not no_git:
         _git_init_and_commit(target, cli_version=_cli_version)
-    # Task 10 adds the success banner here.
+
+    files_written = len(_scaffold_pkg.iter_resource_paths())
+    if get_json_mode():
+        typer.echo(_json.dumps({
+            "status": "ok",
+            "command": "new",
+            "target": str(target),
+            "project_name": name,
+            "cli_version": _cli_version,
+            "files_written": files_written,
+            "git_initialized": not no_git,
+        }))
+        return
+    typer.echo(_render_banner(target=target, project_name=name, git=not no_git))
+
+
+def _render_banner(*, target: Path, project_name: str, git: bool) -> str:
+    """Build the post-scaffold success banner shown in text mode.
+
+    When ``git=True`` we surface the hardcoded bootstrap-author identity and
+    the canonical "claim it" command — without this, users see an unexpected
+    ``agentic <agentic@local>`` author on their first commit and have no
+    pointer to fix it. (Task 9 review C-1.)
+    """
+    git_line = (
+        "  • Initialized git repo with one commit.\n"
+        "    (First commit authored as 'agentic <agentic@local>' — run\n"
+        "    'git commit --amend --reset-author' to claim it.)"
+    ) if git else "  • Skipped git init (--no-git)."
+    return (
+        f"✅ Scaffolded {project_name} (default-delivery, boss-idea-response).\n"
+        f"   Path: {target}\n"
+        f"{git_line}\n"
+        f"\n"
+        f"Next steps:\n"
+        f"  cd {project_name}\n"
+        f"  scripts/validate-agentic-system.sh\n"
+        f"  agentic init \"Your first delivery goal\"\n"
+        f"  agentic next\n"
+    )

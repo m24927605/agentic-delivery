@@ -212,6 +212,94 @@ def test_new_reports_git_failure(tmp_path, monkeypatch):
     assert "git" in result.stderr.lower()
 
 
+def test_new_prints_success_banner(tmp_path, monkeypatch):
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = _fake_bundle(tmp_path)
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["new", "proj", "--no-git"])
+    assert result.exit_code == 0, result.stderr + (result.stdout or "")
+    assert "Scaffolded proj" in result.stdout
+    assert "scripts/validate-agentic-system.sh" in result.stdout
+    assert "agentic init" in result.stdout
+    assert "agentic next" in result.stdout
+
+
+def test_new_banner_includes_amend_hint_when_git_initialized(tmp_path, monkeypatch):
+    """When git=True, the banner should mention the hardcoded bootstrap author
+    and the `git commit --amend --reset-author` claim instruction."""
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = _fake_bundle(tmp_path)
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["new", "projg"])
+    assert result.exit_code == 0, result.stderr + (result.stdout or "")
+    assert "Initialized git repo" in result.stdout
+    assert "amend --reset-author" in result.stdout
+    assert "agentic@local" in result.stdout
+
+
+def test_new_json_mode_emits_envelope(tmp_path, monkeypatch):
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = _fake_bundle(tmp_path)
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["--json", "new", "proj", "--no-git"])
+    assert result.exit_code == 0, result.stderr
+    import json
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "new"
+    assert payload["target"].endswith("/proj")
+    assert payload["files_written"] >= 1
+    assert payload["git_initialized"] is False
+
+
+def test_new_bypasses_gpg_signing_for_bootstrap_commit(tmp_path, monkeypatch):
+    """Users with commit.gpgsign=true globally should not have the bootstrap
+    commit fail. The CLI passes -c commit.gpgsign=false to override.
+
+    Approach: capture the actual ``subprocess.run`` argv for the commit call
+    and assert the gpgsign-disabling -c flags are present BEFORE the -C flag.
+    """
+    from agentic import scaffold as scaffold_pkg
+    import subprocess as _subprocess
+
+    fake_root = _fake_bundle(tmp_path)
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+    monkeypatch.chdir(tmp_path)
+
+    real_run = _subprocess.run
+    captured: list[list[str]] = []
+
+    def spy_run(argv, *args, **kwargs):
+        captured.append(list(argv))
+        return real_run(argv, *args, **kwargs)
+
+    monkeypatch.setattr("agentic.commands.new.subprocess.run", spy_run)
+
+    result = runner.invoke(app, ["new", "projgpg"])
+    assert result.exit_code == 0, result.stderr + (result.stdout or "")
+    assert (tmp_path / "projgpg" / ".git").is_dir()
+
+    # Find the commit invocation; assert -c commit.gpgsign=false comes before -C
+    commit_calls = [a for a in captured if "commit" in a and "-m" in a]
+    assert commit_calls, f"no commit subprocess call recorded: {captured}"
+    argv = commit_calls[0]
+    assert "-c" in argv and "commit.gpgsign=false" in argv, argv
+    assert "tag.gpgsign=false" in argv, argv
+    # ordering check: first -c must come before the -C target flag
+    first_dash_c = argv.index("-c")
+    dash_big_c = argv.index("-C")
+    assert first_dash_c < dash_big_c, f"-c must precede -C in {argv}"
+
+
 def test_new_preserves_source_mode_literally(tmp_path, monkeypatch):
     """The destination's mode must match the source's mode bits, not be coerced
     to 0o755 for any file with the owner-exec bit set."""
