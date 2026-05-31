@@ -1,6 +1,9 @@
 """Tests for `agentic new` — the scaffold materialization command."""
 from __future__ import annotations
 
+import stat as _stat
+from pathlib import Path
+
 import pytest
 from typer.testing import CliRunner
 
@@ -10,6 +13,24 @@ from agentic.app import app
 runner = CliRunner()
 
 
+def _fake_bundle(tmp_path: Path) -> Path:
+    """Build a minimal fake scaffold bundle for monkeypatching ``_resource_root``.
+
+    Includes one nested data file, one executable script, and one templated
+    README so individual tests can exercise all three copy paths without
+    standing up a full bundle.
+    """
+    root = tmp_path / "bundle"
+    (root / "agentic").mkdir(parents=True)
+    (root / "agentic" / "pipeline.yaml").write_text("pipeline:\n  version: v0.6\n")
+    (root / "scripts").mkdir()
+    sh = root / "scripts" / "demo.sh"
+    sh.write_text("#!/usr/bin/env bash\n")
+    sh.chmod(0o755)
+    (root / "README.md").write_text("# {{PROJECT_NAME}}\nCLI v{{CLI_VERSION}}\n")
+    return root
+
+
 @pytest.mark.parametrize("bad", ["", "foo/bar", "../escape", "a\x00b"])
 def test_new_rejects_bad_name(bad):
     result = runner.invoke(app, ["new", bad])
@@ -17,12 +38,17 @@ def test_new_rejects_bad_name(bad):
     assert "name must be a single path segment" in result.stderr
 
 
-def test_new_target_does_not_exist_proceeds(tmp_path, monkeypatch):
+def test_new_target_does_not_exist_creates_and_copies(tmp_path, monkeypatch):
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = _fake_bundle(tmp_path)
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
     monkeypatch.chdir(tmp_path)
-    # We're not yet copying — assert we got past name+state checks (Task-8 placeholder).
-    result = runner.invoke(app, ["new", "proj"])
-    assert result.exit_code == 1, result.stderr
-    assert "populate" in result.stderr
+    result = runner.invoke(app, ["new", "proj", "--no-git"])
+    assert result.exit_code == 0, result.stderr + (result.stdout or "")
+    target = tmp_path / "proj"
+    assert target.is_dir()
+    assert (target / "agentic" / "pipeline.yaml").exists()
 
 
 def test_new_target_existing_empty_without_force_fails(tmp_path, monkeypatch):
@@ -33,13 +59,16 @@ def test_new_target_existing_empty_without_force_fails(tmp_path, monkeypatch):
     assert "rerun with `--force`" in result.stderr
 
 
-def test_new_target_existing_empty_with_force_proceeds(tmp_path, monkeypatch):
+def test_new_target_existing_empty_with_force_copies(tmp_path, monkeypatch):
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = _fake_bundle(tmp_path)
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
     monkeypatch.chdir(tmp_path)
     (tmp_path / "proj").mkdir()
-    result = runner.invoke(app, ["new", "proj", "--force"])
-    # past state checks — falls into the Task-8 AgenticError placeholder
-    assert result.exit_code == 1, result.stderr
-    assert "populate" in result.stderr
+    result = runner.invoke(app, ["new", "proj", "--no-git", "--force"])
+    assert result.exit_code == 0, result.stderr + (result.stdout or "")
+    assert (tmp_path / "proj" / "agentic" / "pipeline.yaml").exists()
 
 
 def test_new_target_existing_nonempty_fails(tmp_path, monkeypatch):
@@ -71,3 +100,61 @@ def test_new_target_existing_nonempty_truncates_entries_with_ellipsis(tmp_path, 
     assert result.exit_code == 9
     assert "non-empty" in result.stderr
     assert "... (3 more)" in result.stderr
+
+
+def test_new_copies_bundle_into_target(tmp_path, monkeypatch):
+    from agentic import scaffold as scaffold_pkg
+
+    fake_root = _fake_bundle(tmp_path)
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: fake_root)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["new", "proj", "--no-git"])
+    assert result.exit_code == 0, result.stderr + (result.stdout or "")
+
+    target = tmp_path / "proj"
+    assert (target / "agentic" / "pipeline.yaml").read_text().startswith("pipeline:")
+    assert (target / "scripts" / "demo.sh").exists()
+
+    assert (target / "scripts" / "demo.sh").stat().st_mode & _stat.S_IXUSR
+
+    readme = (target / "README.md").read_text()
+    assert "# proj" in readme
+    assert "{{PROJECT_NAME}}" not in readme
+    assert "{{CLI_VERSION}}" not in readme
+
+
+def test_new_non_template_files_keep_placeholder_syntax_literally(tmp_path, monkeypatch):
+    """Only ``_TEMPLATE_FILES`` should get placeholder substitution.
+
+    A YAML file containing ``{{PROJECT_NAME}}`` must round-trip unchanged.
+    """
+    from agentic import scaffold as scaffold_pkg
+
+    root = tmp_path / "bundle"
+    (root / "agentic").mkdir(parents=True)
+    (root / "agentic" / "data.yaml").write_text("note: {{PROJECT_NAME}} stays literal\n")
+    (root / "README.md").write_text("# {{PROJECT_NAME}}\n")
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: root)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["new", "proj", "--no-git"])
+    assert result.exit_code == 0, result.stderr + (result.stdout or "")
+
+    yaml_text = (tmp_path / "proj" / "agentic" / "data.yaml").read_text()
+    assert "{{PROJECT_NAME}}" in yaml_text  # NOT substituted
+    readme = (tmp_path / "proj" / "README.md").read_text()
+    assert "# proj" in readme  # substituted
+
+
+def test_new_raises_bundle_missing_when_empty(tmp_path, monkeypatch):
+    from agentic import scaffold as scaffold_pkg
+
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    monkeypatch.setattr(scaffold_pkg, "_resource_root", lambda: empty)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["new", "proj", "--no-git"])
+    assert result.exit_code == 11
+    assert "scaffold bundle" in result.stderr
