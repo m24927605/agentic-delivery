@@ -77,6 +77,7 @@ def doctor(ctx: typer.Context) -> None:
                 "agentic --repo <path> doctor",
                 "export AGENTIC_HOME=<path>",
                 "cd into a directory under an agentic-delivery repo",
+                "agentic new <name>  # scaffold a fresh project here",
             ],
         ) from e
 
